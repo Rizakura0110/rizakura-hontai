@@ -32,3 +32,13 @@
 - `compatibility_date`は同梱workerdに合わせて`2026-08-15`へ固定した。詳細は[ADR-0002](decisions/0002-cloudflare-compatibility-date.md)を参照する。
 - `vite preview`で`/`、SPA fallback、health API、未知APIの応答を確認した。
 - Cloudflareアカウントへのログイン、リソース変更、デプロイは行っていない。
+
+## Phase 2 local D1 configuration
+
+- `apps/web/wrangler.jsonc`へ`DB` bindingを追加し、local database名を`tech-inbox`とした。
+- migration directoryは`packages/db/migrations`へ固定した。
+- Phase 2では`database_id`を設定せず、bindingの`remote`も`false`としている。
+- `pnpm db:migrate:local`は、Vite devと共有する無視対象の`apps/web/.wrangler/state`へlocal D1状態を永続化する。
+- `pnpm db:verify:local`は、`.tmp`配下のfreshな一時状態へmigrationを適用し、履歴、table、index、CHECK、一意制約、外部キー、cascade、再適用を検証後に一時状態を削除する。
+- D1設定から`CloudflareBindings`を再生成し、`DB: D1Database`が含まれることを確認した。
+- Cloudflareアカウントへのログイン、remote D1作成、remote migration、デプロイは行っていない。

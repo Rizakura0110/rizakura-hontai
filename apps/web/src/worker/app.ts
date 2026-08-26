@@ -1,16 +1,5 @@
+import type { ApiErrorResponse, HealthResponse } from "@tech-inbox/contracts";
 import { Hono } from "hono";
-
-type HealthResponse = {
-  status: "ok";
-};
-
-type ApiErrorResponse = {
-  error: {
-    code: "NOT_FOUND";
-    message: string;
-    requestId: string;
-  };
-};
 
 export const app = new Hono<{ Bindings: CloudflareBindings }>();
 

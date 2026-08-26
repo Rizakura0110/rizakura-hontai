@@ -155,3 +155,73 @@
 - Phase 1の実装・品質ゲートにblockerはない。
 - ユーザーからPhase完了時のcommitと個人remoteへの直接pushが承認された。今後の永続的な運用条件はrootの`AGENTS.md`へ記録した。
 - moderate advisoryと推移pre-release/deprecated packageは上流toolchain更新時に再確認する。
+
+## Phase 2: Core、Contracts、DB schema
+
+### 実施内容
+
+- WHATWG URLを使う純粋なURL正規化を`packages/core`へ実装した。
+- 記事、URL alias、一覧条件、repository入出力、metadata状態と列挙済みerror codeを、Cloudflare、React、D1へ依存しないdomain型として定義した。
+- API request/response、Article DTO、Queue message、metadata-fetcher入出力をstrictなZod schemaとして`packages/contracts`へ実装した。
+- `articles`と`article_urls`をDrizzle schemaへ実装し、明示CHECK、外部キーcascade、一意なnormalized URL、指定4 indexを定義した。
+- Drizzle Kitで初期migrationとsnapshot/journalを生成した。
+- Web Workerへlocal D1 bindingを追加し、Wrangler生成型へ`DB: D1Database`を反映した。
+- freshなlocal D1へmigrationを適用して、制約と再適用を自動検証するscriptを追加した。
+- domain型だけを扱い、Hono、Zod、Drizzle、D1へ依存しない`ArticleRepository` interfaceを定義した。
+- 既存health APIのresponse型をContractsから参照し、API型の重複定義を除いた。
+- Cloudflareへのログイン、remote D1作成、remote migration、デプロイは行っていない。
+
+### URL正規化
+
+- 前後空白を除き、最大4096文字とした。
+- `http:`と`https:`だけを許可し、username/password付きURLを拒否する。
+- hostname、default port、fragment、root以外の明確な単一末尾slashをWHATWG URLの規則で正規化し、意味が変わり得る連続slashは保持する。
+- 指定13種のtracking parameterだけを列挙どおりのkeyで除去し、大小文字が異なる内容parameterは保持する。
+- 残ったqueryをdecoded key、value、元順序で安定sortし、内容parameter、重複parameter、raw percent encodingを保持する。
+- SSRF判定は正規化と分離し、IP literalや非標準portをこの段階で過剰に拒否しない。
+
+### Contractsと型境界
+
+- URL 4096、title 500、description 2000、検索query 200、一覧limit 1〜100/default 30をschemaで検証する。
+- 未知field、DBのsnake_case、clientが変更できないserver管理field、空PATCHを拒否する。
+- Article DTOでは`status`と`readAt`の相関も検証する。
+- Queue messageは`{ articleId, url, attempt }`へ固定し、初回attemptを0として扱えるnon-negative integerにした。
+- metadata-fetcherの失敗は列挙済みcodeだけを返し、stackや任意の内部例外文字列を契約へ含めない。
+- domain `Article`、API `ArticleDto`、DB `ArticleRow`/`ArticleInsert`を別の型として維持する。
+
+### DBとmigration
+
+- status、metadata status、title manual flag、metadata attempt count、status/readAt相関をSQLite CHECKとしてmigrationへ含めた。
+- `article_urls.normalized_url`をprimary keyとし、記事削除時のalias cascadeを外部キーで保証した。
+- status/savedAt/id、status/readAt/id、siteName、alias articleIdの指定indexを生成した。
+- `pnpm db:verify:local`ではfresh DBへの初回適用、migration履歴、table/index、各CHECK、一意制約、外部キー、cascade、二回目の冪等適用を実DBで確認する。
+- Drizzle 0.45.2の宣言ファイルにはTypeScript 7で発生する上流型errorがあるため、`packages/db`だけ`skipLibCheck: true`とした。自分たちのschema sourceとtestsはstrictに型検査している。
+
+### 自動テスト構成
+
+- URL正規化はscheme、credential、default/non-default port、fragment、slash、全tracking parameter、content parameter、重複query、encoded value、IPv4/IPv6、IDN、最大長、冪等性、過剰正規化防止を検証する。
+- Contractsは全strict object、境界値、enum、UTC日時、camelCase、状態相関、Queue、fetcher成功/失敗、安全なAPI errorを検証する。
+- DBはDrizzle table metadataと生成migration SQLの両方を検証し、local D1でruntime制約も検証する。
+- Phase 2終了時は10 test files、109 testsが成功した。
+- coverageは全体statements 96.69%、branches 86.95%、functions 96.00%、lines 96.61%。URL正規化はstatements/functions/lines 100%、branches 96.15%だった。
+
+### 検証結果
+
+- `pnpm install --frozen-lockfile`: pass
+- `pnpm format:check`: pass
+- `pnpm lint`: pass
+- `pnpm cf:typecheck`: pass
+- `pnpm typecheck`: pass
+- `pnpm test`: pass（10 files、109 tests）
+- `pnpm test:coverage`: pass
+- `pnpm db:verify:local`: pass
+- `pnpm build`: pass
+- production preview smoke（SPA、fallback、health API、未知API）: pass
+- `pnpm audit --audit-level high`: pass（high 0、critical 0、moderate 1）
+
+### 未解決事項
+
+- Phase 2の実装とlocal検証にblockerはない。
+- repositoryのD1実装、CRUD API、cursor、search/filter/sort、統一error handlerはPhase 3で実装する。
+- remote D1 resourceと`database_id`はPhase 9の明示許可後まで作成・設定しない。
+- 既知のmoderate advisory 1件はPhase 1と同じDrizzle Kit配下の開発専用推移依存である。

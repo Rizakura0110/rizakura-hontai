@@ -11,6 +11,8 @@
     "cf:typecheck": "wrangler types --env-interface CloudflareBindings --check"
   },
   "dependencies": {
+    "@tech-inbox/contracts": "workspace:0.0.0",
+    "@tech-inbox/core": "workspace:0.0.0",
     "hono": "4.13.3",
     "jose": "6.2.9",
     "react": "19.2.8",

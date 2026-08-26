@@ -7,17 +7,20 @@
     "dev": "pnpm --dir apps/web dev",
     "build": "pnpm --dir apps/web build",
     "preview": "pnpm --dir apps/web preview",
+    "db:generate": "drizzle-kit generate --config drizzle.config.ts",
+    "db:migrate:local": "pnpm --dir apps/web exec wrangler d1 migrations apply tech-inbox --local",
+    "db:verify:local": "node scripts/verify-local-d1.mjs",
     "format": "biome format --write .",
     "format:check": "biome format .",
     "lint": "biome lint .",
-    "typecheck": "tsc --project tsconfig.tools.json --noEmit && tsc --project apps/web/tsconfig.client.json --noEmit && tsc --project apps/web/tsconfig.client-test.json --noEmit && tsc --project apps/web/tsconfig.worker.json --noEmit && tsc --project apps/web/tsconfig.worker-test.json --noEmit && tsc --project apps/web/tsconfig.node.json --noEmit && tsc --project workers/metadata-fetcher/tsconfig.json --noEmit && tsc --project packages/contracts/tsconfig.json --noEmit && tsc --project packages/core/tsconfig.json --noEmit && tsc --project packages/db/tsconfig.json --noEmit",
+    "typecheck": "tsc --project tsconfig.tools.json --noEmit && tsc --project tsconfig.packages-test.json --noEmit && tsc --project apps/web/tsconfig.client.json --noEmit && tsc --project apps/web/tsconfig.client-test.json --noEmit && tsc --project apps/web/tsconfig.worker.json --noEmit && tsc --project apps/web/tsconfig.worker-test.json --noEmit && tsc --project apps/web/tsconfig.node.json --noEmit && tsc --project workers/metadata-fetcher/tsconfig.json --noEmit && tsc --project packages/contracts/tsconfig.json --noEmit && tsc --project packages/core/tsconfig.json --noEmit && tsc --project packages/db/tsconfig.json --noEmit",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "e2e": "playwright test",
     "cf:typegen": "pnpm --dir apps/web cf:typegen",
     "cf:typecheck": "pnpm --dir apps/web cf:typecheck",
     "audit": "pnpm audit --audit-level high",
-    "check": "pnpm format:check && pnpm lint && pnpm cf:typecheck && pnpm typecheck && pnpm test && pnpm build && pnpm audit --audit-level high"
+    "check": "pnpm format:check && pnpm lint && pnpm cf:typecheck && pnpm typecheck && pnpm test && pnpm db:verify:local && pnpm build && pnpm audit --audit-level high"
   },
   "engines": {
     "node": ">=24 <25"
