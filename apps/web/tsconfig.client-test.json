@@ -1,0 +1,8 @@
+{
+  "extends": "./tsconfig.client.json",
+  "compilerOptions": {
+    "skipLibCheck": true
+  },
+  "include": ["src/client/**/*.test.ts", "src/client/**/*.test.tsx"],
+  "exclude": []
+}

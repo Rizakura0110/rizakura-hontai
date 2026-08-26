@@ -1,0 +1,41 @@
+{
+  "name": "tech-inbox",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "pnpm --dir apps/web dev",
+    "build": "pnpm --dir apps/web build",
+    "preview": "pnpm --dir apps/web preview",
+    "format": "biome format --write .",
+    "format:check": "biome format .",
+    "lint": "biome lint .",
+    "typecheck": "tsc --project tsconfig.tools.json --noEmit && tsc --project apps/web/tsconfig.client.json --noEmit && tsc --project apps/web/tsconfig.client-test.json --noEmit && tsc --project apps/web/tsconfig.worker.json --noEmit && tsc --project apps/web/tsconfig.worker-test.json --noEmit && tsc --project apps/web/tsconfig.node.json --noEmit && tsc --project workers/metadata-fetcher/tsconfig.json --noEmit && tsc --project packages/contracts/tsconfig.json --noEmit && tsc --project packages/core/tsconfig.json --noEmit && tsc --project packages/db/tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "e2e": "playwright test",
+    "cf:typegen": "pnpm --dir apps/web cf:typegen",
+    "cf:typecheck": "pnpm --dir apps/web cf:typecheck",
+    "audit": "pnpm audit --audit-level high",
+    "check": "pnpm format:check && pnpm lint && pnpm cf:typecheck && pnpm typecheck && pnpm test && pnpm build && pnpm audit --audit-level high"
+  },
+  "engines": {
+    "node": ">=24 <25"
+  },
+  "packageManager": "pnpm@11.22.0",
+  "devDependencies": {
+    "@biomejs/biome": "2.5.9",
+    "@playwright/test": "1.62.1",
+    "@testing-library/dom": "10.4.1",
+    "@testing-library/react": "16.3.2",
+    "@testing-library/user-event": "14.6.5",
+    "@types/node": "24.13.3",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.4",
+    "@vitest/coverage-v8": "4.1.11",
+    "drizzle-kit": "0.31.10",
+    "jsdom": "30.0.1",
+    "typescript": "7.0.2",
+    "vitest": "4.1.11"
+  }
+}

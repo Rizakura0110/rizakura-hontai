@@ -1,0 +1,6 @@
+{
+  "name": "@tech-inbox/metadata-fetcher",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module"
+}
