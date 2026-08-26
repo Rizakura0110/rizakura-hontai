@@ -42,3 +42,12 @@
 - `pnpm db:verify:local`は、`.tmp`配下のfreshな一時状態へmigrationを適用し、履歴、table、index、CHECK、一意制約、外部キー、cascade、再適用を検証後に一時状態を削除する。
 - D1設定から`CloudflareBindings`を再生成し、`DB: D1Database`が含まれることを確認した。
 - Cloudflareアカウントへのログイン、remote D1作成、remote migration、デプロイは行っていない。
+
+## Phase 3 local API verification
+
+- 通常のlocal開発では`apps/web/.dev.vars.example`を`apps/web/.dev.vars`へコピーし、実際にブラウザで開くoriginへ`APP_ORIGIN`を合わせる。`.dev.vars`自体はcommitしない。
+- `pnpm api:verify:local`はprojectの`.tmp`配下だけにfreshなD1永続領域と一時Wrangler設定を作成する。
+- 一時設定はassetsを含めず、現在の`apps/web/src/worker/index.ts`を直接起動する。これによりVite build後のredirected deploy configや古い`dist`へ依存せず、編集対象のWorkerを検証する。
+- local起動時だけ`ENVIRONMENT=local`と一時HTTP originを`APP_ORIGIN`として渡す。個人情報やsecretは作成しない。
+- migration適用後にCRUD、同時重複、pagination、search/filter/sort、入力防御を実HTTPとD1で検証し、終了時はWorkerを停止して一時領域を削除する。
+- 通常の`apps/web/wrangler.jsonc`、local D1共有状態、remote resource、`database_id`は変更しない。

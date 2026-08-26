@@ -13,6 +13,8 @@
   "dependencies": {
     "@tech-inbox/contracts": "workspace:0.0.0",
     "@tech-inbox/core": "workspace:0.0.0",
+    "@tech-inbox/db": "workspace:0.0.0",
+    "drizzle-orm": "0.45.2",
     "hono": "4.13.3",
     "jose": "6.2.9",
     "react": "19.2.8",

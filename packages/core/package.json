@@ -6,6 +6,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./article": "./src/article.ts",
+    "./article-cursor": "./src/article-cursor.ts",
     "./metadata": "./src/metadata.ts",
     "./url-normalization": "./src/url-normalization.ts"
   }

@@ -29,6 +29,8 @@ export const apiErrorDetailsSchema = z.record(
   z.array(z.string().max(500)).max(20),
 );
 
+export type ApiErrorDetails = z.output<typeof apiErrorDetailsSchema>;
+
 export const apiErrorResponseSchema = z.strictObject({
   error: z.strictObject({
     code: apiErrorCodeSchema,

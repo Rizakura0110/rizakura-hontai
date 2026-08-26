@@ -1,0 +1,2 @@
+ENVIRONMENT=local
+APP_ORIGIN=http://localhost:5173

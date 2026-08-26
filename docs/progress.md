@@ -225,3 +225,64 @@
 - repositoryのD1実装、CRUD API、cursor、search/filter/sort、統一error handlerはPhase 3で実装する。
 - remote D1 resourceと`database_id`はPhase 9の明示許可後まで作成・設定しない。
 - 既知のmoderate advisory 1件はPhase 1と同じDrizzle Kit配下の開発専用推移依存である。
+
+## Phase 3: 記事CRUD API
+
+### 実施内容
+
+- D1用`ArticleRepository`を実装し、DB rowからdomain `Article`への明示mapperと状態不変条件の検査を追加した。
+- `GET/POST /api/v1/articles`と`GET/PATCH/DELETE /api/v1/articles/:id`をHonoへ実装した。
+- 一覧へstatus filter、title/original URL/site name検索、site filter、3種のsort、1〜100件のcursor paginationを追加した。
+- URL登録と変更はPhase 2の正規化を必ず通し、`article_urls.normalized_url`のprimary keyを最終的な同時実行時の重複防止として使用する。
+- URL変更時はalias差し替え、metadata fieldの初期化、記事更新をD1 batchで一体として実行する。
+- title変更はmanual flagを設定し、read/unreadの遷移時だけ`readAt`を現在UTCまたはnullへ更新する。
+- 全API応答へ`Cache-Control: no-store`と新規request IDを付け、エラー形式をContractsの安全なJSON shapeへ統一した。
+- local記事APIは`ENVIRONMENT=local`の場合だけ認証をbypassし、それ以外はPhase 6のAccess JWT検証実装までfail closedで403にする。
+- local用の非secret設定例を`apps/web/.dev.vars.example`へ追加し、実値を入れる`.dev.vars`はignore対象のまま維持した。
+- 変更系APIへ16KiB body上限、JSON Content-Type、`APP_ORIGIN`完全一致、`X-Tech-Inbox-Client: web`を適用した。
+- log fieldをrequest ID、固定route名、method、status、duration、安全なerror codeに限定した。URL、query、body、cookie、内部例外、stackは記録しない。
+- Cloudflareへのログイン、remote D1変更、remote migration、デプロイは行っていない。
+
+### Repository、検索、cursor
+
+- SQL条件はDrizzleのparameter bindingまたは固定SQLのD1 Prepared Statementだけで構築し、入力値をSQL文字列へ連結しない。
+- LIKE検索では`!`をescape文字として`!`、`%`、`_`をescapeし、sort columnは列挙済み3分岐だけを許可する。
+- cursorはversion、検索条件、sort条件、sort値、記事IDをUTF-8 JSONからunpadded base64urlへ符号化するopaque valueとした。
+- cursorのfield集合、version、型、長さ、base64url、現在の検索条件との一致を検証し、不正値や別条件への再利用は400で拒否する。
+- `saved_desc`、`saved_asc`、`read_desc`の各sortへ記事IDのtie-breakerを付け、同じtimestampでも重複や欠落が出ないkeyset paginationにした。
+- 新規登録は記事とoriginal aliasをD1 batchで保存する。競合時は一意制約失敗後に既存aliasを取得し、片方だけ201、残りを200 `alreadyExists`として返す。
+- URL変更は事前競合に加え、batch実行中の一意制約競合も409へ変換する。
+
+### 自動テスト構成
+
+- VitestでcursorのUnicode往復、条件不一致、null read timestamp、不正base64url、過長値、余分fieldを検証する。
+- Hono API testでlocal bypass、production fail closed、未知field、安全なerror/log、bodyなしDELETEを検証する。
+- service testでURL変更時のmetadata reset、manual title、read stateのatomic changesとURL競合変換を検証する。
+- mapper testでDB rowとdomain型を分離し、status/readAt不整合を拒否する。
+- `pnpm api:verify:local`は`.tmp`内にfresh D1とassetsなしの一時Wrangler設定を作り、現在のWorker sourceを直接起動する。新規・正規化重複・同時重複・取得・更新・URL競合・削除・cascade・検索escape・SQL injection文字列・filter・sort・cursor・主要入力errorを実HTTPで検証後、安全に削除する。
+- Phase 3終了時は14 test files、135 testsが成功した。
+- coverageはstatements 66.29%、branches 56.46%、functions 75.29%、lines 67.67%。別processの実D1統合testはV8 unit coverageへ計上されないため、D1 repositoryの表示値は実HTTP検証結果と分けて扱う。threshold確定は予定どおりPhase 8で行う。
+
+### 検証結果
+
+- `pnpm install --frozen-lockfile`: pass
+- `pnpm format:check`: pass
+- `pnpm lint`: pass
+- `pnpm cf:typecheck`: pass
+- `pnpm typecheck`: pass
+- `pnpm test`: pass（14 files、135 tests）
+- `pnpm test:coverage`: pass
+- `pnpm db:verify:local`: pass
+- `pnpm api:verify:local`: pass
+- `pnpm build`: pass
+- production preview smoke（SPA、fallback、health API、未知API、記事APIの403 fail closed）: pass
+- `pnpm audit --audit-level high`: pass（high 0、critical 0、moderate 1）
+
+### 未解決事項
+
+- Phase 3の実装とlocal検証にblockerはない。
+- Queue producerとmetadata取得はPhase 5、Cloudflare Access JWT再検証とrate limitはPhase 6で実装する。
+- production記事APIはPhase 6完了まで意図的に403で閉じている。
+- remote D1 resourceと`database_id`はPhase 9の明示許可後まで作成・設定しない。
+- Drizzle 0.45.2のTypeScript 7非互換な上流宣言を読み込むため、Worker tsconfigにも`skipLibCheck: true`を限定適用した。Worker sourceとtests自体はstrictに型検査している。
+- 既知のmoderate advisory 1件はPhase 1と同じDrizzle Kit配下の開発専用推移依存である。

@@ -1,5 +1,6 @@
 import type { MetadataErrorCode, MetadataStatus } from "./metadata";
 import type { NormalizedUrl } from "./url-normalization";
+import type { ArticleCursorPosition } from "./article-cursor";
 
 export const ARTICLE_STATUSES = ["unread", "read"] as const;
 
@@ -62,12 +63,12 @@ export type ArticleListCriteria = {
   readonly site: string | null;
   readonly sort: ArticleSort;
   readonly limit: number;
-  readonly cursor: string | null;
+  readonly cursor: ArticleCursorPosition | null;
 };
 
 export type ArticlePage = {
   readonly items: readonly Article[];
-  readonly nextCursor: string | null;
+  readonly nextCursor: ArticleCursorPosition | null;
 };
 
 export type CreateArticleInput = {

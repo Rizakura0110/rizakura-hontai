@@ -59,6 +59,12 @@ importers:
       '@tech-inbox/core':
         specifier: workspace:0.0.0
         version: link:../../packages/core
+      '@tech-inbox/db':
+        specifier: workspace:0.0.0
+        version: link:../../packages/db
+      drizzle-orm:
+        specifier: 0.45.2
+        version: 0.45.2
       hono:
         specifier: 4.13.3
         version: 4.13.3
