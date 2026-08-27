@@ -213,6 +213,14 @@ try {
             remote: false,
           },
         ],
+        queues: {
+          producers: [
+            {
+              binding: "METADATA_QUEUE",
+              queue: `tech-inbox-metadata-integration-${process.pid}`,
+            },
+          ],
+        },
       },
       null,
       2,

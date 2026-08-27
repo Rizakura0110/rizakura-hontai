@@ -2,5 +2,9 @@
   "name": "@tech-inbox/metadata-fetcher",
   "version": "0.0.0",
   "private": true,
-  "type": "module"
+  "type": "module",
+  "dependencies": {
+    "@tech-inbox/contracts": "workspace:0.0.0",
+    "@tech-inbox/core": "workspace:0.0.0"
+  }
 }

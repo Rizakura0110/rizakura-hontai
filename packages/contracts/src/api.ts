@@ -135,6 +135,10 @@ export const deleteArticleResponseSchema = z.strictObject({
 
 export type DeleteArticleResponse = z.output<typeof deleteArticleResponseSchema>;
 
+export const retryMetadataRequestSchema = z.strictObject({});
+
+export type RetryMetadataRequest = z.output<typeof retryMetadataRequestSchema>;
+
 export const retryMetadataResponseSchema = articleResponseSchema;
 
 export type RetryMetadataResponse = z.output<typeof retryMetadataResponseSchema>;

@@ -1,5 +1,5 @@
 import type { Article, UpdateArticleInput } from "@tech-inbox/core/article";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { ArticleService } from "./article-service";
 import type { ArticleRepository } from "./repositories/article-repository";
 
@@ -32,12 +32,47 @@ function repository(overrides: Partial<ArticleRepository> = {}): ArticleReposito
     findByNormalizedUrl: async () => null,
     createWithOriginalAlias: async () => ({ outcome: "created", article: existingArticle }),
     update: async () => ({ outcome: "updated", article: existingArticle }),
+    applyMetadata: async () => ({ outcome: "updated", article: existingArticle }),
+    recordMetadataFailure: async () => ({ outcome: "updated", article: existingArticle }),
     deleteById: async () => ({ outcome: "deleted" }),
     ...overrides,
   };
 }
 
 describe("ArticleService", () => {
+  it("enqueues a newly created article but not an existing duplicate", async () => {
+    const send = vi.fn(async () => undefined);
+    const createdService = new ArticleService(
+      repository({
+        createWithOriginalAlias: async () => ({ outcome: "created", article: existingArticle }),
+      }),
+      () => new Date("2026-08-27T02:03:04.000Z"),
+      () => "article-new",
+      { send },
+    );
+    const duplicateService = new ArticleService(
+      repository({
+        createWithOriginalAlias: async () => ({
+          outcome: "alreadyExists",
+          article: existingArticle,
+        }),
+      }),
+      () => new Date("2026-08-27T02:03:04.000Z"),
+      () => "article-duplicate",
+      { send },
+    );
+
+    await createdService.create({ url: existingArticle.originalUrl });
+    await duplicateService.create({ url: existingArticle.originalUrl });
+
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(send).toHaveBeenCalledWith({
+      articleId: existingArticle.id,
+      url: existingArticle.originalUrl,
+      attempt: 0,
+    });
+  });
+
   it("builds an atomic URL, metadata, manual-title, and read-state update", async () => {
     let received: UpdateArticleInput | undefined;
     const service = new ArticleService(
@@ -49,6 +84,7 @@ describe("ArticleService", () => {
       }),
       () => new Date("2026-08-27T02:03:04.000Z"),
       () => "unused-id",
+      { send: async () => undefined },
     );
 
     await service.update(existingArticle.id, {
@@ -93,6 +129,7 @@ describe("ArticleService", () => {
       }),
       () => new Date("2026-08-27T02:03:04.000Z"),
       () => "unused-id",
+      { send: async () => undefined },
     );
 
     await service.update(existingArticle.id, { status: "read" });
@@ -112,6 +149,7 @@ describe("ArticleService", () => {
       captureRepository,
       () => new Date("2026-08-27T02:03:04.000Z"),
       () => "unused-id",
+      { send: async () => undefined },
     );
 
     await service.update(existingArticle.id, { url: "https://example.com/new" });
@@ -128,6 +166,7 @@ describe("ArticleService", () => {
       }),
       () => new Date("2026-08-27T02:03:04.000Z"),
       () => "unused-id",
+      { send: async () => undefined },
     );
     await manualService.update(manualArticle.id, { url: "https://example.com/newer" });
 
@@ -140,6 +179,7 @@ describe("ArticleService", () => {
       repository({ update: async () => ({ outcome: "urlConflict" }) }),
       () => new Date("2026-08-27T02:03:04.000Z"),
       () => "unused-id",
+      { send: async () => undefined },
     );
 
     await expect(

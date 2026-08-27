@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import type { ArticleDto } from "@tech-inbox/contracts";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { HomePage } from "./HomePage";
@@ -37,10 +37,41 @@ function jsonResponse(value: unknown, status = 200): Response {
 
 afterEach(() => {
   cleanup();
+  vi.useRealTimers();
   vi.unstubAllGlobals();
 });
 
 describe("HomePage", () => {
+  it("polls pending metadata after two seconds and stops at a terminal state", async () => {
+    vi.useFakeTimers();
+    const pendingArticle = {
+      ...baseArticle,
+      title: null,
+      metadataStatus: "pending" as const,
+      metadataFetchedAt: null,
+    };
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({ articles: [pendingArticle], nextCursor: null }))
+      .mockResolvedValue(jsonResponse({ articles: [baseArticle], nextCursor: null }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await act(async () => {
+      render(<HomePage />);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(screen.getByText("記事情報を取得しています……")).toBeTruthy();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2_000);
+    });
+
+    expect(screen.getByRole("link", { name: baseArticle.title ?? "" })).toBeTruthy();
+    expect(screen.queryByText("記事情報を取得しています……")).toBeNull();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
   it("renders API content as text without creating executable elements", async () => {
     const unsafeTitle = '<img src=x onerror="window.pwned=true">';
     vi.stubGlobal(
@@ -136,5 +167,41 @@ describe("HomePage", () => {
     const headers = new Headers(postCall?.[1]?.headers);
     expect(headers.get("X-Tech-Inbox-Client")).toBe("web");
     expect(headers.get("Content-Type")).toBe("application/json");
+  });
+
+  it("retries failed metadata from the article card", async () => {
+    const failedArticle: ArticleDto = {
+      ...baseArticle,
+      metadataStatus: "failed",
+      metadataErrorCode: "NETWORK_ERROR",
+      metadataAttemptCount: 3,
+    };
+    const pendingArticle: ArticleDto = {
+      ...failedArticle,
+      metadataStatus: "pending",
+      metadataErrorCode: null,
+      metadataAttemptCount: 0,
+    };
+    const fetchMock = vi.fn(
+      async (input: string | URL | Request, init?: RequestInit): Promise<Response> => {
+        if (String(input).endsWith("/retry-metadata") && init?.method === "POST") {
+          return jsonResponse({ article: pendingArticle });
+        }
+        return jsonResponse({ articles: [failedArticle], nextCursor: null });
+      },
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const user = userEvent.setup();
+    render(<HomePage />);
+    await screen.findByText("タイトルを取得できませんでした");
+
+    await user.click(screen.getByRole("button", { name: "記事情報を再取得" }));
+
+    expect(await screen.findByText("記事情報の再取得を開始しました。")).toBeTruthy();
+    expect(screen.getByText("記事情報を取得しています……")).toBeTruthy();
+    const retryCall = fetchMock.mock.calls.find(([input]) =>
+      String(input).endsWith("/retry-metadata"),
+    );
+    expect(retryCall?.[1]).toMatchObject({ method: "POST", body: "{}" });
   });
 });

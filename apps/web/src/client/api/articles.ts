@@ -7,6 +7,7 @@ import {
   createArticleResponseSchema,
   deleteArticleResponseSchema,
   listArticlesResponseSchema,
+  retryMetadataResponseSchema,
 } from "@tech-inbox/contracts";
 
 export class ApiClientError extends Error {
@@ -130,6 +131,18 @@ export async function deleteArticle(id: string, options: MutationOptions = {}): 
     options.signal,
   );
   deleteArticleResponseSchema.parse(await assertSuccess(response));
+}
+
+export async function retryArticleMetadata(
+  id: string,
+  options: MutationOptions = {},
+): Promise<ArticleDto> {
+  const response = await apiFetch(
+    `/api/v1/articles/${encodeURIComponent(id)}/retry-metadata`,
+    { method: "POST", body: "{}" },
+    options.signal,
+  );
+  return retryMetadataResponseSchema.parse(await assertSuccess(response)).article;
 }
 
 export function userFacingError(error: unknown): string {

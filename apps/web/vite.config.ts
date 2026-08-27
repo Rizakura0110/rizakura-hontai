@@ -4,5 +4,11 @@ import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
 export default defineConfig({
-  plugins: [react(), tailwindcss(), cloudflare()],
+  plugins: [
+    react(),
+    tailwindcss(),
+    cloudflare({
+      auxiliaryWorkers: [{ configPath: "../../workers/metadata-fetcher/wrangler.jsonc" }],
+    }),
+  ],
 });

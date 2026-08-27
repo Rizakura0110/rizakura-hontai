@@ -12,8 +12,12 @@ import { and, asc, desc, eq, gt, isNull, lt, or, type SQL, sql } from "drizzle-o
 import { drizzle } from "drizzle-orm/d1";
 import type {
   ArticleRepository,
+  ApplyMetadataInput,
+  ApplyMetadataResult,
   CreateArticleResult,
   DeleteArticleResult,
+  RecordMetadataFailureInput,
+  RecordMetadataFailureResult,
   UpdateArticleResult,
 } from "./article-repository";
 import { mapArticleRow } from "./article-mapper";
@@ -107,6 +111,10 @@ function positionFor(article: Article, criteria: ArticleListCriteria) {
     sortValue: criteria.sort === "read_desc" ? article.readAt : article.savedAt,
     id: article.id,
   } as const;
+}
+
+function latestTimestamp(left: string, right: string): string {
+  return left >= right ? left : right;
 }
 
 function articleUpdateSet(changes: ArticleChanges): Partial<ArticleRow> {
@@ -261,6 +269,180 @@ class D1ArticleRepository implements ArticleRepository {
 
     const article = await this.findById(input.id);
     return article === null ? { outcome: "notFound" } : { outcome: "updated", article };
+  }
+
+  async applyMetadata(input: ApplyMetadataInput): Promise<ApplyMetadataResult> {
+    const existing = await this.findById(input.id);
+    if (existing === null || existing.originalUrl !== input.expectedUrl) {
+      return { outcome: "stale" };
+    }
+    const canonicalAlias = input.canonicalAlias;
+    if (canonicalAlias !== null) {
+      const owner = await this.findByNormalizedUrl(canonicalAlias.normalizedUrl);
+      if (owner !== null && owner.id !== input.id) {
+        return this.#mergeMetadata(owner, existing, input);
+      }
+    }
+    if (existing.metadataStatus === "ready") {
+      return { outcome: "updated", article: existing };
+    }
+
+    const statements: D1PreparedStatement[] = [];
+    if (canonicalAlias !== null) {
+      statements.push(
+        this.#binding
+          .prepare(
+            "INSERT OR IGNORE INTO article_urls (normalized_url, article_id, kind, created_at) SELECT ?, id, 'canonical', ? FROM articles WHERE id = ? AND original_url = ?",
+          )
+          .bind(
+            canonicalAlias.normalizedUrl,
+            canonicalAlias.createdAt,
+            input.id,
+            input.expectedUrl,
+          ),
+      );
+    }
+    statements.push(this.#metadataUpdateStatement(input));
+    await this.#binding.batch(statements);
+
+    const updated = await this.findById(input.id);
+    if (updated === null || updated.originalUrl !== input.expectedUrl) {
+      return { outcome: "stale" };
+    }
+
+    if (canonicalAlias !== null) {
+      const ownerAfterUpdate = await this.findByNormalizedUrl(canonicalAlias.normalizedUrl);
+      if (ownerAfterUpdate !== null && ownerAfterUpdate.id !== input.id) {
+        return this.#mergeMetadata(ownerAfterUpdate, updated, input);
+      }
+    }
+
+    return { outcome: "updated", article: updated };
+  }
+
+  async recordMetadataFailure(
+    input: RecordMetadataFailureInput,
+  ): Promise<RecordMetadataFailureResult> {
+    const existing = await this.findById(input.id);
+    if (
+      existing === null ||
+      existing.originalUrl !== input.expectedUrl ||
+      existing.metadataStatus === "ready"
+    ) {
+      return { outcome: "stale" };
+    }
+
+    await this.#binding
+      .prepare(
+        "UPDATE articles SET metadata_status = ?, metadata_error_code = ?, metadata_attempt_count = CASE WHEN metadata_attempt_count > ? THEN metadata_attempt_count ELSE ? END, metadata_fetched_at = ?, updated_at = ? WHERE id = ? AND original_url = ? AND metadata_status <> 'ready'",
+      )
+      .bind(
+        input.status,
+        input.errorCode,
+        input.attemptCount,
+        input.attemptCount,
+        input.fetchedAt,
+        input.updatedAt,
+        input.id,
+        input.expectedUrl,
+      )
+      .run();
+
+    const updated = await this.findById(input.id);
+    return updated === null || updated.originalUrl !== input.expectedUrl
+      ? { outcome: "stale" }
+      : { outcome: "updated", article: updated };
+  }
+
+  #metadataUpdateStatement(input: ApplyMetadataInput): D1PreparedStatement {
+    return this.#binding
+      .prepare(
+        "UPDATE articles SET canonical_url = ?, title = CASE WHEN title_is_manual = 1 THEN title ELSE ? END, site_name = ?, description = ?, favicon_url = ?, image_url = ?, published_at = ?, metadata_status = 'ready', metadata_error_code = NULL, metadata_attempt_count = CASE WHEN metadata_attempt_count > ? THEN metadata_attempt_count ELSE ? END, metadata_fetched_at = ?, updated_at = ? WHERE id = ? AND original_url = ? AND metadata_status <> 'ready'",
+      )
+      .bind(
+        input.metadata.canonicalUrl,
+        input.metadata.title,
+        input.metadata.siteName,
+        input.metadata.description,
+        input.metadata.faviconUrl,
+        input.metadata.imageUrl,
+        input.metadata.publishedAt,
+        input.attemptCount,
+        input.attemptCount,
+        input.fetchedAt,
+        input.updatedAt,
+        input.id,
+        input.expectedUrl,
+      );
+  }
+
+  async #mergeMetadata(
+    keeper: Article,
+    duplicate: Article,
+    input: ApplyMetadataInput,
+  ): Promise<ApplyMetadataResult> {
+    const duplicateManualTitle = duplicate.titleIsManual ? duplicate.title : null;
+    const automaticTitle = input.metadata.title ?? duplicate.title;
+    const mergedStatus =
+      keeper.status === "unread" || duplicate.status === "unread" ? "unread" : "read";
+    const mergedReadAt =
+      mergedStatus === "unread" ? null : (keeper.readAt ?? duplicate.readAt ?? input.updatedAt);
+    const mergedSavedAt = latestTimestamp(keeper.savedAt, duplicate.savedAt);
+    const mergedUpdatedAt = latestTimestamp(keeper.updatedAt, input.updatedAt);
+    const mergedAttemptCount = Math.max(
+      keeper.metadataAttemptCount,
+      duplicate.metadataAttemptCount,
+      input.attemptCount,
+    );
+
+    await this.#binding.batch([
+      this.#binding
+        .prepare(
+          "UPDATE article_urls SET article_id = ? WHERE article_id = ? AND EXISTS (SELECT 1 FROM articles WHERE id = ? AND original_url = ?)",
+        )
+        .bind(keeper.id, duplicate.id, duplicate.id, input.expectedUrl),
+      this.#binding
+        .prepare(
+          "UPDATE articles SET canonical_url = COALESCE(canonical_url, ?), title = CASE WHEN title_is_manual = 1 THEN title WHEN ? IS NOT NULL THEN ? ELSE COALESCE(title, ?) END, title_is_manual = CASE WHEN title_is_manual = 1 OR ? IS NOT NULL THEN 1 ELSE 0 END, site_name = COALESCE(site_name, ?), description = COALESCE(description, ?), favicon_url = COALESCE(favicon_url, ?), image_url = COALESCE(image_url, ?), published_at = COALESCE(published_at, ?), status = ?, read_at = ?, metadata_status = 'ready', metadata_error_code = NULL, metadata_attempt_count = CASE WHEN metadata_attempt_count > ? THEN metadata_attempt_count ELSE ? END, metadata_fetched_at = ?, saved_at = ?, updated_at = ? WHERE id = ? AND EXISTS (SELECT 1 FROM articles WHERE id = ? AND original_url = ?)",
+        )
+        .bind(
+          input.metadata.canonicalUrl ?? duplicate.canonicalUrl,
+          duplicateManualTitle,
+          duplicateManualTitle,
+          automaticTitle,
+          duplicateManualTitle,
+          input.metadata.siteName ?? duplicate.siteName,
+          input.metadata.description ?? duplicate.description,
+          input.metadata.faviconUrl ?? duplicate.faviconUrl,
+          input.metadata.imageUrl ?? duplicate.imageUrl,
+          input.metadata.publishedAt ?? duplicate.publishedAt,
+          mergedStatus,
+          mergedReadAt,
+          mergedAttemptCount,
+          mergedAttemptCount,
+          latestTimestamp(keeper.metadataFetchedAt ?? "", input.fetchedAt),
+          mergedSavedAt,
+          mergedUpdatedAt,
+          keeper.id,
+          duplicate.id,
+          input.expectedUrl,
+        ),
+      this.#binding
+        .prepare("DELETE FROM articles WHERE id = ? AND original_url = ?")
+        .bind(duplicate.id, input.expectedUrl),
+    ]);
+
+    const duplicateAfterMerge = await this.findById(duplicate.id);
+    const keeperAfterMerge = await this.findById(keeper.id);
+    if (duplicateAfterMerge !== null || keeperAfterMerge === null) {
+      return { outcome: "stale" };
+    }
+
+    return {
+      outcome: "merged",
+      article: keeperAfterMerge,
+      removedArticleId: duplicate.id,
+    };
   }
 
   async deleteById(id: string): Promise<DeleteArticleResult> {

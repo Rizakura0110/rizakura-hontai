@@ -1,5 +1,5 @@
 import type { Article } from "@tech-inbox/core/article";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { createApp, type RequestLogEvent } from "./app";
 import type { ArticleRepository } from "./repositories/article-repository";
 
@@ -35,6 +35,8 @@ function stubRepository(overrides: Partial<ArticleRepository> = {}): ArticleRepo
     findByNormalizedUrl: async () => null,
     createWithOriginalAlias: async () => ({ outcome: "created", article }),
     update: async () => ({ outcome: "updated", article }),
+    applyMetadata: async () => ({ outcome: "updated", article }),
+    recordMetadataFailure: async () => ({ outcome: "updated", article }),
     deleteById: async () => ({ outcome: "deleted" }),
     ...overrides,
   };
@@ -46,17 +48,70 @@ function localBindings(): CloudflareBindings & {
 } {
   return {
     DB: {} as D1Database,
+    METADATA_QUEUE: {} as Queue,
+    METADATA_FETCHER: {} as Fetcher,
     ENVIRONMENT: "local",
     APP_ORIGIN: origin,
   };
 }
 
 describe("article API", () => {
+  it("validates and queues a failed metadata retry", async () => {
+    const failedArticle: Article = {
+      ...article,
+      metadataStatus: "failed",
+      metadataErrorCode: "NETWORK_ERROR",
+      metadataAttemptCount: 3,
+    };
+    const pendingArticle: Article = {
+      ...failedArticle,
+      metadataStatus: "pending",
+      metadataErrorCode: null,
+      metadataAttemptCount: 0,
+    };
+    const send = vi.fn(async () => undefined);
+    const app = createApp({
+      repositoryFactory: () =>
+        stubRepository({
+          findById: async () => failedArticle,
+          update: async () => ({ outcome: "updated", article: pendingArticle }),
+        }),
+      clock: () => new Date(now),
+      idGenerator: () => article.id,
+      metadataQueueFactory: () => ({ send }),
+      log: () => undefined,
+    });
+    const response = await app.request(
+      `${origin}/api/v1/articles/${article.id}/retry-metadata`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Origin: origin,
+          "X-Tech-Inbox-Client": "web",
+        },
+        body: "{}",
+      },
+      localBindings(),
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      article: { id: article.id, metadataStatus: "pending" },
+    });
+    expect(send).toHaveBeenCalledWith({
+      articleId: article.id,
+      url: article.originalUrl,
+      attempt: 0,
+    });
+  });
+
   it("routes a locally authenticated create request", async () => {
     const app = createApp({
       repositoryFactory: () => stubRepository(),
       clock: () => new Date(now),
       idGenerator: () => article.id,
+      metadataQueueFactory: () => ({ send: async () => undefined }),
       log: () => undefined,
     });
     const response = await app.request(
@@ -87,6 +142,7 @@ describe("article API", () => {
       },
       clock: () => new Date(now),
       idGenerator: () => article.id,
+      metadataQueueFactory: () => ({ send: async () => undefined }),
       log: () => undefined,
     });
     const response = await app.request(`${origin}/api/v1/articles`, undefined, {
@@ -106,6 +162,7 @@ describe("article API", () => {
       repositoryFactory: () => stubRepository(),
       clock: () => new Date(now),
       idGenerator: () => article.id,
+      metadataQueueFactory: () => ({ send: async () => undefined }),
       log: (event) => events.push(event),
     });
     const response = await app.request(
@@ -149,6 +206,7 @@ describe("article API", () => {
       repositoryFactory: () => repository,
       clock: () => new Date(now),
       idGenerator: () => article.id,
+      metadataQueueFactory: () => ({ send: async () => undefined }),
       log: (event) => events.push(event),
     });
     const response = await app.request(
@@ -179,6 +237,7 @@ describe("article API", () => {
       repositoryFactory: () => stubRepository(),
       clock: () => new Date(now),
       idGenerator: () => article.id,
+      metadataQueueFactory: () => ({ send: async () => undefined }),
       log: () => undefined,
     });
     const response = await app.request(

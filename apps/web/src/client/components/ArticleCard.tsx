@@ -6,6 +6,7 @@ type ArticleCardProps = {
   readonly onToggleRead: (article: ArticleDto) => void;
   readonly onEdit: (article: ArticleDto) => void;
   readonly onDelete: (article: ArticleDto) => void;
+  readonly onRetryMetadata: (article: ArticleDto) => void;
 };
 
 const dateFormatter = new Intl.DateTimeFormat("ja-JP", {
@@ -31,7 +32,14 @@ function closeMenu(target: HTMLElement): void {
   target.closest("details")?.removeAttribute("open");
 }
 
-export function ArticleCard({ article, busy, onToggleRead, onEdit, onDelete }: ArticleCardProps) {
+export function ArticleCard({
+  article,
+  busy,
+  onToggleRead,
+  onEdit,
+  onDelete,
+  onRetryMetadata,
+}: ArticleCardProps) {
   const site = article.siteName ?? hostname(article.originalUrl);
   const title = article.title ?? article.originalUrl;
   const initial = Array.from(site.trim())[0]?.toLocaleUpperCase("ja-JP") ?? "W";
@@ -130,6 +138,14 @@ export function ArticleCard({ article, busy, onToggleRead, onEdit, onDelete }: A
               <p className="mt-1 text-amber-800">
                 URLは保存されています。編集または元記事を開けます。
               </p>
+              <button
+                className="mt-2 min-h-11 rounded-lg border border-amber-700 px-3 font-semibold text-amber-900 hover:bg-amber-100 disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-amber-700"
+                disabled={busy}
+                onClick={() => onRetryMetadata(article)}
+                type="button"
+              >
+                {busy ? "再試行中…" : "記事情報を再取得"}
+              </button>
             </div>
           ) : null}
 

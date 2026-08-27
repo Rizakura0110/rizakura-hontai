@@ -120,7 +120,14 @@ importers:
         specifier: 0.45.2
         version: 0.45.2
 
-  workers/metadata-fetcher: {}
+  workers/metadata-fetcher:
+    dependencies:
+      '@tech-inbox/contracts':
+        specifier: workspace:0.0.0
+        version: link:../../packages/contracts
+      '@tech-inbox/core':
+        specifier: workspace:0.0.0
+        version: link:../../packages/core
 
 packages:
 

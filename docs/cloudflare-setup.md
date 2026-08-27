@@ -51,3 +51,12 @@
 - local起動時だけ`ENVIRONMENT=local`と一時HTTP originを`APP_ORIGIN`として渡す。個人情報やsecretは作成しない。
 - migration適用後にCRUD、同時重複、pagination、search/filter/sort、入力防御を実HTTPとD1で検証し、終了時はWorkerを停止して一時領域を削除する。
 - 通常の`apps/web/wrangler.jsonc`、local D1共有状態、remote resource、`database_id`は変更しない。
+
+## Phase 5 local Queue and metadata fetcher configuration
+
+- app Workerは`METADATA_QUEUE` producerと同じQueueのconsumerを持ち、consumerはbatch size 1、最大3回のnative retry、固定5秒delay、`tech-inbox-metadata-dlq`を設定している。
+- app Workerの`METADATA_FETCHER` Service Bindingは`tech-inbox-metadata-fetcher`を参照する。
+- metadata fetcherは`workers_dev: false`、`preview_urls: false`で、D1、Queue、Secrets bindingを持たない。
+- Viteは`workers/metadata-fetcher/wrangler.jsonc`をauxiliary Workerとして読み込み、local開発とbuildでService Binding先を同時に構成する。
+- `pnpm build`はViteのmulti-Worker build後、fetcher単体の`wrangler deploy --dry-run`を実行する。これは構成検証だけでありdeployしない。
+- Queue、DLQ、remote WorkerはPhase 9まで作成しない。現在の名前は将来のremote設定用で、local開発ではWranglerのlocal simulationを使用する。

@@ -14,5 +14,29 @@
       "migrations_dir": "../../packages/db/migrations",
       "remote": false
     }
+  ],
+  "queues": {
+    "producers": [
+      {
+        "binding": "METADATA_QUEUE",
+        "queue": "tech-inbox-metadata"
+      }
+    ],
+    "consumers": [
+      {
+        "queue": "tech-inbox-metadata",
+        "max_batch_size": 1,
+        "max_batch_timeout": 5,
+        "max_retries": 3,
+        "dead_letter_queue": "tech-inbox-metadata-dlq",
+        "retry_delay": 5
+      }
+    ]
+  },
+  "services": [
+    {
+      "binding": "METADATA_FETCHER",
+      "service": "tech-inbox-metadata-fetcher"
+    }
   ]
 }

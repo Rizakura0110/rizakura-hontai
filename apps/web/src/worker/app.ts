@@ -8,19 +8,25 @@ import {
   type HealthResponse,
   listArticlesQuerySchema,
   type ListArticlesResponse,
+  type MetadataQueueMessage,
+  retryMetadataRequestSchema,
+  type RetryMetadataResponse,
   updateArticleRequestSchema,
 } from "@tech-inbox/contracts";
 import { Hono, type Context } from "hono";
 import { ArticleService, type Clock, type IdGenerator } from "./article-service";
 import { toArticleDto } from "./article-dto";
 import { ApiError } from "./errors";
+import { createMetadataQueueProducer, type MetadataQueueProducer } from "./metadata-queue";
 import { parseQuery, parseWithSchema, readJsonBody } from "./request-validation";
 import { createD1ArticleRepository } from "./repositories/d1-article-repository";
 import type { ArticleRepository } from "./repositories/article-repository";
 
-type AppBindings = CloudflareBindings & {
+export type AppBindings = CloudflareBindings & {
   readonly ENVIRONMENT?: string;
   readonly APP_ORIGIN?: string;
+  readonly METADATA_QUEUE: Queue<MetadataQueueMessage>;
+  readonly METADATA_FETCHER: Fetcher;
 };
 
 type RequestVariables = {
@@ -47,6 +53,7 @@ export type AppDependencies = {
   readonly repositoryFactory: (bindings: AppBindings) => ArticleRepository;
   readonly clock: Clock;
   readonly idGenerator: IdGenerator;
+  readonly metadataQueueFactory: (bindings: AppBindings) => MetadataQueueProducer;
   readonly log: (event: RequestLogEvent) => void;
 };
 
@@ -67,6 +74,10 @@ function safeRouteName(method: string, pathname: string): string {
     if (method === "GET") return "articles.get";
     if (method === "PATCH") return "articles.update";
     if (method === "DELETE") return "articles.delete";
+  }
+
+  if (/^\/api\/v1\/articles\/[^/]+\/retry-metadata$/u.test(pathname) && method === "POST") {
+    return "articles.retry_metadata";
   }
 
   return "api.not_found";
@@ -132,6 +143,7 @@ function articleService(context: Context<AppEnvironment>, dependencies: AppDepen
     dependencies.repositoryFactory(context.env),
     dependencies.clock,
     dependencies.idGenerator,
+    dependencies.metadataQueueFactory(context.env),
   );
 }
 
@@ -139,6 +151,7 @@ const defaultDependencies: AppDependencies = {
   repositoryFactory: (bindings) => createD1ArticleRepository(bindings.DB),
   clock: () => new Date(),
   idGenerator: () => crypto.randomUUID(),
+  metadataQueueFactory: (bindings) => createMetadataQueueProducer(bindings.METADATA_QUEUE),
   log: defaultLog,
 };
 
@@ -229,6 +242,14 @@ export function createApp(dependencies: AppDependencies = defaultDependencies) {
     const { id } = parseWithSchema(articleIdParamsSchema, context.req.param());
     await articleService(context, dependencies).delete(id);
     return context.json<DeleteArticleResponse>({ result: "deleted" });
+  });
+
+  app.post("/api/v1/articles/:id/retry-metadata", async (context) => {
+    context.set("routeName", "articles.retry_metadata");
+    const { id } = parseWithSchema(articleIdParamsSchema, { id: context.req.param("id") });
+    parseWithSchema(retryMetadataRequestSchema, await readJsonBody(context.req.raw));
+    const article = await articleService(context, dependencies).retryMetadata(id);
+    return context.json<RetryMetadataResponse>({ article: toArticleDto(article) });
   });
 
   app.onError((error, context) => {

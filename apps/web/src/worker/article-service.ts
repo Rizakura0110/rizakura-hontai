@@ -14,6 +14,7 @@ import type { Article, ArticleChanges } from "@tech-inbox/core/article";
 import { normalizeUrl } from "@tech-inbox/core/url-normalization";
 import { toArticleDto } from "./article-dto";
 import { ApiError, validationError } from "./errors";
+import type { MetadataQueueProducer } from "./metadata-queue";
 import type { ArticleRepository } from "./repositories/article-repository";
 
 export type Clock = () => Date;
@@ -23,11 +24,18 @@ export class ArticleService {
   readonly #repository: ArticleRepository;
   readonly #clock: Clock;
   readonly #idGenerator: IdGenerator;
+  readonly #metadataQueue: MetadataQueueProducer;
 
-  constructor(repository: ArticleRepository, clock: Clock, idGenerator: IdGenerator) {
+  constructor(
+    repository: ArticleRepository,
+    clock: Clock,
+    idGenerator: IdGenerator,
+    metadataQueue: MetadataQueueProducer,
+  ) {
     this.#repository = repository;
     this.#clock = clock;
     this.#idGenerator = idGenerator;
+    this.#metadataQueue = metadataQueue;
   }
 
   async list(query: ListArticlesQuery): Promise<ListArticlesResponse> {
@@ -73,10 +81,12 @@ export class ArticleService {
       updatedAt: now,
     });
 
-    return {
-      result: result.outcome,
-      article: toArticleDto(result.article),
-    };
+    const article =
+      result.outcome === "created"
+        ? await this.#enqueueOrMarkFailed(result.article)
+        : result.article;
+
+    return { result: result.outcome, article: toArticleDto(article) };
   }
 
   async get(id: string): Promise<Article> {
@@ -140,13 +150,60 @@ export class ArticleService {
       throw new ApiError(409, "URL_CONFLICT", "同じURLの記事が既に存在します。");
     }
 
-    return result.article;
+    return request.url === undefined
+      ? result.article
+      : await this.#enqueueOrMarkFailed(result.article);
+  }
+
+  async retryMetadata(id: string): Promise<Article> {
+    const existing = await this.get(id);
+    if (existing.metadataStatus !== "failed") return existing;
+
+    const now = this.#clock().toISOString();
+    const reset = await this.#repository.update({
+      id,
+      changes: {
+        metadataStatus: "pending",
+        metadataErrorCode: null,
+        metadataAttemptCount: 0,
+        metadataFetchedAt: null,
+        updatedAt: now,
+      },
+    });
+    if (reset.outcome !== "updated") {
+      throw new ApiError(404, "NOT_FOUND", "記事が見つかりません。");
+    }
+
+    return this.#enqueueOrMarkFailed(reset.article);
   }
 
   async delete(id: string): Promise<void> {
     const result = await this.#repository.deleteById(id);
     if (result.outcome === "notFound") {
       throw new ApiError(404, "NOT_FOUND", "記事が見つかりません。");
+    }
+  }
+
+  async #enqueueOrMarkFailed(article: Article): Promise<Article> {
+    try {
+      await this.#metadataQueue.send({
+        articleId: article.id,
+        url: article.originalUrl,
+        attempt: 0,
+      });
+      return article;
+    } catch {
+      const now = this.#clock().toISOString();
+      const failed = await this.#repository.recordMetadataFailure({
+        id: article.id,
+        expectedUrl: article.originalUrl,
+        status: "failed",
+        errorCode: "NETWORK_ERROR",
+        attemptCount: article.metadataAttemptCount,
+        fetchedAt: now,
+        updatedAt: now,
+      });
+      return failed.outcome === "updated" ? failed.article : article;
     }
   }
 }

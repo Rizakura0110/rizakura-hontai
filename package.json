@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "pnpm --dir apps/web dev",
-    "build": "pnpm --dir apps/web build",
+    "build": "pnpm --dir apps/web build && pnpm metadata-fetcher:build",
+    "metadata-fetcher:build": "pnpm --dir apps/web exec wrangler deploy --dry-run --config ../../workers/metadata-fetcher/wrangler.jsonc --outdir ../../dist/metadata-fetcher",
     "preview": "pnpm --dir apps/web preview",
     "db:generate": "drizzle-kit generate --config drizzle.config.ts",
     "db:migrate:local": "pnpm --dir apps/web exec wrangler d1 migrations apply tech-inbox --local",
@@ -18,8 +19,8 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "e2e": "playwright test",
-    "cf:typegen": "pnpm --dir apps/web cf:typegen",
-    "cf:typecheck": "pnpm --dir apps/web cf:typecheck",
+    "cf:typegen": "pnpm --dir apps/web cf:typegen && pnpm --dir apps/web exec wrangler types ../../workers/metadata-fetcher/worker-configuration.d.ts --config ../../workers/metadata-fetcher/wrangler.jsonc --env-interface MetadataFetcherBindings",
+    "cf:typecheck": "pnpm --dir apps/web cf:typecheck && pnpm --dir apps/web exec wrangler types ../../workers/metadata-fetcher/worker-configuration.d.ts --config ../../workers/metadata-fetcher/wrangler.jsonc --env-interface MetadataFetcherBindings --check",
     "audit": "pnpm audit --audit-level high",
     "check": "pnpm format:check && pnpm lint && pnpm cf:typecheck && pnpm typecheck && pnpm test && pnpm db:verify:local && pnpm api:verify:local && pnpm build && pnpm e2e && pnpm audit --audit-level high"
   },

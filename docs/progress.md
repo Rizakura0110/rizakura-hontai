@@ -341,3 +341,51 @@
 - coverage thresholdと必須flow全体のE2E拡充、manual device test手順はPhase 8で行う。
 - production記事APIはPhase 6完了まで意図的に403で閉じている。
 - 既知のmoderate advisory 1件はPhase 1と同じDrizzle Kit配下の開発専用推移依存である。
+
+## Phase 5: Queueとmetadata-fetcher
+
+### 実施内容
+
+- 記事の新規登録とURL変更後に`{ articleId, url, attempt }`をQueueへ送り、送信失敗時は記事を残したままmetadataをfailedへ更新するproducerを実装した。既存重複記事は再投入しない。
+- app WorkerへQueue consumerを追加し、message schema検証、削除済み・URL変更済み・ready済みmessageの安全なack、Service Binding呼び出し、成功・失敗状態の保存を実装した。
+- 一時障害だけを段階的に再投入し、3回到達後はCloudflare Queuesのnative retryへ渡してDLQへ送る。恒久障害はfailedとしてackし、手動retry APIからattemptをリセットできる。
+- `tech-inbox-metadata-fetcher`をprivate Workerとして実装し、appからService Bindingだけで接続した。`workers_dev`とpreview URLは無効のままで、D1、Queue、Secrets bindingは与えていない。
+- fetcherはHTTP(S)、credentialsなし、80/443だけを許可し、localhost、内部suffix、private・loopback・link-local・multicast・unspecified・reserved IP、IPv4-mapped IPv6を拒否する。
+- redirectはmanualで最大3回とし、loopを検出して全遷移先を再検証する。外部取得はGET、8秒timeout、1MiB上限、HTML/XHTMLだけに制限した。
+- `HTMLRewriter`でtitle、OG/Twitter title、description、site名、canonical、favicon、OG image、公開日候補を抽出し、制御文字・空白・長さ・URLをsanitizeする。
+- 同一hostnameまたは`www.`差だけのcanonical aliasをD1へ追加し、既存ownerをkeeperとしてalias、metadata、未読状態、新しい保存日時を統合後、重複記事を削除する。手動titleはSQLでも保護する。
+- UIへ初回2秒、最大5秒、合計30秒までのmetadata短時間pollingを追加した。ready/failed到達または画面非表示で停止し、failed cardから手動再取得できる。
+- Viteのauxiliary Worker設定でlocal/build時にもprivate fetcherを同時構成し、metadata-fetcher単体のWrangler dry-run buildも標準buildへ追加した。
+- Cloudflare remote resourceの作成、login、deployは行っていない。
+
+### 自動テスト構成
+
+- URL policy testで危険scheme、credentials、禁止port、内部hostname、IPv4/IPv6のprivate・reserved範囲、IPv4-mapped IPv6を拒否し、public宛先を許可することを検証する。
+- fetcher testでredirect先の再検証、redirect上限、1MiB超過streamのcancel、content-type拒否、8秒timeoutを検証する。
+- metadata選択testでOG title優先、制御文字と空白のsanitize、relative URL解決、危険URLの破棄、公開日時のUTC化を検証する。
+- consumer testで重複messageの冪等性、URL変更後messageのstale処理、manual title保持、一時障害のattempt上限とDLQ向けnative retry移行を検証する。
+- API/component testでretry endpointのQueue投入、strict request、UI pollingの2秒開始・terminal停止、failed cardからの再取得を検証する。
+- Phase 5終了時はVitest 18 test files、173 testsとPlaywright 4 testsが成功した。
+- coverageはstatements 60.19%、branches 53.47%、functions 58.20%、lines 61.98%。D1 repositoryの表示値は別processのlocal実動確認と分けて扱い、threshold確定は予定どおりPhase 8で行う。
+
+### 検証結果
+
+- `pnpm cf:typegen`: pass（app/fetcher両方）
+- `pnpm format:check`: pass
+- `pnpm lint`: pass
+- `pnpm cf:typecheck`: pass
+- `pnpm typecheck`: pass
+- `pnpm test`: pass（18 files、173 tests）
+- `pnpm test:coverage`: pass
+- `pnpm db:verify:local`: pass
+- `pnpm api:verify:local`: pass
+- `pnpm build`: pass（app、auxiliary fetcher、fetcher dry-runでbindingsなし）
+- `pnpm e2e`: pass（Google Chrome desktop/mobile、4 tests）
+- `pnpm audit --audit-level high`: pass（high 0、critical 0、moderate 1）
+
+### 未解決事項
+
+- production記事APIはPhase 6完了まで意図的に403で閉じている。Access JWT再検証、production rate limit、許可email設定はPhase 6で実装する。
+- remote Queue、DLQ、Worker、Service BindingはPhase 9の明示許可後まで作成・deployしない。
+- JSON exportと設定画面の実機能はPhase 7、coverage thresholdと必須flow全体のE2E拡充はPhase 8で行う。
+- 既知のmoderate advisory 1件はPhase 1と同じDrizzle Kit配下の開発専用推移依存である。

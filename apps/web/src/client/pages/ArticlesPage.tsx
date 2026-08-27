@@ -4,6 +4,7 @@ import {
   createArticle,
   deleteArticle,
   listArticles,
+  retryArticleMetadata,
   updateArticle,
   userFacingError,
 } from "../api/articles";
@@ -27,6 +28,9 @@ const statusLabels: ReadonlyArray<{ value: ArticleListStatus; label: string }> =
   { value: "unread", label: "未読" },
   { value: "read", label: "既読" },
 ];
+
+const METADATA_POLL_DELAYS_MS = [2_000, 3_000, 4_000, 5_000] as const;
+const METADATA_POLL_MAX_DURATION_MS = 30_000;
 
 function compareArticles(left: ArticleDto, right: ArticleDto, sort: ArticleSort): number {
   const leftDate = sort === "read_desc" ? (left.readAt ?? "") : left.savedAt;
@@ -96,6 +100,7 @@ export function ArticlesPage({ view }: ArticlesPageProps) {
     view === "unread"
       ? "あとで読むと決めた技術記事を、ここから片付けていきましょう。"
       : "保存した記事を検索し、状態や保存日で整理できます。";
+  const hasPendingMetadata = articles.some((article) => article.metadataStatus === "pending");
 
   const showToast = useCallback((value: Omit<ToastState, "id">) => {
     toastId.current += 1;
@@ -135,6 +140,60 @@ export function ArticlesPage({ view }: ArticlesPageProps) {
 
     return () => controller.abort();
   }, [listStatus, query, refreshToken, sort]);
+
+  useEffect(() => {
+    if (!hasPendingMetadata || document.hidden) return;
+
+    const controller = new AbortController();
+    const startedAt = Date.now();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let delayIndex = 0;
+
+    const stopWhenHidden = () => {
+      if (!document.hidden) return;
+      controller.abort();
+      if (timer !== undefined) clearTimeout(timer);
+    };
+
+    const schedule = () => {
+      const delay =
+        METADATA_POLL_DELAYS_MS[Math.min(delayIndex, METADATA_POLL_DELAYS_MS.length - 1)];
+      if (delay === undefined || Date.now() - startedAt + delay > METADATA_POLL_MAX_DURATION_MS) {
+        return;
+      }
+      timer = setTimeout(async () => {
+        if (controller.signal.aborted || document.hidden) return;
+        try {
+          const response = await listArticles({
+            status: listStatus,
+            query,
+            sort,
+            signal: controller.signal,
+          });
+          if (controller.signal.aborted) return;
+          setArticles(response.articles);
+          setNextCursor(response.nextCursor);
+          if (response.articles.some((article) => article.metadataStatus === "pending")) {
+            delayIndex += 1;
+            schedule();
+          }
+        } catch (error) {
+          if (!controller.signal.aborted && userFacingError(error) !== "") {
+            delayIndex += 1;
+            schedule();
+          }
+        }
+      }, delay);
+    };
+
+    document.addEventListener("visibilitychange", stopWhenHidden);
+    schedule();
+    return () => {
+      controller.abort();
+      if (timer !== undefined) clearTimeout(timer);
+      document.removeEventListener("visibilitychange", stopWhenHidden);
+    };
+  }, [hasPendingMetadata, listStatus, query, sort]);
 
   function submitSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -258,6 +317,24 @@ export function ArticlesPage({ view }: ArticlesPageProps) {
       throw new Error(userFacingError(error));
     } finally {
       markBusy(id, false);
+    }
+  }
+
+  async function handleRetryMetadata(article: ArticleDto) {
+    if (busyIds.has(article.id)) return;
+    markBusy(article.id, true);
+    try {
+      const updated = await retryArticleMetadata(article.id);
+      setArticles((current) =>
+        matchesList(updated, view, status, query)
+          ? upsertArticle(current, updated, sort)
+          : current.filter((item) => item.id !== updated.id),
+      );
+      showToast({ message: "記事情報の再取得を開始しました。", tone: "success" });
+    } catch (error) {
+      showToast({ message: userFacingError(error), tone: "error" });
+    } finally {
+      markBusy(article.id, false);
     }
   }
 
@@ -413,6 +490,7 @@ export function ArticlesPage({ view }: ArticlesPageProps) {
                   key={article.id}
                   onDelete={setDeletingArticle}
                   onEdit={setEditingArticle}
+                  onRetryMetadata={(selected) => void handleRetryMetadata(selected)}
                   onToggleRead={(selected) => void handleToggle(selected)}
                 />
               ))}
