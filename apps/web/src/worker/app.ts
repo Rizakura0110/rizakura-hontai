@@ -5,6 +5,7 @@ import {
   createArticleRequestSchema,
   type CreateArticleResponse,
   type DeleteArticleResponse,
+  type ExportResponse,
   type HealthResponse,
   listArticlesQuerySchema,
   type ListArticlesResponse,
@@ -24,7 +25,7 @@ import { toArticleDto } from "./article-dto";
 import { ApiError } from "./errors";
 import { createMetadataQueueProducer, type MetadataQueueProducer } from "./metadata-queue";
 import { parseQuery, parseWithSchema, readJsonBody } from "./request-validation";
-import { enforceArticleRateLimit, type RateLimitBindings } from "./rate-limit";
+import { enforceApiRateLimit, type RateLimitBindings } from "./rate-limit";
 import { createD1ArticleRepository } from "./repositories/d1-article-repository";
 import type { ArticleRepository } from "./repositories/article-repository";
 import { SECURITY_HEADERS } from "./security-headers";
@@ -78,12 +79,17 @@ export type AppDependencies = {
 
 const MUTATION_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
-function isArticlePath(pathname: string): boolean {
-  return pathname === "/api/v1/articles" || pathname.startsWith("/api/v1/articles/");
+function isProtectedDataPath(pathname: string): boolean {
+  return (
+    pathname === "/api/v1/export" ||
+    pathname === "/api/v1/articles" ||
+    pathname.startsWith("/api/v1/articles/")
+  );
 }
 
 function safeRouteName(method: string, pathname: string): string {
   if (method === "GET" && pathname === "/api/v1/health") return "health.get";
+  if (method === "GET" && pathname === "/api/v1/export") return "export.get";
   if (pathname === "/api/v1/articles") {
     if (method === "GET") return "articles.list";
     if (method === "POST") return "articles.create";
@@ -126,7 +132,7 @@ function isLocalDevelopmentRequest(context: Context<AppEnvironment>): boolean {
   }
 }
 
-async function enforceArticleAccess(
+async function enforceProtectedDataAccess(
   context: Context<AppEnvironment>,
   dependencies: AppDependencies,
 ): Promise<void> {
@@ -201,7 +207,7 @@ const defaultDependencies: AppDependencies = {
   idGenerator: () => crypto.randomUUID(),
   metadataQueueFactory: (bindings) => createMetadataQueueProducer(bindings.METADATA_QUEUE),
   authenticateAccess: authenticateAccessRequest,
-  enforceRateLimit: enforceArticleRateLimit,
+  enforceRateLimit: enforceApiRateLimit,
   log: defaultLog,
 };
 
@@ -223,8 +229,8 @@ export function createApp(overrides: Partial<AppDependencies> = {}) {
     }
 
     try {
-      if (isArticlePath(pathname)) {
-        await enforceArticleAccess(context, dependencies);
+      if (isProtectedDataPath(pathname)) {
+        await enforceProtectedDataAccess(context, dependencies);
         enforceMutationRequest(context);
       }
 
@@ -251,6 +257,17 @@ export function createApp(overrides: Partial<AppDependencies> = {}) {
   app.get("/api/v1/health", (context) => {
     context.set("routeName", "health.get");
     return context.json<HealthResponse>({ status: "ok" });
+  });
+
+  app.get("/api/v1/export", async (context) => {
+    context.set("routeName", "export.get");
+    const response = await articleService(context, dependencies).exportAll();
+    const utcDate = response.exportedAt.slice(0, 10);
+    context.header(
+      "Content-Disposition",
+      `attachment; filename="tech-inbox-export-${utcDate}.json"`,
+    );
+    return context.json<ExportResponse>(response);
   });
 
   app.get("/api/v1/articles", async (context) => {

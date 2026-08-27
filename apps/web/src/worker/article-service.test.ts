@@ -1,4 +1,5 @@
 import type { Article, UpdateArticleInput } from "@tech-inbox/core/article";
+import type { NormalizedUrl } from "@tech-inbox/core/url-normalization";
 import { describe, expect, it, vi } from "vitest";
 import { ArticleService } from "./article-service";
 import type { ArticleRepository } from "./repositories/article-repository";
@@ -28,6 +29,7 @@ const existingArticle: Article = {
 function repository(overrides: Partial<ArticleRepository> = {}): ArticleRepository {
   return {
     list: async () => ({ items: [], nextCursor: null }),
+    exportAll: async () => ({ articles: [], articleUrls: [] }),
     findById: async () => existingArticle,
     findByNormalizedUrl: async () => null,
     createWithOriginalAlias: async () => ({ outcome: "created", article: existingArticle }),
@@ -40,6 +42,67 @@ function repository(overrides: Partial<ArticleRepository> = {}): ArticleReposito
 }
 
 describe("ArticleService", () => {
+  it("creates a complete versioned export snapshot", async () => {
+    const service = new ArticleService(
+      repository({
+        exportAll: async () => ({
+          articles: [existingArticle],
+          articleUrls: [
+            {
+              normalizedUrl: "https://example.com/old" as NormalizedUrl,
+              articleId: existingArticle.id,
+              kind: "original",
+              createdAt: existingArticle.createdAt,
+            },
+          ],
+        }),
+      }),
+      () => new Date("2026-08-27T02:03:04.000Z"),
+      () => "unused-id",
+      { send: async () => undefined },
+    );
+
+    await expect(service.exportAll()).resolves.toEqual({
+      schemaVersion: 1,
+      exportedAt: "2026-08-27T02:03:04.000Z",
+      articles: [
+        expect.objectContaining({
+          id: existingArticle.id,
+          originalUrl: existingArticle.originalUrl,
+        }),
+      ],
+      articleUrls: [
+        {
+          normalizedUrl: "https://example.com/old",
+          articleId: existingArticle.id,
+          kind: "original",
+          createdAt: existingArticle.createdAt,
+        },
+      ],
+    });
+  });
+
+  it("exports more articles than the list API page limit without truncation", async () => {
+    const articles = Array.from(
+      { length: 101 },
+      (_, index): Article => ({
+        ...existingArticle,
+        id: `article-${index}`,
+        originalUrl: `https://example.com/articles/${index}`,
+      }),
+    );
+    const service = new ArticleService(
+      repository({ exportAll: async () => ({ articles, articleUrls: [] }) }),
+      () => new Date("2026-08-27T02:03:04.000Z"),
+      () => "unused-id",
+      { send: async () => undefined },
+    );
+
+    const exported = await service.exportAll();
+    expect(exported.articles).toHaveLength(101);
+    expect(new Set(exported.articles.map(({ id }) => id)).size).toBe(101);
+  });
+
   it("enqueues a newly created article but not an existing duplicate", async () => {
     const send = vi.fn(async () => undefined);
     const createdService = new ArticleService(

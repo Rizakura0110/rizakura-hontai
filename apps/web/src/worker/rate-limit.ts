@@ -7,15 +7,17 @@ export type RateLimitBindings = {
   readonly RATE_LIMIT_RETRY?: RateLimit;
   readonly RATE_LIMIT_MUTATE?: RateLimit;
   readonly RATE_LIMIT_READ?: RateLimit;
+  readonly RATE_LIMIT_EXPORT?: RateLimit;
 };
 
-type RateLimitCategory = "create" | "retry" | "mutate" | "read";
+type RateLimitCategory = "create" | "retry" | "mutate" | "read" | "export";
 
 function categoryForRoute(routeName: string): RateLimitCategory | undefined {
   if (routeName === "articles.create") return "create";
   if (routeName === "articles.retry_metadata") return "retry";
   if (routeName === "articles.update" || routeName === "articles.delete") return "mutate";
   if (routeName === "articles.list" || routeName === "articles.get") return "read";
+  if (routeName === "export.get") return "export";
   return undefined;
 }
 
@@ -26,6 +28,7 @@ function bindingForCategory(
   if (category === "create") return bindings.RATE_LIMIT_CREATE;
   if (category === "retry") return bindings.RATE_LIMIT_RETRY;
   if (category === "mutate") return bindings.RATE_LIMIT_MUTATE;
+  if (category === "export") return bindings.RATE_LIMIT_EXPORT;
   return bindings.RATE_LIMIT_READ;
 }
 
@@ -37,7 +40,7 @@ async function hashPrincipal(principal: AuthPrincipal): Promise<string> {
   return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
-export async function enforceArticleRateLimit(
+export async function enforceApiRateLimit(
   bindings: RateLimitBindings,
   principal: AuthPrincipal,
   routeName: string,

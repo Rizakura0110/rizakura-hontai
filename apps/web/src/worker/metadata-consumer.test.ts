@@ -56,6 +56,7 @@ function repository(
 ): ArticleRepository {
   return {
     list: async () => ({ items: [], nextCursor: null }),
+    exportAll: async () => ({ articles: [], articleUrls: [] }),
     findById: async () => getState(),
     findByNormalizedUrl: async () => null,
     createWithOriginalAlias: async () => {

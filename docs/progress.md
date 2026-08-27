@@ -442,3 +442,55 @@
 - remote Access application、Worker Secrets、Rate Limiting bindingの有効化とproduction/preview実機negative testは、明示的なdeploy許可後のPhase 9で行う。
 - JSON exportはPhase 7、coverage thresholdと必須flow全体のE2E拡充はPhase 8で行う。
 - Rate Limiting bindingはPhase 9のremote設定直前に追加課金表示がないことを再確認する。
+
+## Phase 7: JSONエクスポートと設定画面
+
+### 実施内容
+
+- 既存のstrictなexport contractを利用し、`schemaVersion: 1`、UTC `exportedAt`、全記事、全original/canonical URL aliasを返す`GET /api/v1/export`を実装した。
+- D1 repositoryは記事とaliasを同一batchで読み、記事を保存日の降順、aliasをnormalized URL順の決定的な順序で出力する。通常一覧のlimit/cursorを再利用せず、100件上限を超えるexportも切り捨てない。
+- export APIをAccess JWT再検証対象に追加し、production設定不足時はrepositoryへ到達する前にfail closedとした。
+- export専用Rate Limiting bindingを5 requests/minuteで追加し、principalのhashと`export` categoryだけをkeyに使用した。
+- APIへ`Content-Disposition: attachment`とUTC日付入り`tech-inbox-export-YYYY-MM-DD.json` filenameを設定した。既存middlewareにより`Cache-Control: no-store`、request ID、security headersも維持する。
+- 設定画面で保存記事数、未読記事数、schema versionを表示し、loading、safe error、retryを実装した。
+- 設定画面でruntime検証済みのexport responseを整形JSONのBlobへ変換し、同じUTC日付filenameでdownloadするようにした。件数取得済みデータを再利用するため、download時にAPIを重複呼び出ししない。
+- contract、API、download fileのtop-level fieldを固定し、JWT、Access email、Worker設定、内部情報が含まれないことを検証した。
+- Cloudflare remote resourceの作成・変更、login、deployは行っていない。
+
+### 変更ファイル
+
+- Contracts test: `packages/contracts/test/api.test.ts`
+- Repository/service/API: `apps/web/src/worker/repositories/*`、`article-service.ts`、`app.ts`、`rate-limit.ts`と対応test
+- Cloudflare型・設定: `apps/web/wrangler.jsonc`、`apps/web/worker-configuration.d.ts`
+- Client/UI: `apps/web/src/client/api/articles.ts`、`apps/web/src/client/pages/SettingsPage.tsx`とcomponent test
+- Integration/E2E: `scripts/verify-phase3-api.mjs`、`tests/e2e/article-inbox.spec.ts`
+- 文書: `docs/cloudflare-setup.md`、`docs/progress.md`
+
+### 自動テスト構成
+
+- Contracts testでschema version固定、strict top-level、strict alias fieldを確認する。
+- Service testでarticle/alias mapping、UTC exportedAt、一覧上限を超える101件の欠落防止を確認する。
+- API testでattachment filename、no-store、全記事・alias、内部設定非混入、production fail-closedを確認する。
+- fresh local D1と実HTTPで記事4件・URL alias 5件の全件性、alias参照整合性、filename、top-level fieldを確認する。
+- Component testで件数、未読件数、schema version、safe error、retryを確認する。
+- Playwrightでdesktop Chromeと320px mobile Chromeの両方からdownloadを実行し、filename、JSON field、記事・alias件数、secret非混入を確認する。
+
+### 検証結果
+
+- `pnpm cf:typegen`: pass（export 5/min bindingを生成型へ反映）
+- `pnpm check`: pass
+  - format、lint、生成型差分、TypeScript: pass
+  - Vitest: 21 files、205 tests pass
+  - fresh local D1 migration/constraint verification: pass
+  - local実HTTP CRUD/input defense/export verification: pass
+  - app、auxiliary fetcher、fetcher dry-run build: pass
+  - Playwright: desktop/mobile合計6 tests pass（両環境でJSON download成功）
+  - audit: high 0、critical 0、既知moderate 1
+- `pnpm test:coverage`: pass（statements 63.17%、branches 57.71%、functions 61.13%、lines 64.56%）
+- export security review: top-level field固定、article/alias参照整合、secret候補非混入、production fail-closedを確認してpass
+
+### 未解決事項
+
+- exportのremote Access/Rate Limiting実機確認は、明示的なdeploy許可後のPhase 9で行う。
+- coverage threshold確定、必須flow全体のE2E拡充、manual iPhone/Android Chrome確認手順はPhase 8で行う。
+- 既知のmoderate advisory 1件はPhase 1と同じDrizzle Kit配下の開発専用推移依存である。

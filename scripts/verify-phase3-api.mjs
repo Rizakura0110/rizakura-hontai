@@ -250,7 +250,7 @@ try {
     workerConfigPath,
     "--yes",
     "--command",
-    "INSERT INTO articles (id, original_url, site_name, status, metadata_status, saved_at, created_at, updated_at) VALUES ('site-filter-article', 'https://site-filter.example/article', 'Example Site', 'unread', 'pending', '2026-08-20T00:00:00.000Z', '2026-08-20T00:00:00.000Z', '2026-08-20T00:00:00.000Z'); INSERT INTO article_urls (normalized_url, article_id, kind, created_at) VALUES ('https://site-filter.example/article', 'site-filter-article', 'original', '2026-08-20T00:00:00.000Z');",
+    "INSERT INTO articles (id, original_url, site_name, status, metadata_status, saved_at, created_at, updated_at) VALUES ('site-filter-article', 'https://site-filter.example/article', 'Example Site', 'unread', 'pending', '2026-08-20T00:00:00.000Z', '2026-08-20T00:00:00.000Z', '2026-08-20T00:00:00.000Z'); INSERT INTO article_urls (normalized_url, article_id, kind, created_at) VALUES ('https://site-filter.example/article', 'site-filter-article', 'original', '2026-08-20T00:00:00.000Z'), ('https://site-filter.example/canonical', 'site-filter-article', 'canonical', '2026-08-20T00:00:00.000Z');",
   ]);
 
   workerProcess = spawn(
@@ -311,6 +311,28 @@ try {
 
   const third = await createArticle("https://example.com/third");
   assert.equal(third.response.status, 201);
+
+  const exported = await requestJson("/api/v1/export");
+  assert.equal(exported.response.status, 200);
+  assert.match(
+    exported.response.headers.get("content-disposition") ?? "",
+    /^attachment; filename="tech-inbox-export-\d{4}-\d{2}-\d{2}\.json"$/u,
+  );
+  assert.deepEqual(Object.keys(exported.body).sort(), [
+    "articleUrls",
+    "articles",
+    "exportedAt",
+    "schemaVersion",
+  ]);
+  assert.equal(exported.body.schemaVersion, 1);
+  assert.equal(exported.body.articles.length, 4);
+  assert.equal(exported.body.articleUrls.length, 5);
+  const exportedArticleIds = new Set(exported.body.articles.map(({ id }) => id));
+  assert.equal(exportedArticleIds.size, 4);
+  assert.ok(exportedArticleIds.has("site-filter-article"));
+  assert.ok(exported.body.articleUrls.every(({ articleId }) => exportedArticleIds.has(articleId)));
+  assert.equal(JSON.stringify(exported.body).includes("TEAM_DOMAIN"), false);
+  assert.equal(JSON.stringify(exported.body).includes("ALLOWED_EMAIL"), false);
 
   const firstPage = await requestJson("/api/v1/articles?sort=saved_desc&limit=2");
   assert.equal(firstPage.response.status, 200);

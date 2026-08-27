@@ -3,6 +3,7 @@ import {
   apiErrorResponseSchema,
   createArticleRequestSchema,
   createArticleResponseSchema,
+  exportResponseSchema,
   listArticlesQuerySchema,
   listArticlesResponseSchema,
   updateArticleRequestSchema,
@@ -170,6 +171,34 @@ describe("API response contracts", () => {
       listArticlesResponseSchema.safeParse({
         articles: [],
         nextCursor: "not+base64url",
+      }).success,
+    ).toBe(false);
+  });
+
+  it("accepts only a versioned export of public article and alias fields", () => {
+    const exported = {
+      schemaVersion: 1,
+      exportedAt: "2026-08-27T00:00:00.000Z",
+      articles: [articleDtoFixture()],
+      articleUrls: [
+        {
+          normalizedUrl: "https://example.com/articles/1",
+          articleId: "article-1",
+          kind: "original",
+          createdAt: "2026-08-26T01:02:03.000Z",
+        },
+      ],
+    };
+
+    expect(exportResponseSchema.safeParse(exported).success).toBe(true);
+    expect(exportResponseSchema.safeParse({ ...exported, schemaVersion: 2 }).success).toBe(false);
+    expect(
+      exportResponseSchema.safeParse({ ...exported, TEAM_DOMAIN: "secret.example" }).success,
+    ).toBe(false);
+    expect(
+      exportResponseSchema.safeParse({
+        ...exported,
+        articleUrls: [{ ...exported.articleUrls[0], internalId: "secret" }],
       }).success,
     ).toBe(false);
   });

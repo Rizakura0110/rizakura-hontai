@@ -6,6 +6,7 @@ import {
   type ArticleSort,
   createArticleResponseSchema,
   deleteArticleResponseSchema,
+  exportResponseSchema,
   listArticlesResponseSchema,
   retryMetadataResponseSchema,
 } from "@tech-inbox/contracts";
@@ -100,6 +101,11 @@ export async function listArticles(options: ListArticleOptions) {
 
   const response = await apiFetch(`/api/v1/articles?${query.toString()}`, {}, options.signal);
   return listArticlesResponseSchema.parse(await assertSuccess(response));
+}
+
+export async function exportArticles(options: MutationOptions = {}) {
+  const response = await apiFetch("/api/v1/export", {}, options.signal);
+  return exportResponseSchema.parse(await assertSuccess(response));
 }
 
 export async function createArticle(url: string, options: MutationOptions = {}) {

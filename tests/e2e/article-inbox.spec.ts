@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import { expect, type Page, test } from "@playwright/test";
 
 type TestArticle = {
@@ -52,6 +53,28 @@ function fixture(overrides: Partial<TestArticle> = {}): TestArticle {
 
 async function mockArticleApi(page: Page) {
   let articles = [fixture()];
+
+  await page.route("**/api/v1/export", async (route) => {
+    const exportedAt = now;
+    await route.fulfill({
+      body: JSON.stringify({
+        schemaVersion: 1,
+        exportedAt,
+        articles,
+        articleUrls: articles.map((article) => ({
+          normalizedUrl: article.originalUrl,
+          articleId: article.id,
+          kind: "original",
+          createdAt: article.createdAt,
+        })),
+      }),
+      headers: {
+        "Content-Disposition": 'attachment; filename="tech-inbox-export-2026-08-27.json"',
+        "Content-Type": "application/json",
+      },
+      status: 200,
+    });
+  });
 
   await page.route("**/api/v1/articles**", async (route) => {
     const request = route.request();
@@ -229,4 +252,27 @@ test("add, search, edit, delete, and settings routes work", async ({ page }, tes
   await page.getByRole("link", { name: "設定" }).click();
   await expect(page).toHaveURL(/\/settings$/);
   await expect(page.getByRole("heading", { name: "設定" })).toBeVisible();
+  await expect(page.getByText("保存記事数").locator("..").getByText("1件")).toBeVisible();
+  await expect(page.getByText("未読記事数").locator("..").getByText("1件")).toBeVisible();
+  await expect(page.getByText("JSON schema v1")).toBeVisible();
+
+  const downloadPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: "JSONを書き出す" }).click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toBe("tech-inbox-export-2026-08-27.json");
+  const downloadPath = await download.path();
+  if (downloadPath === null) throw new Error("The export download did not produce a local file.");
+  const exported = JSON.parse(await readFile(downloadPath, "utf8")) as Record<string, unknown>;
+  expect(Object.keys(exported).sort()).toEqual([
+    "articleUrls",
+    "articles",
+    "exportedAt",
+    "schemaVersion",
+  ]);
+  expect(exported.schemaVersion).toBe(1);
+  expect(exported.articles).toHaveLength(1);
+  expect(exported.articleUrls).toHaveLength(1);
+  expect(JSON.stringify(exported)).not.toContain("TEAM_DOMAIN");
+  expect(JSON.stringify(exported)).not.toContain("ALLOWED_EMAIL");
+  expect(JSON.stringify(exported)).not.toContain("POLICY_AUD");
 });

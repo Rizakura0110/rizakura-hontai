@@ -1,4 +1,5 @@
 import type { Article } from "@tech-inbox/core/article";
+import type { NormalizedUrl } from "@tech-inbox/core/url-normalization";
 import { describe, expect, it, vi } from "vitest";
 import { createApp, type RequestLogEvent } from "./app";
 import type { ArticleRepository } from "./repositories/article-repository";
@@ -31,6 +32,7 @@ const article: Article = {
 function stubRepository(overrides: Partial<ArticleRepository> = {}): ArticleRepository {
   return {
     list: async () => ({ items: [article], nextCursor: null }),
+    exportAll: async () => ({ articles: [article], articleUrls: [] }),
     findById: async () => article,
     findByNormalizedUrl: async () => null,
     createWithOriginalAlias: async () => ({ outcome: "created", article }),
@@ -55,12 +57,58 @@ function localBindings(): CloudflareBindings & {
     RATE_LIMIT_RETRY: allow,
     RATE_LIMIT_MUTATE: allow,
     RATE_LIMIT_READ: allow,
+    RATE_LIMIT_EXPORT: allow,
     ENVIRONMENT: "local",
     APP_ORIGIN: origin,
   };
 }
 
 describe("article API", () => {
+  it("exports every article and URL alias as a versioned attachment without internal settings", async () => {
+    const app = createApp({
+      repositoryFactory: () =>
+        stubRepository({
+          exportAll: async () => ({
+            articles: [article],
+            articleUrls: [
+              {
+                normalizedUrl: "https://example.com/article" as NormalizedUrl,
+                articleId: article.id,
+                kind: "original",
+                createdAt: now,
+              },
+            ],
+          }),
+        }),
+      clock: () => new Date(now),
+      log: () => undefined,
+    });
+    const response = await app.request(`${origin}/api/v1/export`, undefined, localBindings());
+    const responseText = await response.text();
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-disposition")).toBe(
+      'attachment; filename="tech-inbox-export-2026-08-27.json"',
+    );
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(responseText).not.toContain("TEAM_DOMAIN");
+    expect(responseText).not.toContain("ALLOWED_EMAIL");
+    expect(responseText).not.toContain("POLICY_AUD");
+    expect(JSON.parse(responseText)).toEqual({
+      schemaVersion: 1,
+      exportedAt: now,
+      articles: [expect.objectContaining({ id: article.id })],
+      articleUrls: [
+        {
+          normalizedUrl: "https://example.com/article",
+          articleId: article.id,
+          kind: "original",
+          createdAt: now,
+        },
+      ],
+    });
+  });
+
   it("validates and queues a failed metadata retry", async () => {
     const failedArticle: Article = {
       ...article,
@@ -159,6 +207,18 @@ describe("article API", () => {
     await expect(response.json()).resolves.toMatchObject({
       error: { code: "FORBIDDEN" },
     });
+  });
+
+  it("protects the export route before loading private data", async () => {
+    const repositoryFactory = vi.fn(() => stubRepository());
+    const app = createApp({ repositoryFactory, log: () => undefined });
+    const response = await app.request(`${origin}/api/v1/export`, undefined, {
+      ...localBindings(),
+      ENVIRONMENT: "production",
+    });
+
+    expect(response.status).toBe(403);
+    expect(repositoryFactory).not.toHaveBeenCalled();
   });
 
   it("cannot activate the local bypass on a public origin", async () => {

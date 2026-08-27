@@ -1,6 +1,7 @@
 import type {
   CreateArticleRequest,
   CreateArticleResponse,
+  ExportResponse,
   ListArticlesQuery,
   ListArticlesResponse,
   UpdateArticleRequest,
@@ -62,6 +63,16 @@ export class ArticleService {
       articles: page.items.map(toArticleDto),
       nextCursor:
         page.nextCursor === null ? null : encodeArticleCursor(cursorContext, page.nextCursor),
+    };
+  }
+
+  async exportAll(): Promise<ExportResponse> {
+    const snapshot = await this.#repository.exportAll();
+    return {
+      schemaVersion: 1,
+      exportedAt: this.#clock().toISOString(),
+      articles: snapshot.articles.map(toArticleDto),
+      articleUrls: snapshot.articleUrls.map((alias) => ({ ...alias })),
     };
   }
 

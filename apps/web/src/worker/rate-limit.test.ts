@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { AuthPrincipal } from "./access-auth";
 import type { ApiError } from "./errors";
-import { enforceArticleRateLimit, type RateLimitBindings } from "./rate-limit";
+import { enforceApiRateLimit, type RateLimitBindings } from "./rate-limit";
 
 const principal: AuthPrincipal = {
   subject: "private-access-subject",
@@ -21,9 +21,10 @@ describe("article API rate limiting", () => {
     ["articles.delete", "RATE_LIMIT_MUTATE", "mutate"],
     ["articles.list", "RATE_LIMIT_READ", "read"],
     ["articles.get", "RATE_LIMIT_READ", "read"],
+    ["export.get", "RATE_LIMIT_EXPORT", "export"],
   ] as const)("uses a pseudonymous key for %s", async (routeName, bindingName, category) => {
     const limiter = binding(true);
-    await enforceArticleRateLimit({ [bindingName]: limiter }, principal, routeName);
+    await enforceApiRateLimit({ [bindingName]: limiter }, principal, routeName);
 
     expect(limiter.limit).toHaveBeenCalledOnce();
     const key = vi.mocked(limiter.limit).mock.calls[0]?.[0].key;
@@ -34,7 +35,7 @@ describe("article API rate limiting", () => {
 
   it("returns a safe 429 when the binding rejects the request", async () => {
     await expect(
-      enforceArticleRateLimit({ RATE_LIMIT_CREATE: binding(false) }, principal, "articles.create"),
+      enforceApiRateLimit({ RATE_LIMIT_CREATE: binding(false) }, principal, "articles.create"),
     ).rejects.toMatchObject({
       status: 429,
       code: "RATE_LIMITED",
@@ -43,7 +44,7 @@ describe("article API rate limiting", () => {
 
   it("fails closed when a non-local deployment is missing its binding", async () => {
     await expect(
-      enforceArticleRateLimit({ ENVIRONMENT: "production" }, principal, "articles.list"),
+      enforceApiRateLimit({ ENVIRONMENT: "production" }, principal, "articles.list"),
     ).rejects.toMatchObject({
       status: 503,
       code: "SERVICE_UNAVAILABLE",
@@ -52,10 +53,10 @@ describe("article API rate limiting", () => {
 
   it("allows binding-free local development and ignores unrelated routes", async () => {
     await expect(
-      enforceArticleRateLimit({ ENVIRONMENT: "local" }, principal, "articles.list"),
+      enforceApiRateLimit({ ENVIRONMENT: "local" }, principal, "articles.list"),
     ).resolves.toBeUndefined();
     await expect(
-      enforceArticleRateLimit({} satisfies RateLimitBindings, principal, "api.not_found"),
+      enforceApiRateLimit({} satisfies RateLimitBindings, principal, "api.not_found"),
     ).resolves.toBeUndefined();
   });
 });

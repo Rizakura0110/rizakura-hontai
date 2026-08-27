@@ -3,6 +3,7 @@ import type {
   ArticleChanges,
   ArticleListCriteria,
   ArticlePage,
+  ArticleUrlAlias,
   CreateArticleInput,
   UpdateArticleInput,
 } from "@tech-inbox/core/article";
@@ -170,6 +171,25 @@ class D1ArticleRepository implements ArticleRepository {
     return {
       items,
       nextCursor: hasNextPage && finalItem !== undefined ? positionFor(finalItem, criteria) : null,
+    };
+  }
+
+  async exportAll() {
+    const [articleRows, articleUrlRows] = await this.#database.batch([
+      this.#database.select().from(articles).orderBy(desc(articles.savedAt), desc(articles.id)),
+      this.#database.select().from(articleUrls).orderBy(asc(articleUrls.normalizedUrl)),
+    ]);
+
+    return {
+      articles: articleRows.map(mapArticleRow),
+      articleUrls: articleUrlRows.map(
+        (row): ArticleUrlAlias => ({
+          normalizedUrl: row.normalizedUrl as NormalizedUrl,
+          articleId: row.articleId,
+          kind: row.kind,
+          createdAt: row.createdAt,
+        }),
+      ),
     };
   }
 

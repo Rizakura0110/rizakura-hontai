@@ -2,6 +2,7 @@ import type {
   Article,
   ArticleListCriteria,
   ArticlePage,
+  ArticleUrlAlias,
   CreateArticleInput,
   UpdateArticleInput,
 } from "@tech-inbox/core/article";
@@ -37,6 +38,11 @@ export type DeleteArticleResult =
   | {
       readonly outcome: "notFound";
     };
+
+export type ArticleExportSnapshot = {
+  readonly articles: readonly Article[];
+  readonly articleUrls: readonly ArticleUrlAlias[];
+};
 
 export type CanonicalAliasInput = {
   readonly normalizedUrl: NormalizedUrl;
@@ -74,6 +80,7 @@ export type RecordMetadataFailureResult =
 
 export interface ArticleRepository {
   list(criteria: ArticleListCriteria): Promise<ArticlePage>;
+  exportAll(): Promise<ArticleExportSnapshot>;
   findById(id: string): Promise<Article | null>;
   findByNormalizedUrl(normalizedUrl: NormalizedUrl): Promise<Article | null>;
   createWithOriginalAlias(input: CreateArticleInput): Promise<CreateArticleResult>;

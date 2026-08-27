@@ -94,3 +94,11 @@
 5. Rate Limiting bindingの追加料金表示がないことを料金ページとdashboardで再確認する。有料プランや課金同意が必要なら設定を止め、`docs/decision-needed.md`へ記録する。
 6. deploy前にmetadata-fetcherのpublic route、`workers.dev`、preview URLが無効であることを再確認する。
 7. deploy後、未認証、audience不一致、許可email不一致、期限切れJWTが拒否され、許可emailだけがproductionと使用対象previewへ入れることを確認する。変更APIは不正Origin、JSON以外、custom header欠落が拒否されることも確認する。
+
+## Phase 7 local export configuration
+
+- `GET /api/v1/export`は記事APIと同じAccess JWT再検証を通し、export専用Rate Limiting bindingを5 requests/minuteで設定した。binding keyはPhase 6と同じくAccess principalのhashと固定route categoryだけを使用する。
+- exportはD1から全記事と全URL aliasを同一batchで読み、`schemaVersion: 1`のJSONとして返す。API responseは`no-store`で、UTC日付を含むASCII filenameの`Content-Disposition: attachment`を付ける。
+- 設定画面は検証済みexport responseから保存記事数と未読記事数を表示する。同じresponseをBlobへ変換してdownloadするため、画面表示とdownloadでRate Limiting枠を二重消費しない。
+- export contractは記事DTOとURL aliasだけを許可し、JWT、email、Worker設定、内部errorを受け入れないstrict schemaとした。
+- remote Rate Limiting bindingの変更、deploy、Cloudflare accountへのloginは行っていない。Phase 9で既存4 bindingと合わせてexport bindingの料金表示を再確認する。
