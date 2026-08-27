@@ -286,3 +286,58 @@
 - remote D1 resourceと`database_id`はPhase 9の明示許可後まで作成・設定しない。
 - Drizzle 0.45.2のTypeScript 7非互換な上流宣言を読み込むため、Worker tsconfigにも`skipLibCheck: true`を限定適用した。Worker sourceとtests自体はstrictに型検査している。
 - 既知のmoderate advisory 1件はPhase 1と同じDrizzle Kit配下の開発専用推移依存である。
+
+## Phase 4: Web UI
+
+### 実施内容
+
+- PCでは固定sidebar、mobileではheaderとsafe area対応bottom navigationを持つ共通layoutを実装した。
+- `/`を未読一覧、`/articles`を全記事一覧、`/settings`を設定案内として実装した。JSON export等の設定機能は予定どおりPhase 7で追加する。
+- Contractsのresponse schemaで成功応答をruntime検証するclient APIを追加し、一覧、登録、更新、削除を既存APIへ接続した。
+- URL登録をPCのinline formとmobileのdialogで実装し、重複時は既存記事へのlinkを持つ通知を表示する。
+- 記事cardへsite initial、site名、title、保存日、公開日、未読・既読、metadata pending/failed、元記事link、編集、削除を実装した。
+- 検索、status filter、3種のsort、cursorによる追加読込を実装した。
+- 既読・未読切替、既読化で未読一覧から消えた記事を復元できるundo、編集dialog、削除確認dialogを実装した。
+- loading skeleton、empty state、error/retry、成功・失敗toast、処理中状態を実装した。
+- native `dialog`を基盤に、初期focus、focus trap、Escape、閉じた後のfocus復帰を実装した。
+- 外部favicon/OGP画像は表示せず、API由来文字列はReactのtext nodeとしてだけ描画する。`dangerouslySetInnerHTML`は使用していない。
+- reduced motion、明示label、focus indicator、44px相当の操作target、色以外の状態表示を追加した。
+- `pnpm check`へPlaywright E2Eを組み込み、phase完了時の標準gateで毎回実行するようにした。
+- Cloudflareへのlogin、remote resource変更、deployは行っていない。
+
+### 自動テスト構成
+
+- Testing Library component testで、API文字列の非HTML描画、検索query、既読化とundo、重複登録、変更系request headerを検証する。
+- Playwrightはsystem Google Chromeを使用し、1280x800のdesktopと320x700のmobile viewportで同じ主要flowを実行する。
+- E2EではURL登録、検索、編集、削除、設定route、既読化とundo、dialog focus、mobile navigation、320px時の横overflow、XSS文字列の非HTML描画を検証する。
+- E2EのAPIはbrowser routeで状態付きmockにし、UI failureをD1状態から分離する。実D1とWorker APIは既存の`pnpm api:verify:local`で別に検証する。
+- Phase 4終了時はVitest 14 test files、138 testsとPlaywright 4 testsが成功した。
+- coverageはstatements 60.64%、branches 52.40%、functions 59.66%、lines 62.43%。UIの詳細branch拡充とthreshold確定は予定どおりPhase 8で行う。
+
+### Browser確認
+
+- 実ブラウザでdesktop layoutのsidebar、main column、空状態を確認した。
+- viewportを320x700へ切り替え、`innerWidth`と`scrollWidth`がともに320で横scrollがないこと、mobile headerとbottom navigationが成立することを確認した。
+- mobile追加dialogの初期focusがURL inputへ入り、閉じる操作後に追加buttonへfocusが戻ることを確認した。
+
+### 検証結果
+
+- `pnpm format:check`: pass
+- `pnpm lint`: pass
+- `pnpm cf:typecheck`: pass
+- `pnpm typecheck`: pass
+- `pnpm test`: pass（14 files、138 tests）
+- `pnpm test:coverage`: pass
+- `pnpm db:verify:local`: pass
+- `pnpm api:verify:local`: pass
+- `pnpm build`: pass
+- `pnpm e2e`: pass（Google Chrome desktop/mobile、4 tests）
+- `pnpm audit --audit-level high`: pass（high 0、critical 0、moderate 1）
+
+### 未解決事項
+
+- metadata取得の短時間polling、retry操作、pendingからready/failedへのE2EはQueueを実装するPhase 5で追加する。
+- JSON exportと設定画面の実機能はPhase 7で追加する。
+- coverage thresholdと必須flow全体のE2E拡充、manual device test手順はPhase 8で行う。
+- production記事APIはPhase 6完了まで意図的に403で閉じている。
+- 既知のmoderate advisory 1件はPhase 1と同じDrizzle Kit配下の開発専用推移依存である。

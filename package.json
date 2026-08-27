@@ -21,7 +21,7 @@
     "cf:typegen": "pnpm --dir apps/web cf:typegen",
     "cf:typecheck": "pnpm --dir apps/web cf:typecheck",
     "audit": "pnpm audit --audit-level high",
-    "check": "pnpm format:check && pnpm lint && pnpm cf:typecheck && pnpm typecheck && pnpm test && pnpm db:verify:local && pnpm api:verify:local && pnpm build && pnpm audit --audit-level high"
+    "check": "pnpm format:check && pnpm lint && pnpm cf:typecheck && pnpm typecheck && pnpm test && pnpm db:verify:local && pnpm api:verify:local && pnpm build && pnpm e2e && pnpm audit --audit-level high"
   },
   "engines": {
     "node": ">=24 <25"
