@@ -494,3 +494,60 @@
 - exportのremote Access/Rate Limiting実機確認は、明示的なdeploy許可後のPhase 9で行う。
 - coverage threshold確定、必須flow全体のE2E拡充、manual iPhone/Android Chrome確認手順はPhase 8で行う。
 - 既知のmoderate advisory 1件はPhase 1と同じDrizzle Kit配下の開発専用推移依存である。
+
+## Phase 8: テストと品質ゲート
+
+### 実施内容
+
+- pure unit test、React component test、Worker/API integration testを拡充し、API clientの全操作とsafe error、request body境界、HTML metadata sanitization、IPv4/IPv6 SSRF境界、fetch timeout/redirect/size/status、Queue再試行と失敗処理を検証した。
+- 記事一覧のpagination、sort、status filter、未読へ戻す、load error/retry、編集、削除をcomponent testへ追加した。composer、card、modal、編集・削除dialog、desktop/mobile navigationも直接検証した。
+- V8 coverageにstatements、branches、functions、lines各80%のglobal thresholdを設定した。URL正規化、SSRF URL判定、契約schemaはbranch 90%を個別thresholdにした。
+- D1 adapterはfake DBでcoverage数値を作らずfresh local D1と実HTTPで検証し、Worker runtime entrypointは生成型、typecheck、production/dry-run build、統合テストで検証する責務分離を明文化した。
+- Playwrightの状態付きAPI mockを拡張し、ガイド必須のURL登録、duplicate、pendingからready、metadata失敗、既読化とundo、未読へ戻す、検索、filter、title編集、URL編集と競合、削除、JSON export、unauthorized API拒否を網羅した。
+- 全Playwrightシナリオをdesktop Chrome 1280 × 800とmobile Chrome 320 × 700の両方で実行する構成を維持した。
+- `docs/manual-device-test.md`を作成し、iPhone/Android ChromeのAccess login、keyboard中layout、保存、dialog、既読、検索、新規tab、JSON download、縦横向き、logout後API拒否の手順と結果templateを用意した。emulation成功と実機未実施を明確に分けた。
+- production artifactのraw size上限とgzip参考値を検証する`pnpm quality:artifacts`を追加し、`pnpm check`へcoverageとartifact budgetを組み込んだ。
+- Worker CPUのpredeploy risk reviewとしてlist/body/HTML/redirect/fetchの処理境界とD1 batch利用を確認した。local wall-clockをCloudflare CPU timeと偽らず、実CPU timeはPhase 9の限定deploy後にWorkers Logs/dashboardで確認するgateとして記録した。
+- Cloudflare remote resourceの作成・変更、login、deployは行っていない。
+
+### 変更ファイル
+
+- Coverage/quality command: `vitest.config.ts`、`package.json`、`scripts/check-artifact-budgets.mjs`
+- Client unit/component test: `apps/web/src/client/api/articles.test.ts`、`apps/web/src/client/components/ArticleComponents.test.tsx`、`apps/web/src/client/pages/HomePage.test.tsx`
+- Worker unit/integration test: `apps/web/src/worker/request-validation.test.ts`、`apps/web/src/worker/metadata-consumer.test.ts`
+- Metadata fetcher test: `workers/metadata-fetcher/src/fetch-metadata.test.ts`、`html-metadata.test.ts`、`url-policy.test.ts`
+- SSRF test seam: `workers/metadata-fetcher/src/url-policy.ts`
+- E2E: `tests/e2e/article-inbox.spec.ts`
+- 文書: `docs/quality-gates.md`、`docs/manual-device-test.md`、`docs/progress.md`
+
+### 自動テスト構成
+
+- Vitestは24 files、276 testsでpure、client component、Worker/APIを検証する。
+- V8 coverage gateはテスト可能コード全体で全4指標80%以上、重要3領域のbranch 90%以上を自動失敗条件にする。
+- `pnpm api:verify:local`はfresh local D1とWrangler Workerを使い、CRUD、同時duplicate、pagination、search/filter/sort、入力防御、全件JSON exportを実HTTPで確認する。
+- Playwrightは6シナリオを2 projectで実行し、desktop/mobile合計12 testsで必須E2Eを検証する。
+- `pnpm quality:artifacts`はapp Worker、metadata-fetcher、client JavaScript、client CSSのraw上限を検査する。
+
+### 検証結果
+
+- `pnpm check`: pass（format、lint、生成型差分、TypeScript、Vitest、coverage、fresh local D1、実HTTP API、production/dry-run build、artifact budget、desktop/mobile E2E、high audit）
+- `pnpm test`: pass（24 files、276 tests）
+- `pnpm test:coverage`: pass
+  - 全体: statements 89.50%、branches 85.62%、functions 89.49%、lines 90.82%
+  - URL正規化: branches 96.15%
+  - SSRF URL判定: branches 96.00%
+  - 契約schema: branches 100%
+- `pnpm e2e`: pass（desktop/mobile合計12 tests）
+- `pnpm build`: pass（app、auxiliary fetcher、fetcher単体dry-run）
+- `pnpm quality:artifacts`: pass
+  - app Worker: raw 409.1 KiB、gzip 89.2 KiB
+  - metadata-fetcher: raw 571.9 KiB、gzip 86.2 KiB
+  - client JavaScript: raw 327.8 KiB、gzip 98.4 KiB
+  - client CSS: raw 27.1 KiB、gzip 6.1 KiB
+- `pnpm audit --audit-level high`: pass（high 0、critical 0、既知moderate 1）
+
+### 未解決事項
+
+- iPhone ChromeとAndroid Chromeの実機確認はAccess保護済みURLが必要なため未実施であり、Phase 9のdeploy後に`docs/manual-device-test.md`へ結果を記録する。
+- production Worker CPU timeは未計測である。Phase 9でWorkers Logsまたはdashboardを使い、Freeプランの10 ms/invocation基準に対してlist 100件、export、1 MiB HTML、redirect 3回を確認する。
+- 既知のmoderate advisory 1件はPhase 1と同じDrizzle Kit配下の開発専用推移依存であり、runtime bundleには含まれない。

@@ -1,32 +1,13 @@
 import { readFile } from "node:fs/promises";
+import type { ArticleDto } from "@tech-inbox/contracts";
 import { expect, type Page, test } from "@playwright/test";
 
-type TestArticle = {
-  id: string;
-  originalUrl: string;
-  canonicalUrl: null;
-  title: string | null;
-  titleIsManual: boolean;
-  siteName: string | null;
-  description: string | null;
-  faviconUrl: null;
-  imageUrl: null;
-  publishedAt: null;
-  status: "unread" | "read";
-  metadataStatus: "pending" | "ready" | "failed";
-  metadataErrorCode: null;
-  metadataAttemptCount: number;
-  metadataFetchedAt: string | null;
-  savedAt: string;
-  readAt: string | null;
-  createdAt: string;
-  updatedAt: string;
-};
+type MetadataTransition = "ready" | "failed";
 
 const now = "2026-08-27T01:02:03.000Z";
 const unsafeTitle = '<img src=x onerror="window.pwned=true">';
 
-function fixture(overrides: Partial<TestArticle> = {}): TestArticle {
+function fixture(overrides: Partial<ArticleDto> = {}): ArticleDto {
   return {
     id: "article-1",
     originalUrl: "https://example.com/articles/one",
@@ -53,6 +34,7 @@ function fixture(overrides: Partial<TestArticle> = {}): TestArticle {
 
 async function mockArticleApi(page: Page) {
   let articles = [fixture()];
+  const metadataTransitions = new Map<string, MetadataTransition>();
 
   await page.route("**/api/v1/export", async (route) => {
     const exportedAt = now;
@@ -83,6 +65,29 @@ async function mockArticleApi(page: Page) {
     const detailMatch = url.pathname.match(/^\/api\/v1\/articles\/([^/]+)$/);
 
     if (url.pathname === "/api/v1/articles" && method === "GET") {
+      articles = articles.map((article) => {
+        const transition = metadataTransitions.get(article.id);
+        if (article.metadataStatus !== "pending" || transition === undefined) return article;
+
+        metadataTransitions.delete(article.id);
+        return transition === "ready"
+          ? {
+              ...article,
+              title: `取得済み: ${new URL(article.originalUrl).hostname}`,
+              metadataStatus: "ready",
+              metadataAttemptCount: 1,
+              metadataFetchedAt: now,
+              updatedAt: now,
+            }
+          : {
+              ...article,
+              metadataStatus: "failed",
+              metadataErrorCode: "NETWORK_ERROR",
+              metadataAttemptCount: 3,
+              metadataFetchedAt: now,
+              updatedAt: now,
+            };
+      });
       const status = url.searchParams.get("status") ?? "all";
       const query = (url.searchParams.get("q") ?? "").toLocaleLowerCase("ja-JP");
       const visible = articles.filter((article) => {
@@ -98,6 +103,11 @@ async function mockArticleApi(page: Page) {
 
     if (url.pathname === "/api/v1/articles" && method === "POST") {
       const body = request.postDataJSON() as { url: string };
+      const existing = articles.find((article) => article.originalUrl === body.url);
+      if (existing !== undefined) {
+        await route.fulfill({ json: { result: "alreadyExists", article: existing }, status: 200 });
+        return;
+      }
       const article = fixture({
         id: `article-${articles.length + 1}`,
         originalUrl: body.url,
@@ -108,6 +118,8 @@ async function mockArticleApi(page: Page) {
         metadataFetchedAt: null,
       });
       articles = [article, ...articles];
+      if (body.url.includes("metadata-ready")) metadataTransitions.set(article.id, "ready");
+      if (body.url.includes("metadata-failed")) metadataTransitions.set(article.id, "failed");
       await route.fulfill({ json: { result: "created", article }, status: 201 });
       return;
     }
@@ -124,7 +136,23 @@ async function mockArticleApi(page: Page) {
         await route.fulfill({ json: { error: "missing" }, status: 404 });
         return;
       }
-      const article: TestArticle = {
+      if (
+        body.url !== undefined &&
+        articles.some((article) => article.id !== id && article.originalUrl === body.url)
+      ) {
+        await route.fulfill({
+          json: {
+            error: {
+              code: "URL_CONFLICT",
+              message: "このURLは別の記事として登録されています。",
+              requestId: "123e4567-e89b-42d3-a456-426614174000",
+            },
+          },
+          status: 409,
+        });
+        return;
+      }
+      const article: ArticleDto = {
         ...current,
         originalUrl: body.url ?? current.originalUrl,
         title: body.title ?? current.title,
@@ -147,6 +175,19 @@ async function mockArticleApi(page: Page) {
 
     await route.fallback();
   });
+}
+
+async function addArticle(page: Page, mobile: boolean, url: string) {
+  if (mobile) {
+    await page.getByRole("button", { name: "追加" }).click();
+    const addDialog = page.getByRole("dialog", { name: "記事を追加" });
+    await addDialog.getByLabel("記事URL").fill(url);
+    await addDialog.getByRole("button", { name: "保存" }).click();
+    return;
+  }
+
+  await page.getByLabel("保存する記事のURL").fill(url);
+  await page.getByRole("button", { name: "保存" }).click();
 }
 
 test.beforeEach(async ({ page }) => {
@@ -174,6 +215,12 @@ test("static assets and API responses include the security policy", async ({ pag
 
   const robotsResponse = await page.request.get("/robots.txt");
   expect(await robotsResponse.text()).toContain("Disallow: /");
+
+  const unauthorizedResponse = await page.request.get("/api/v1/articles");
+  expect(unauthorizedResponse.status()).toBe(403);
+  await expect(unauthorizedResponse.json()).resolves.toMatchObject({
+    error: { code: "FORBIDDEN" },
+  });
 });
 
 test("article text is safe, read state can be undone, and layout does not overflow", async ({
@@ -214,15 +261,7 @@ test("add, search, edit, delete, and settings routes work", async ({ page }, tes
   await page.goto("/");
 
   const newUrl = "https://playwright.dev/docs/testing";
-  if (testInfo.project.name === "mobile-chrome-320") {
-    await page.getByRole("button", { name: "追加" }).click();
-    const addDialog = page.getByRole("dialog", { name: "記事を追加" });
-    await addDialog.getByLabel("記事URL").fill(newUrl);
-    await addDialog.getByRole("button", { name: "保存" }).click();
-  } else {
-    await page.getByLabel("保存する記事のURL").fill(newUrl);
-    await page.getByRole("button", { name: "保存" }).click();
-  }
+  await addArticle(page, testInfo.project.name === "mobile-chrome-320", newUrl);
   await expect(page.getByText("記事を保存しました。")).toBeVisible();
   await expect(page.getByRole("link", { name: newUrl })).toBeVisible();
 
@@ -275,4 +314,73 @@ test("add, search, edit, delete, and settings routes work", async ({ page }, tes
   expect(JSON.stringify(exported)).not.toContain("TEAM_DOMAIN");
   expect(JSON.stringify(exported)).not.toContain("ALLOWED_EMAIL");
   expect(JSON.stringify(exported)).not.toContain("POLICY_AUD");
+});
+
+test("duplicate registration, read filter, and returning an article to unread work", async ({
+  page,
+}, testInfo) => {
+  await page.goto("/");
+
+  await addArticle(
+    page,
+    testInfo.project.name === "mobile-chrome-320",
+    "https://example.com/articles/one",
+  );
+  await expect(page.getByText("この記事はすでに登録されています。")).toBeVisible();
+  await expect(page.getByRole("link", { name: "記事を見る" })).toHaveAttribute(
+    "href",
+    "https://example.com/articles/one",
+  );
+
+  await page.getByRole("button", { name: "既読にする" }).click();
+  await page.getByRole("link", { name: "すべて" }).click();
+  await page.getByRole("group", { name: "記事の状態" }).getByText("既読", { exact: true }).click();
+  await expect(page.getByRole("link", { name: unsafeTitle })).toBeVisible();
+
+  await page.getByRole("button", { name: "未読に戻す" }).click();
+  await expect(page.getByText("記事を未読に戻しました。")).toBeVisible();
+  await expect(page.getByRole("link", { name: unsafeTitle })).toHaveCount(0);
+});
+
+test("metadata polling reaches both ready and failed terminal states", async ({
+  page,
+}, testInfo) => {
+  await page.goto("/");
+  const mobile = testInfo.project.name === "mobile-chrome-320";
+
+  const readyUrl = "https://metadata-ready.example.org/article";
+  await addArticle(page, mobile, readyUrl);
+  await expect(page.getByText("記事情報を取得しています……")).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "取得済み: metadata-ready.example.org" }),
+  ).toBeVisible({ timeout: 7_000 });
+
+  const failedUrl = "https://metadata-failed.example.org/article";
+  await addArticle(page, mobile, failedUrl);
+  await expect(page.getByText("記事情報を取得しています……")).toBeVisible();
+  await expect(page.getByText("タイトルを取得できませんでした")).toBeVisible({
+    timeout: 7_000,
+  });
+});
+
+test("editing an article URL reports a conflict without losing the original", async ({
+  page,
+}, testInfo) => {
+  await page.goto("/");
+  const conflictingUrl = "https://conflict.example.org/article";
+  await addArticle(page, testInfo.project.name === "mobile-chrome-320", conflictingUrl);
+
+  const originalCard = page.locator("article").filter({ hasText: unsafeTitle });
+  await originalCard.locator("summary").click();
+  await originalCard.getByRole("button", { name: "編集" }).click();
+  const dialog = page.getByRole("dialog", { name: "記事を編集" });
+  await dialog.getByLabel("記事URL").fill(conflictingUrl);
+  await dialog.getByRole("button", { name: "変更を保存" }).click();
+
+  await expect(dialog.getByText("このURLは別の記事として登録されています。")).toBeVisible();
+  await expect(dialog).toBeVisible();
+  await expect(page.getByRole("link", { name: unsafeTitle })).toHaveAttribute(
+    "href",
+    "https://example.com/articles/one",
+  );
 });

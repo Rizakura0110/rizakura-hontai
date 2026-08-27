@@ -17,7 +17,7 @@ const INTERNAL_HOST_SUFFIXES = [
   ".example",
 ] as const;
 
-function parseIpv4(hostname: string): readonly number[] | null {
+export function parseIpv4(hostname: string): readonly number[] | null {
   const parts = hostname.split(".");
   if (parts.length !== 4) return null;
 
@@ -25,7 +25,7 @@ function parseIpv4(hostname: string): readonly number[] | null {
   return octets.every((part) => Number.isInteger(part) && part >= 0 && part <= 255) ? octets : null;
 }
 
-function isUnsafeIpv4(octets: readonly number[]): boolean {
+export function isUnsafeIpv4(octets: readonly number[]): boolean {
   const [a = -1, b = -1] = octets;
   return (
     a === 0 ||
@@ -43,7 +43,7 @@ function isUnsafeIpv4(octets: readonly number[]): boolean {
   );
 }
 
-function parseIpv6(hostname: string): readonly number[] | null {
+export function parseIpv6(hostname: string): readonly number[] | null {
   const value = hostname.replace(/^\[|\]$/gu, "").toLowerCase();
   if (!value.includes(":")) return null;
 
@@ -77,7 +77,7 @@ function parseIpv6(hostname: string): readonly number[] | null {
   return omitted >= 1 ? [...left, ...Array<number>(omitted).fill(0), ...right] : null;
 }
 
-function isUnsafeIpv6(groups: readonly number[]): boolean {
+export function isUnsafeIpv6(groups: readonly number[]): boolean {
   const [first = -1, second = -1, third = -1, fourth = -1, fifth = -1, sixth = -1] = groups;
   const isIpv4Mapped =
     first === 0 && second === 0 && third === 0 && fourth === 0 && fifth === 0 && sixth === 0xffff;
@@ -96,7 +96,7 @@ function isUnsafeIpv6(groups: readonly number[]): boolean {
   return !isGlobalUnicast || isSpecialPurpose2001 || isDocumentation || isSixToFour;
 }
 
-function isUnsafeHostname(hostname: string): boolean {
+export function isUnsafeHostname(hostname: string): boolean {
   const normalized = hostname
     .replace(/^\[|\]$/gu, "")
     .toLowerCase()

@@ -2,6 +2,7 @@ import type { FetchedMetadata, MetadataQueueMessage } from "@tech-inbox/contract
 import type { Article } from "@tech-inbox/core/article";
 import { describe, expect, it, vi } from "vitest";
 import {
+  consumeMetadataQueue,
   type MetadataConsumerDependencies,
   processMetadataQueueMessage,
 } from "./metadata-consumer";
@@ -196,5 +197,132 @@ describe("processMetadataQueueMessage", () => {
     });
     expect(fetchMetadata).toHaveBeenCalledTimes(1);
     expect(state).toMatchObject({ metadataStatus: "failed", metadataAttemptCount: 3 });
+  });
+
+  it("acks malformed and missing-article messages without fetching metadata", async () => {
+    const repositoryFactory = vi.fn(() => {
+      throw new Error("must not create repository for malformed messages");
+    });
+    const fetchMetadata = vi.fn(async () => ({ ok: true, metadata: fetchedMetadata }) as const);
+    await expect(
+      processMetadataQueueMessage({ invalid: true }, bindings(), {
+        repositoryFactory,
+        fetchMetadata,
+        clock: () => new Date("2026-08-27T01:00:00.000Z"),
+        log: () => undefined,
+      }),
+    ).resolves.toMatchObject({ action: "ack", log: { result: "invalid" } });
+    expect(repositoryFactory).not.toHaveBeenCalled();
+
+    const missingRepository = repository(
+      () => null,
+      () => undefined,
+    );
+    await expect(
+      processMetadataQueueMessage(
+        { articleId: "article-1", url: "https://example.com/article", attempt: 0 },
+        bindings(),
+        {
+          repositoryFactory: () => missingRepository,
+          fetchMetadata,
+          clock: () => new Date("2026-08-27T01:00:00.000Z"),
+          log: () => undefined,
+        },
+      ),
+    ).resolves.toMatchObject({ action: "ack", log: { result: "stale" } });
+    expect(fetchMetadata).not.toHaveBeenCalled();
+  });
+
+  it("records a permanent failure without rescheduling", async () => {
+    let state: Article | null = article();
+    const dependencies: MetadataConsumerDependencies = {
+      repositoryFactory: () =>
+        repository(
+          () => state,
+          (value) => (state = value),
+        ),
+      fetchMetadata: async () => ({ ok: false, error: { code: "UNSAFE_URL" } }),
+      clock: () => new Date("2026-08-27T01:00:00.000Z"),
+      log: () => undefined,
+    };
+
+    await expect(
+      processMetadataQueueMessage(
+        { articleId: "article-1", url: "https://example.com/article", attempt: 0 },
+        bindings(),
+        dependencies,
+      ),
+    ).resolves.toMatchObject({
+      action: "ack",
+      log: { result: "failed", attempt: 1, errorCode: "UNSAFE_URL" },
+    });
+    expect(state).toMatchObject({ metadataStatus: "failed", metadataAttemptCount: 1 });
+  });
+
+  it("reschedules a temporary failure and falls back to native retry if queue send fails", async () => {
+    for (const queueFails of [false, true]) {
+      let state: Article | null = article();
+      const queueSend = queueFails
+        ? vi.fn(async () => {
+            throw new Error("queue unavailable");
+          })
+        : vi.fn(async () => undefined);
+      const dependencies: MetadataConsumerDependencies = {
+        repositoryFactory: () =>
+          repository(
+            () => state,
+            (value) => (state = value),
+          ),
+        fetchMetadata: async () => ({ ok: false, error: { code: "NETWORK_ERROR" } }),
+        clock: () => new Date("2026-08-27T01:00:00.000Z"),
+        log: () => undefined,
+      };
+
+      await expect(
+        processMetadataQueueMessage(
+          { articleId: "article-1", url: "https://example.com/article", attempt: 0 },
+          bindings(queueSend),
+          dependencies,
+        ),
+      ).resolves.toMatchObject({
+        action: queueFails ? "retry" : "ack",
+        log: { result: queueFails ? "retry" : "rescheduled", attempt: 1 },
+      });
+      expect(queueSend).toHaveBeenCalledWith(
+        { articleId: "article-1", url: "https://example.com/article", attempt: 1 },
+        { contentType: "json", delaySeconds: 5 },
+      );
+    }
+  });
+
+  it("drives queue ack and retry controls even when processing or logging fails", async () => {
+    const ack = vi.fn();
+    const retry = vi.fn();
+    const invalidMessage = { body: { invalid: true }, ack, retry };
+    const failingMessage = {
+      body: { articleId: "article-1", url: "https://example.com/article", attempt: 0 },
+      ack,
+      retry,
+    };
+    const log = vi.fn(() => {
+      throw new Error("logging unavailable");
+    });
+
+    await consumeMetadataQueue(
+      { messages: [invalidMessage, failingMessage] } as unknown as MessageBatch<unknown>,
+      bindings(),
+      {
+        repositoryFactory: () => {
+          throw new Error("database unavailable");
+        },
+        fetchMetadata: async () => ({ ok: true, metadata: fetchedMetadata }),
+        clock: () => new Date("2026-08-27T01:00:00.000Z"),
+        log,
+      },
+    );
+
+    expect(ack).toHaveBeenCalledOnce();
+    expect(retry).toHaveBeenCalledWith({ delaySeconds: 5 });
+    expect(log).toHaveBeenCalledTimes(2);
   });
 });
