@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { app } from "./app";
+import { SECURITY_HEADERS } from "./security-headers";
 
 describe("health API", () => {
   it("returns an uncached JSON health response with a request ID", async () => {
@@ -11,6 +12,9 @@ describe("health API", () => {
     expect(response.headers.get("x-request-id")).toMatch(
       /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
     );
+    for (const [name, value] of Object.entries(SECURITY_HEADERS)) {
+      expect(response.headers.get(name)).toBe(value);
+    }
     await expect(response.json()).resolves.toEqual({ status: "ok" });
   });
 

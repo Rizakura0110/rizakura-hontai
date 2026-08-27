@@ -14,25 +14,35 @@ import {
   updateArticleRequestSchema,
 } from "@tech-inbox/contracts";
 import { Hono, type Context } from "hono";
+import {
+  authenticateAccessRequest,
+  type AuthPrincipal,
+  type AccessAuthBindings,
+} from "./access-auth";
 import { ArticleService, type Clock, type IdGenerator } from "./article-service";
 import { toArticleDto } from "./article-dto";
 import { ApiError } from "./errors";
 import { createMetadataQueueProducer, type MetadataQueueProducer } from "./metadata-queue";
 import { parseQuery, parseWithSchema, readJsonBody } from "./request-validation";
+import { enforceArticleRateLimit, type RateLimitBindings } from "./rate-limit";
 import { createD1ArticleRepository } from "./repositories/d1-article-repository";
 import type { ArticleRepository } from "./repositories/article-repository";
+import { SECURITY_HEADERS } from "./security-headers";
 
-export type AppBindings = CloudflareBindings & {
-  readonly ENVIRONMENT?: string;
-  readonly APP_ORIGIN?: string;
-  readonly METADATA_QUEUE: Queue<MetadataQueueMessage>;
-  readonly METADATA_FETCHER: Fetcher;
-};
+export type AppBindings = CloudflareBindings &
+  AccessAuthBindings &
+  RateLimitBindings & {
+    readonly ENVIRONMENT?: string;
+    readonly APP_ORIGIN?: string;
+    readonly METADATA_QUEUE: Queue<MetadataQueueMessage>;
+    readonly METADATA_FETCHER: Fetcher;
+  };
 
 type RequestVariables = {
   requestId: string;
   routeName: string;
   errorCode: string | undefined;
+  principal: AuthPrincipal | undefined;
 };
 
 type AppEnvironment = {
@@ -54,6 +64,15 @@ export type AppDependencies = {
   readonly clock: Clock;
   readonly idGenerator: IdGenerator;
   readonly metadataQueueFactory: (bindings: AppBindings) => MetadataQueueProducer;
+  readonly authenticateAccess: (
+    request: Request,
+    bindings: AccessAuthBindings,
+  ) => Promise<AuthPrincipal>;
+  readonly enforceRateLimit: (
+    bindings: RateLimitBindings,
+    principal: AuthPrincipal,
+    routeName: string,
+  ) => Promise<void>;
   readonly log: (event: RequestLogEvent) => void;
 };
 
@@ -83,10 +102,39 @@ function safeRouteName(method: string, pathname: string): string {
   return "api.not_found";
 }
 
-function enforceArticleAccess(context: Context<AppEnvironment>): void {
-  if (context.env.ENVIRONMENT !== "local") {
-    throw new ApiError(403, "FORBIDDEN", "このAPIは現在利用できません。");
+const LOCAL_PRINCIPAL: AuthPrincipal = {
+  subject: "local-development",
+  email: "local@localhost.invalid",
+  provider: "cloudflare-access",
+};
+
+function isLocalDevelopmentRequest(context: Context<AppEnvironment>): boolean {
+  if (context.env.ENVIRONMENT !== "local" || context.env.APP_ORIGIN === undefined) return false;
+
+  try {
+    const applicationOrigin = new URL(context.env.APP_ORIGIN);
+    const requestOrigin = new URL(context.req.url).origin;
+    return (
+      applicationOrigin.protocol === "http:" &&
+      (applicationOrigin.hostname === "localhost" ||
+        applicationOrigin.hostname === "127.0.0.1" ||
+        applicationOrigin.hostname === "[::1]") &&
+      applicationOrigin.origin === requestOrigin
+    );
+  } catch {
+    return false;
   }
+}
+
+async function enforceArticleAccess(
+  context: Context<AppEnvironment>,
+  dependencies: AppDependencies,
+): Promise<void> {
+  const principal = isLocalDevelopmentRequest(context)
+    ? LOCAL_PRINCIPAL
+    : await dependencies.authenticateAccess(context.req.raw, context.env);
+  context.set("principal", principal);
+  await dependencies.enforceRateLimit(context.env, principal, context.get("routeName"));
 }
 
 function enforceMutationRequest(context: Context<AppEnvironment>): void {
@@ -152,10 +200,13 @@ const defaultDependencies: AppDependencies = {
   clock: () => new Date(),
   idGenerator: () => crypto.randomUUID(),
   metadataQueueFactory: (bindings) => createMetadataQueueProducer(bindings.METADATA_QUEUE),
+  authenticateAccess: authenticateAccessRequest,
+  enforceRateLimit: enforceArticleRateLimit,
   log: defaultLog,
 };
 
-export function createApp(dependencies: AppDependencies = defaultDependencies) {
+export function createApp(overrides: Partial<AppDependencies> = {}) {
+  const dependencies: AppDependencies = { ...defaultDependencies, ...overrides };
   const app = new Hono<AppEnvironment>();
 
   app.use("/api/*", async (context, next) => {
@@ -164,12 +215,16 @@ export function createApp(dependencies: AppDependencies = defaultDependencies) {
     context.set("requestId", crypto.randomUUID());
     context.set("routeName", safeRouteName(context.req.method, pathname));
     context.set("errorCode", undefined);
+    context.set("principal", undefined);
     context.header("Cache-Control", "no-store");
     context.header("X-Request-Id", context.get("requestId"));
+    for (const [name, value] of Object.entries(SECURITY_HEADERS)) {
+      context.header(name, value);
+    }
 
     try {
       if (isArticlePath(pathname)) {
-        enforceArticleAccess(context);
+        await enforceArticleAccess(context, dependencies);
         enforceMutationRequest(context);
       }
 

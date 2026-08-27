@@ -130,6 +130,29 @@ test.beforeEach(async ({ page }) => {
   await mockArticleApi(page);
 });
 
+test("static assets and API responses include the security policy", async ({ page }) => {
+  const pageResponse = await page.goto("/");
+  const healthResponse = await page.request.get("/api/v1/health");
+
+  for (const response of [pageResponse, healthResponse]) {
+    expect(response).not.toBeNull();
+    const headers = response?.headers() ?? {};
+    expect(headers["content-security-policy"]).toContain("default-src 'self'");
+    expect(headers["content-security-policy"]).toContain("frame-ancestors 'none'");
+    expect(headers["x-frame-options"]).toBe("DENY");
+    expect(headers["x-content-type-options"]).toBe("nosniff");
+    expect(headers["referrer-policy"]).toBe("no-referrer");
+    expect(headers["permissions-policy"]).toContain("camera=()");
+    expect(headers["cross-origin-opener-policy"]).toBe("same-origin");
+    expect(headers["cross-origin-resource-policy"]).toBe("same-origin");
+    expect(headers["strict-transport-security"]).toBe("max-age=31536000");
+    expect(headers["x-robots-tag"]).toBe("noindex, nofollow, noarchive");
+  }
+
+  const robotsResponse = await page.request.get("/robots.txt");
+  expect(await robotsResponse.text()).toContain("Disallow: /");
+});
+
 test("article text is safe, read state can be undone, and layout does not overflow", async ({
   page,
 }, testInfo) => {

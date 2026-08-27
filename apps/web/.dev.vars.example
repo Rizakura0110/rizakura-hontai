@@ -1,2 +1,8 @@
 ENVIRONMENT=local
 APP_ORIGIN=http://localhost:5173
+
+# local mode does not read Access secrets. Configure the real values as
+# Cloudflare Worker secrets before a production or preview deployment.
+# TEAM_DOMAIN=https://your-team.cloudflareaccess.com
+# POLICY_AUD=your-access-application-audience-tag
+# ALLOWED_EMAIL=you@example.com

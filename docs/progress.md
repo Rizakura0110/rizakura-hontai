@@ -389,3 +389,56 @@
 - remote Queue、DLQ、Worker、Service BindingはPhase 9の明示許可後まで作成・deployしない。
 - JSON exportと設定画面の実機能はPhase 7、coverage thresholdと必須flow全体のE2E拡充はPhase 8で行う。
 - 既知のmoderate advisory 1件はPhase 1と同じDrizzle Kit配下の開発専用推移依存である。
+
+## Phase 6: 認証とセキュリティ強化
+
+### 実施内容
+
+- Cloudflare Accessの`Cf-Access-Jwt-Assertion`を`jose`で再検証するmiddlewareを実装した。RS256署名、issuer、audience、expiration、not-before、subject、許可email完全一致を確認する。
+- Accessのteam domainはHTTPSのCloudflare Access originだけを許可し、JWKSをissuer単位で再利用する。設定不足や検証失敗時は内部理由を応答・logへ出さずfail closedとした。
+- `ENVIRONMENT=local`の完全一致、HTTP loopback、`APP_ORIGIN`とrequest originの一致をすべて満たす場合だけにlocal bypassを限定した。それ以外はproduction、preview、未設定、公開originを含めAccess認証を必須にし、productionへlocal用headerなどの迂回経路を設けていない。
+- 検証済みJWTを`AuthPrincipal`へ変換し、記事serviceやrepositoryをCloudflare Accessのclaim構造から分離した。
+- Worker Rate Limiting bindingをcreate、metadata retry、update/delete、list/getの4区分で追加した。keyはAccess subjectとemailのSHA-256 hashと固定route categoryだけで構成し、生のemail、subject、URL、queryを渡さない。
+- 変更系APIのJSON Content-Type、`APP_ORIGIN`完全一致、`X-Tech-Inbox-Client: web`、16KiB上限とstrict schemaを再確認し、不正Originがrepository到達前に拒否されるtestを追加した。
+- Static AssetsとWorker APIの両方へ厳格なCSP、clickjacking、MIME sniffing、referrer、permissions、cross-origin、HSTS、indexing防止headerを追加し、`robots.txt`でもcrawlerを拒否した。
+- metadata-fetcherは`workers_dev: false`、`preview_urls: false`、public routeなしを維持した。
+- productionとpreviewをCloudflare AccessのAll trafficで保護する手順、exact email policy、Worker Secrets、cost gate、deploy後negative testを`docs/cloudflare-setup.md`へ記録した。
+- security header追加で並列E2E数が増えた際に判明した一覧取得競合を修正し、中断済みrequestのresponseが新しい検索結果を上書きしないようにした。
+- Cloudflareへのlogin、remote Access/Rate Limiting設定、secret登録、deployは行っていない。
+
+### 変更ファイル
+
+- AccessとAPI security: `apps/web/src/worker/access-auth.ts`、`rate-limit.ts`、`security-headers.ts`、`app.ts`と対応test
+- Static Assets: `apps/web/public/_headers`、`apps/web/public/robots.txt`
+- Cloudflare/local設定: `apps/web/wrangler.jsonc`、`worker-configuration.d.ts`、`.dev.vars.example`
+- UI/E2E: `apps/web/src/client/pages/ArticlesPage.tsx`、`tests/e2e/article-inbox.spec.ts`
+- 文書: `docs/cloudflare-setup.md`、`docs/progress.md`
+
+### 自動テスト構成
+
+- local RSA key pairとJWKSでAccess JWTを実際に署名し、正常系、JWT欠落、issuer/audience/email不一致、期限切れ、未来のnbf、exp欠落、設定不備を検証する。
+- production requestで検証済みprincipalがrate limiterへ渡ること、非localの設定不足と`ENVIRONMENT=local`を設定した公開originがrepositoryへ到達せず閉じることをHono API testで確認する。
+- 全rate categoryのbinding選択、hash keyに生のsubject/emailが含まれないこと、429、非local binding欠落時の503、local simulationをunit testで確認する。
+- APIの全security headerをunit test、Static AssetsとAPIのheaderおよび`robots.txt`をPlaywrightのproduction previewで確認する。
+
+### 検証結果
+
+- `pnpm cf:typegen`: pass（4 Rate Limiting bindingを生成型へ反映）
+- `pnpm check`: pass
+  - format、lint、生成型差分、TypeScript: pass
+  - Vitest: 20 files、197 tests pass
+  - fresh local D1 migration/constraint verification: pass
+  - local実HTTP CRUD/input defense verification: pass
+  - app、auxiliary fetcher、fetcher dry-run build: pass
+  - Playwright: desktop/mobile合計6 tests pass
+  - audit: high 0、critical 0、既知moderate 1
+- `pnpm test:coverage`: pass（statements 62.34%、branches 56.60%、functions 60.15%、lines 63.94%）
+- Static Assets build出力に`_headers`と`robots.txt`が含まれることを確認した。
+- metadata-fetcher configにpublic routeがなく、`workers_dev`と`preview_urls`がfalseであることを確認した。
+- secret候補、JWT、cookie、authorization、email実値、private keyのGit差分混入確認: pass
+
+### 未解決事項
+
+- remote Access application、Worker Secrets、Rate Limiting bindingの有効化とproduction/preview実機negative testは、明示的なdeploy許可後のPhase 9で行う。
+- JSON exportはPhase 7、coverage thresholdと必須flow全体のE2E拡充はPhase 8で行う。
+- Rate Limiting bindingはPhase 9のremote設定直前に追加課金表示がないことを再確認する。

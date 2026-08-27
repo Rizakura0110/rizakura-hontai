@@ -127,6 +127,7 @@ export function ArticlesPage({ view }: ArticlesPageProps) {
 
     listArticles({ status: listStatus, query, sort, signal: controller.signal })
       .then((response) => {
+        if (controller.signal.aborted) return;
         setArticles(response.articles);
         setNextCursor(response.nextCursor);
       })

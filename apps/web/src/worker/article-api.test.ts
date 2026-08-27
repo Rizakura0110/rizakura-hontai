@@ -46,10 +46,15 @@ function localBindings(): CloudflareBindings & {
   ENVIRONMENT: string;
   APP_ORIGIN: string;
 } {
+  const allow = { limit: async () => ({ success: true }) } as RateLimit;
   return {
     DB: {} as D1Database,
     METADATA_QUEUE: {} as Queue,
     METADATA_FETCHER: {} as Fetcher,
+    RATE_LIMIT_CREATE: allow,
+    RATE_LIMIT_RETRY: allow,
+    RATE_LIMIT_MUTATE: allow,
+    RATE_LIMIT_READ: allow,
     ENVIRONMENT: "local",
     APP_ORIGIN: origin,
   };
@@ -154,6 +159,62 @@ describe("article API", () => {
     await expect(response.json()).resolves.toMatchObject({
       error: { code: "FORBIDDEN" },
     });
+  });
+
+  it("cannot activate the local bypass on a public origin", async () => {
+    const repositoryFactory = vi.fn(() => stubRepository());
+    const app = createApp({ repositoryFactory, log: () => undefined });
+    const response = await app.request("https://inbox.example/api/v1/articles", undefined, {
+      ...localBindings(),
+      ENVIRONMENT: "local",
+      APP_ORIGIN: "https://inbox.example",
+    });
+
+    expect(response.status).toBe(403);
+    expect(repositoryFactory).not.toHaveBeenCalled();
+  });
+
+  it("authenticates a production request and rate limits the internal principal", async () => {
+    const principal = {
+      subject: "access-subject",
+      email: "owner@example.com",
+      provider: "cloudflare-access" as const,
+    };
+    const authenticateAccess = vi.fn(async () => principal);
+    const enforceRateLimit = vi.fn(async () => undefined);
+    const app = createApp({
+      repositoryFactory: () => stubRepository(),
+      authenticateAccess,
+      enforceRateLimit,
+      log: () => undefined,
+    });
+    const bindings = { ...localBindings(), ENVIRONMENT: "production" };
+    const response = await app.request(`${origin}/api/v1/articles`, undefined, bindings);
+
+    expect(response.status).toBe(200);
+    expect(authenticateAccess).toHaveBeenCalledWith(expect.any(Request), bindings);
+    expect(enforceRateLimit).toHaveBeenCalledWith(bindings, principal, "articles.list");
+  });
+
+  it("rejects an invalid mutation Origin before touching the repository", async () => {
+    const repositoryFactory = vi.fn(() => stubRepository());
+    const app = createApp({ repositoryFactory, log: () => undefined });
+    const response = await app.request(
+      `${origin}/api/v1/articles`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Origin: "https://attacker.example",
+          "X-Tech-Inbox-Client": "web",
+        },
+        body: JSON.stringify({ url: article.originalUrl }),
+      },
+      localBindings(),
+    );
+
+    expect(response.status).toBe(403);
+    expect(repositoryFactory).not.toHaveBeenCalled();
   });
 
   it("rejects unknown mutation fields with the unified safe error shape", async () => {

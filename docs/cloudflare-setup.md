@@ -60,3 +60,37 @@
 - Viteは`workers/metadata-fetcher/wrangler.jsonc`をauxiliary Workerとして読み込み、local開発とbuildでService Binding先を同時に構成する。
 - `pnpm build`はViteのmulti-Worker build後、fetcher単体の`wrangler deploy --dry-run`を実行する。これは構成検証だけでありdeployしない。
 - Queue、DLQ、remote WorkerはPhase 9まで作成しない。現在の名前は将来のremote設定用で、local開発ではWranglerのlocal simulationを使用する。
+
+## Phase 6 Access and security configuration
+
+### Repository implementation
+
+- 記事APIは`ENVIRONMENT=local`の完全一致に加え、`APP_ORIGIN`とrequest originが一致するHTTP loopback originの場合だけlocal principalへ迂回する。それ以外の環境名、未設定、大小文字違い、公開originでは必ずCloudflare Access JWT検証へ進む。
+- `Cf-Access-Jwt-Assertion`を`jose`で検証し、RS256署名、`iss`、`aud`、`exp`、任意の`nbf`、`sub`、許可emailの完全一致を必須にした。JWKSは`TEAM_DOMAIN/cdn-cgi/access/certs`から取得し、issuer単位でmodule scopeに再利用する。
+- `TEAM_DOMAIN`はHTTPSの`*.cloudflareaccess.com` originだけ、`POLICY_AUD`と`ALLOWED_EMAIL`は空でない値だけを受け付ける。非localで設定不足の場合はfail closedとする。
+- business serviceへJWT payloadを渡さず、検証済みの`AuthPrincipal`へ変換して認証方式との依存をmiddleware内に閉じ込めた。
+- Worker Rate Limiting bindingはcreate 30/min、metadata retry 10/min、update/delete 60/min、list/get 120/minに分離した。keyはAccess subjectとemailをSHA-256化した値と固定route categoryだけで、生の識別子をbindingやlogへ渡さない。
+- binding欠落はlocalだけ許容し、非localでは503でfail closedとする。Rate Limiting APIはlocationごとのeventually consistentな仕組みなので、認証や厳密なglobal quotaの代替にはしない。
+- Static Assetsには`public/_headers`、Worker APIにはmiddlewareで同じCSP、frame、MIME sniffing、referrer、permissions、cross-origin isolation、HSTS、robots用headerを設定した。Static Assetsの`_headers`はWorker responseへ適用されないため、両方を別に設定している。
+- `public/robots.txt`は全crawlerを拒否する。metadata-fetcherは引き続き`workers_dev: false`、`preview_urls: false`で、公開routeを持たない。
+- Cloudflare accountへのlogin、Access application作成、secret設定、remote binding変更、deployは行っていない。
+
+公式資料:
+
+- [Access JWT validation](https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/authorization-cookie/validating-json/)
+- [Protect a Worker with Cloudflare Access](https://developers.cloudflare.com/workers/configuration/cloudflare-access/)
+- [Static Assets custom headers](https://developers.cloudflare.com/workers/static-assets/headers/)
+- [Workers Rate Limiting binding](https://developers.cloudflare.com/workers/runtime-apis/bindings/rate-limit/)
+- [Preview URLs and Access](https://developers.cloudflare.com/workers/versions-and-deployments/preview-urls/)
+
+### Phase 9 remote setup checklist
+
+次の操作はdeploy許可を受けたPhase 9で行う。実値をcommit、issue、logへ残さない。
+
+1. Zero Trustでapp Worker用のAccess applicationを作成し、production custom domain、`workers.dev`、preview URLを含む`All traffic`を保護する。previewを使用しない場合は無効のままにする。
+2. Allow policyは所有者のemailアドレス1件への完全一致だけにする。Everyone、email domain全体、任意OTP利用者、bypass policyは追加しない。認証元accountのMFAを有効にし、session durationはguide指定の7日とする。
+3. Access applicationのAudience tagとteam domainを控え、`TEAM_DOMAIN`、`POLICY_AUD`、`ALLOWED_EMAIL`をWorker Secretsとして登録する。例は`pnpm --dir apps/web exec wrangler secret put TEAM_DOMAIN`で、値は対話入力する。
+4. `ENVIRONMENT=production`と、scheme・host・portを含む公開origin完全値を`APP_ORIGIN`へ設定する。previewを別originで変更APIまで検証する場合は、preview専用environmentでそのoriginを明示する。
+5. Rate Limiting bindingの追加料金表示がないことを料金ページとdashboardで再確認する。有料プランや課金同意が必要なら設定を止め、`docs/decision-needed.md`へ記録する。
+6. deploy前にmetadata-fetcherのpublic route、`workers.dev`、preview URLが無効であることを再確認する。
+7. deploy後、未認証、audience不一致、許可email不一致、期限切れJWTが拒否され、許可emailだけがproductionと使用対象previewへ入れることを確認する。変更APIは不正Origin、JSON以外、custom header欠落が拒否されることも確認する。
