@@ -472,6 +472,17 @@ test("existing and newly created tags can be selected while saving a URL", async
   await expect(card.getByText("Cloudflare", { exact: true })).toBeVisible();
 });
 
+test("tags can be created from settings", async ({ page }) => {
+  await page.goto("/settings");
+
+  const createForm = page.getByRole("form", { name: "新しいタグを追加" });
+  await createForm.getByRole("textbox", { name: "新しいタグ名" }).fill("Cloudflare");
+  await createForm.getByRole("button", { name: "追加" }).click();
+
+  await expect(page.getByLabel("Cloudflareの新しい名前")).toBeVisible();
+  await expect(createForm.getByRole("textbox", { name: "新しいタグ名" })).toHaveValue("");
+});
+
 test("tag creation, filtering, assignment, rename, and deletion preserve the article", async ({
   page,
 }) => {

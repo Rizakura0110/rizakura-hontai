@@ -140,6 +140,62 @@ describe("SettingsPage", () => {
     await waitFor(() => expect(exportCalls).toBe(2));
   });
 
+  it("creates a tag from settings and adds it to the manager", async () => {
+    const fetchMock = vi.fn(
+      async (input: string | URL | Request, init?: RequestInit): Promise<Response> => {
+        const path = String(input);
+        if (path === "/api/v1/export") return jsonResponse(exportResponse);
+        if (path === "/api/v1/tags" && init?.method === undefined) {
+          return jsonResponse({ tags: [] });
+        }
+        if (path === "/api/v1/tags" && init?.method === "POST") {
+          expect(JSON.parse(String(init.body))).toEqual({ name: "Cloudflare" });
+          return jsonResponse({ result: "created", tag: cloudflareTag }, 201);
+        }
+        throw new Error(`Unexpected request: ${path}`);
+      },
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const user = userEvent.setup();
+    render(<SettingsPage />);
+
+    const createForm = await screen.findByRole("form", { name: "新しいタグを追加" });
+    const nameInput = within(createForm).getByRole("textbox", { name: "新しいタグ名" });
+    await user.type(nameInput, "Cloudflare");
+    await user.click(within(createForm).getByRole("button", { name: "追加" }));
+
+    expect(await screen.findByLabelText("Cloudflareの新しい名前")).toBeTruthy();
+    expect((nameInput as HTMLInputElement).value).toBe("");
+  });
+
+  it("reports an existing tag name without duplicating the tag", async () => {
+    const fetchMock = vi.fn(
+      async (input: string | URL | Request, init?: RequestInit): Promise<Response> => {
+        const path = String(input);
+        if (path === "/api/v1/export") return jsonResponse(exportResponse);
+        if (path === "/api/v1/tags" && init?.method === undefined) {
+          return jsonResponse({ tags: [reactTag] });
+        }
+        if (path === "/api/v1/tags" && init?.method === "POST") {
+          return jsonResponse({ result: "alreadyExists", tag: reactTag });
+        }
+        throw new Error(`Unexpected request: ${path}`);
+      },
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const user = userEvent.setup();
+    render(<SettingsPage />);
+
+    const createForm = await screen.findByRole("form", { name: "新しいタグを追加" });
+    await user.type(within(createForm).getByRole("textbox", { name: "新しいタグ名" }), "React");
+    await user.click(within(createForm).getByRole("button", { name: "追加" }));
+
+    expect((await within(createForm).findByRole("alert")).textContent).toContain(
+      "同じ名前のタグが既に存在します。",
+    );
+    expect(screen.getAllByLabelText("Reactの新しい名前")).toHaveLength(1);
+  });
+
   it("renames and deletes tags without changing article data", async () => {
     const fetchMock = vi.fn(
       async (input: string | URL | Request, init?: RequestInit): Promise<Response> => {
@@ -175,9 +231,7 @@ describe("SettingsPage", () => {
     await user.click(within(deleteDialog).getByRole("button", { name: "削除する" }));
 
     await waitFor(() => expect(screen.queryByLabelText("TypeScriptの新しい名前")).toBeNull());
-    expect(
-      screen.getByText("タグはまだありません。記事の「タグを編集」から作成できます。"),
-    ).toBeTruthy();
+    expect(screen.getByText("タグはまだありません。上の入力欄から追加できます。")).toBeTruthy();
   });
 
   it("preserves another tag draft after saving one tag", async () => {

@@ -1,7 +1,7 @@
 import type { ExportResponse, TagDto } from "@tech-inbox/contracts";
 import { useEffect, useState } from "react";
 import { exportArticles, userFacingError } from "../api/articles";
-import { deleteTag, listTags, updateTag } from "../api/tags";
+import { createTag, deleteTag, listTags, updateTag } from "../api/tags";
 import { TagManager } from "../components/TagManager";
 
 function downloadExport(data: ExportResponse): void {
@@ -70,6 +70,22 @@ export function SettingsPage() {
 
     return () => controller.abort();
   }, [tagRefreshToken]);
+
+  async function addTag(name: string) {
+    try {
+      const response = await createTag(name);
+      setTags((current) => {
+        const byId = new Map(current.map((tag) => [tag.id, tag]));
+        byId.set(response.tag.id, response.tag);
+        return Array.from(byId.values()).sort((left, right) =>
+          left.name.localeCompare(right.name, "ja-JP"),
+        );
+      });
+      return response;
+    } catch (caught) {
+      throw new Error(userFacingError(caught));
+    }
+  }
 
   async function renameTag(id: string, name: string) {
     try {
@@ -169,6 +185,7 @@ export function SettingsPage() {
       <TagManager
         error={tagError}
         loading={tagLoading}
+        onCreate={addTag}
         onDelete={removeTag}
         onRename={renameTag}
         onRetry={() => setTagRefreshToken((value) => value + 1)}
