@@ -8,7 +8,7 @@
 |---|---|---|
 | Playwright desktop Chrome 1280 × 800 | 成功 | 自動E2E 9シナリオ |
 | Playwright mobile Chrome 320 × 700 | 成功 | 自動E2E 9シナリオ。実機確認の代替ではない |
-| iPhone Google Chrome | 成功 | 2026-08-27の実機共通チェックに成功。UI簡素化後はowner表示確認とmobile E2Eで補完 |
+| iPhone Google Chrome | 成功 | 2026-08-27の実機共通チェックと、2026-08-28のタグ機能再確認に成功 |
 | Android Google Chrome | スキップ | 所有者判断でPhase 9では実施しない。成功扱いにはしない |
 
 実機を操作していない状態を「確認済み」と記録しない。OS、Chrome、端末、向き、実施者、日時を結果に残す。個人情報や秘密値をスクリーンショット、issue、commitへ含めない。
@@ -99,5 +99,6 @@ failまたはblockedがあればPhase 9完了扱いにせず、再現条件と�
 - local desktop/mobile E2E: pass（合計18 tests。タグ作成、付与、絞り込み、名前変更、削除、URL保存時のタグ付けを含む）
 - 未認証root/APIのAccess redirect: pass
 - 認証済みowner browser表示: pass。設定画面の「新しいタグ名」と「追加」フォームが表示されることを確認した
-- iPhone Chromeでのタグ機能再確認: 未実施。2026-08-27の実機passをタグ機能へ拡張して扱わない
+- iPhone Chromeでのタグ機能再確認: pass。2026-08-28T13:58:51Zにrepository ownerから、タグの追加・URL保存時の付与・絞り込み・名前変更・削除後の記事保持を確認できたと報告された
+- JSON backup: pass。repository ownerが設定画面からJSONを書き出し、privateな保存先へ保存できたことを確認した。保存先と内容はrepositoryへ記録しない
 - Android Chrome実機: owner判断により引き続きスキップ。自動mobile E2Eを実機passとは扱わない

@@ -845,7 +845,7 @@
 | 記事管理 | pass | URL登録、重複防止、canonical統合、非同期metadata、失敗時URL保持、既読・未読、検索・filter・sort、編集、削除をunit・実D1・実HTTP・E2Eで確認 |
 | タグ | pass | 複数タグ、自動一意色、追加・名前変更・削除、記事保持、URL保存時付与、filter、export、canonical統合を自動検証 |
 | Export | pass | schema version 2で記事、alias、タグ、関連を検証しdownload E2Eを確認。version 1の読取互換も維持 |
-| Browser品質 | pass | desktop/mobile Chrome E2E 18 tests。iPhone ChromeはPhase 9共通項目を実機pass。Android実機はowner判断でスキップし、手順だけを維持 |
+| Browser品質 | pass | desktop/mobile Chrome E2E 18 tests。iPhone Chromeは共通項目とタグ機能を実機pass。Android実機はowner判断でスキップし、手順だけを維持 |
 | 認証・security | pass | Accessの所有者email完全一致、Worker内JWT再検証、非公開fetcher、SSRF、security headers、secret非混入を確認 |
 | 品質・供給網 | pass | format、lint、生成型、TypeScript、315 tests、coverage、実D1、実HTTP、build、artifact budget、high/critical audit 0 |
 | 費用・scope | pass | Phase作業で月額有料serviceを新規有効化せず、PWA・React Native・記事本文保存等を実装していない |
@@ -873,8 +873,12 @@
 - Markdown relative link、secret候補、whitespace、ignore確認: pass
 - remote Cloudflare changes: なし
 
+### Owner follow-up verification（2026-08-28）
+
+- repository ownerがiPhone Chromeでタグの追加、URL保存時の付与、絞り込み、名前変更、削除後の記事保持を確認した。
+- repository ownerが設定画面からJSON backupを書き出し、privateな保存先へ保存できたことを確認した。backup本体、保存先、記事情報はrepositoryへ記録していない。
+
 ### 未解決事項
 
 - Android Chrome実機はowner判断でスキップした。手順を維持し、成功扱いにはしていない。
-- タグ機能追加後のiPhone Chrome実機再確認は未実施である。desktop/mobile自動E2Eとownerの認証済み表示確認は成功しているが、実機再確認の代替とは記録しない。
 - 既知のmoderate advisory 1件はDrizzle Kit配下の開発専用推移依存でruntime bundleには含まれない。上流更新時に再確認する。
