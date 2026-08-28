@@ -79,6 +79,8 @@ pnpm check
 
 format、lint、Cloudflare生成型、TypeScript、Vitest、coverage、fresh local D1、実HTTP API、production build、artifact budget、desktop/mobile Playwright、依存監査を順番に実行します。個別コマンドと基準は[Quality gates](docs/quality-gates.md)を参照してください。
 
+同じ`pnpm check`はGitHub Actionsでも`main`へのpushとpull request時に実行します。CIはCloudflare credentialやproduction secretを受け取らず、本番へ接続しません。Markdownと`docs/`だけの変更では実行しません。
+
 ## Database migration
 
 schema変更後はlocalでmigrationを生成・検証します。

@@ -102,6 +102,8 @@ backupと復元手順は[Operations](operations.md)を参照してください�
 - build scriptは審査済みの完全versionだけを許可する
 - Cloudflare生成型差分、strict TypeScript、unit/component/integration/E2E、coverage、実D1、artifact budget、auditを`pnpm check`で検証する
 - high/critical advisoryは0件を必須にする
+- GitHub Actionsは`contents: read`だけを許可し、checkout credentialを保持せず、Cloudflare secretを渡さない
+- workflowが使用する公式actionは完全なcommit SHAへ固定し、tagの移動による内容変更を避ける
 
 既知のmoderate advisory 1件はDrizzle Kit配下の開発専用推移依存で、runtime bundleには含まれません。上流解消をdependency更新時に再確認し、互換範囲外の強制overrideは行いません。詳細は[Dependency baseline](dependency-baseline.md)を参照してください。
 

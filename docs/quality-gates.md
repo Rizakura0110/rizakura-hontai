@@ -19,6 +19,18 @@ pnpm e2e
 pnpm audit --audit-level high
 ```
 
+## GitHub Actions
+
+`.github/workflows/quality.yml`は`main`へのpushとpull requestで`pnpm check`を実行する。Markdownと`docs/`だけの変更はcode・configurationへ影響しないため対象外とする。
+
+- `permissions`は`contents: read`だけに限定する
+- checkout後のcredentialを保持しない
+- Cloudflare credential、Worker Secrets、production URLをworkflowへ渡さない
+- Node.jsは`.node-version`、pnpmは`packageManager`で固定する
+- external actionは公式`actions/*`だけを使い、release tagではなく完全なcommit SHAへ固定する
+- pnpm store、Corepack、Playwright browser、XDG data、temporary fileをGitHub workspace配下へ置く
+- 同じbranch/refの古いrunはcancelし、jobを25分で停止する
+
 ## Coverage policy
 
 V8 coverageはstatements、branches、functions、linesの全指標に80%の最低値を設定する。さらにURL正規化、metadata-fetcherのSSRF URL判定、契約schemaはbranch coverage 90%以上を必須にする。
