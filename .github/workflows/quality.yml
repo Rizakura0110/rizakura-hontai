@@ -60,6 +60,8 @@ jobs:
           fi
           tar --extract --gzip --file "$pnpm_tarball" --directory "$PNPM_HOME" --strip-components=1
           pnpm_cli="$PNPM_HOME/bin/pnpm.cjs"
+          ln -s pnpm.mjs "$PNPM_HOME/bin/pnpm"
+          export PATH="$PNPM_HOME/bin:$PATH"
           node "$pnpm_cli" --version
           node "$pnpm_cli" install --frozen-lockfile
           node "$pnpm_cli" exec playwright install --with-deps chromium
