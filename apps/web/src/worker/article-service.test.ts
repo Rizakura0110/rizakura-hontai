@@ -42,7 +42,11 @@ function repository(overrides: Partial<ArticleRepository> = {}): ArticleReposito
     exportAll: async () => ({ articles: [], articleUrls: [], tags: [], articleTags: [] }),
     findById: async () => existingArticle,
     findByNormalizedUrl: async () => null,
-    createWithOriginalAlias: async () => ({ outcome: "created", article: existingArticle }),
+    createWithOriginalAlias: async () => ({
+      outcome: "created",
+      article: existingArticle,
+      tags: [],
+    }),
     update: async () => ({ outcome: "updated", article: existingArticle }),
     applyMetadata: async () => ({ outcome: "updated", article: existingArticle }),
     recordMetadataFailure: async () => ({ outcome: "updated", article: existingArticle }),
@@ -162,7 +166,11 @@ describe("ArticleService", () => {
     const send = vi.fn(async () => undefined);
     const createdService = new ArticleService(
       repository({
-        createWithOriginalAlias: async () => ({ outcome: "created", article: existingArticle }),
+        createWithOriginalAlias: async () => ({
+          outcome: "created",
+          article: existingArticle,
+          tags: [existingTag],
+        }),
       }),
       () => new Date("2026-08-27T02:03:04.000Z"),
       () => "article-new",
@@ -173,6 +181,7 @@ describe("ArticleService", () => {
         createWithOriginalAlias: async () => ({
           outcome: "alreadyExists",
           article: existingArticle,
+          tags: [existingTag],
         }),
       }),
       () => new Date("2026-08-27T02:03:04.000Z"),
@@ -180,8 +189,12 @@ describe("ArticleService", () => {
       { send },
     );
 
-    await createdService.create({ url: existingArticle.originalUrl });
-    await duplicateService.create({ url: existingArticle.originalUrl });
+    await expect(
+      createdService.create({ url: existingArticle.originalUrl, tagIds: [existingTag.id] }),
+    ).resolves.toMatchObject({ result: "created", tags: [{ id: existingTag.id }] });
+    await expect(
+      duplicateService.create({ url: existingArticle.originalUrl, tagIds: [existingTag.id] }),
+    ).resolves.toMatchObject({ result: "alreadyExists", tags: [{ id: existingTag.id }] });
 
     expect(send).toHaveBeenCalledTimes(1);
     expect(send).toHaveBeenCalledWith({
@@ -189,6 +202,28 @@ describe("ArticleService", () => {
       url: existingArticle.originalUrl,
       attempt: 0,
     });
+  });
+
+  it("rejects missing tags and an assignment above the article limit", async () => {
+    const missingTagService = new ArticleService(
+      repository({ createWithOriginalAlias: async () => ({ outcome: "tagNotFound" }) }),
+      () => new Date("2026-08-27T02:03:04.000Z"),
+      () => "article-new",
+      { send: async () => undefined },
+    );
+    const tagLimitService = new ArticleService(
+      repository({ createWithOriginalAlias: async () => ({ outcome: "tagLimitExceeded" }) }),
+      () => new Date("2026-08-27T02:03:04.000Z"),
+      () => "article-new",
+      { send: async () => undefined },
+    );
+
+    await expect(
+      missingTagService.create({ url: existingArticle.originalUrl, tagIds: ["missing-tag"] }),
+    ).rejects.toMatchObject({ status: 400, code: "VALIDATION_ERROR" });
+    await expect(
+      tagLimitService.create({ url: existingArticle.originalUrl, tagIds: [existingTag.id] }),
+    ).rejects.toMatchObject({ status: 400, code: "VALIDATION_ERROR" });
   });
 
   it("builds an atomic URL, metadata, manual-title, and read-state update", async () => {

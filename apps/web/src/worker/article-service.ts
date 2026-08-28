@@ -98,17 +98,29 @@ export class ArticleService {
       id: this.#idGenerator(),
       originalUrl: request.url,
       normalizedUrl: normalizedUrl.value,
+      tagIds: request.tagIds,
       savedAt: now,
       createdAt: now,
       updatedAt: now,
     });
+
+    if (result.outcome === "tagNotFound") {
+      throw validationError("存在しないタグが指定されています。");
+    }
+    if (result.outcome === "tagLimitExceeded") {
+      throw validationError("タグは1記事につき10件までです。");
+    }
 
     const article =
       result.outcome === "created"
         ? await this.#enqueueOrMarkFailed(result.article)
         : result.article;
 
-    return { result: result.outcome, article: toArticleDto(article) };
+    return {
+      result: result.outcome,
+      article: toArticleDto(article),
+      tags: result.tags.map(toTagDto),
+    };
   }
 
   async get(id: string): Promise<Article> {

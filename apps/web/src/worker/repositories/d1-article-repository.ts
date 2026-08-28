@@ -248,30 +248,116 @@ class D1ArticleRepository implements ArticleRepository {
     return row === undefined ? null : mapArticleRow(row.article);
   }
 
+  async #listTagsForArticle(articleId: string): Promise<Tag[]> {
+    const rows = await this.#database
+      .select({ tag: tags })
+      .from(articleTags)
+      .innerJoin(tags, eq(articleTags.tagId, tags.id))
+      .where(eq(articleTags.articleId, articleId))
+      .orderBy(asc(tags.normalizedName), asc(tags.id));
+    return rows.map(({ tag }) => mapTagRow(tag));
+  }
+
+  async #findTagsByIds(tagIds: readonly string[]): Promise<Tag[]> {
+    if (tagIds.length === 0) return [];
+    const rows = await this.#database
+      .select()
+      .from(tags)
+      .where(inArray(tags.id, [...tagIds]));
+    return rows.map(mapTagRow);
+  }
+
+  async #attachTagsToExistingArticle(
+    article: Article,
+    tagIds: readonly string[],
+    createdAt: string,
+  ): Promise<CreateArticleResult> {
+    const requestedIds = Array.from(new Set(tagIds));
+    if (requestedIds.length > MAX_TAGS_PER_ARTICLE) {
+      return { outcome: "tagLimitExceeded" };
+    }
+
+    const [assignedTags, requestedTags] = await Promise.all([
+      this.#listTagsForArticle(article.id),
+      this.#findTagsByIds(requestedIds),
+    ]);
+    if (requestedTags.length !== requestedIds.length) {
+      return { outcome: "tagNotFound" };
+    }
+
+    const assignedIds = new Set(assignedTags.map(({ id }) => id));
+    const newTagIds = requestedIds.filter((id) => !assignedIds.has(id));
+    if (assignedTags.length + newTagIds.length > MAX_TAGS_PER_ARTICLE) {
+      return { outcome: "tagLimitExceeded" };
+    }
+
+    if (newTagIds.length > 0) {
+      await this.#database
+        .insert(articleTags)
+        .values(newTagIds.map((tagId) => ({ articleId: article.id, tagId, createdAt })))
+        .onConflictDoNothing();
+    }
+
+    return {
+      outcome: "alreadyExists",
+      article,
+      tags: await this.#listTagsForArticle(article.id),
+    };
+  }
+
   async createWithOriginalAlias(input: CreateArticleInput): Promise<CreateArticleResult> {
+    const requestedIds = Array.from(new Set(input.tagIds));
+    if (requestedIds.length > MAX_TAGS_PER_ARTICLE) {
+      return { outcome: "tagLimitExceeded" };
+    }
+    if ((await this.#findTagsByIds(requestedIds)).length !== requestedIds.length) {
+      return { outcome: "tagNotFound" };
+    }
+
+    const existing = await this.findByNormalizedUrl(input.normalizedUrl);
+    if (existing !== null) {
+      return this.#attachTagsToExistingArticle(existing, requestedIds, input.createdAt);
+    }
+
     try {
-      await this.#database.batch([
-        this.#database.insert(articles).values({
-          id: input.id,
-          originalUrl: input.originalUrl,
-          status: "unread",
-          metadataStatus: "pending",
-          metadataAttemptCount: 0,
-          savedAt: input.savedAt,
-          createdAt: input.createdAt,
-          updatedAt: input.updatedAt,
-        }),
-        this.#database.insert(articleUrls).values({
-          normalizedUrl: input.normalizedUrl,
-          articleId: input.id,
-          kind: "original",
-          createdAt: input.createdAt,
-        }),
-      ]);
+      const insertArticle = this.#database.insert(articles).values({
+        id: input.id,
+        originalUrl: input.originalUrl,
+        status: "unread",
+        metadataStatus: "pending",
+        metadataAttemptCount: 0,
+        savedAt: input.savedAt,
+        createdAt: input.createdAt,
+        updatedAt: input.updatedAt,
+      });
+      const insertAlias = this.#database.insert(articleUrls).values({
+        normalizedUrl: input.normalizedUrl,
+        articleId: input.id,
+        kind: "original",
+        createdAt: input.createdAt,
+      });
+      if (requestedIds.length === 0) {
+        await this.#database.batch([insertArticle, insertAlias]);
+      } else {
+        await this.#database.batch([
+          insertArticle,
+          insertAlias,
+          this.#database.insert(articleTags).values(
+            requestedIds.map((tagId) => ({
+              articleId: input.id,
+              tagId,
+              createdAt: input.createdAt,
+            })),
+          ),
+        ]);
+      }
     } catch (error: unknown) {
-      const existing = await this.findByNormalizedUrl(input.normalizedUrl);
-      if (existing !== null) {
-        return { outcome: "alreadyExists", article: existing };
+      const existingAfterRace = await this.findByNormalizedUrl(input.normalizedUrl);
+      if (existingAfterRace !== null) {
+        return this.#attachTagsToExistingArticle(existingAfterRace, requestedIds, input.createdAt);
+      }
+      if ((await this.#findTagsByIds(requestedIds)).length !== requestedIds.length) {
+        return { outcome: "tagNotFound" };
       }
 
       throw error;
@@ -282,7 +368,11 @@ class D1ArticleRepository implements ArticleRepository {
       throw new Error("The newly created article could not be loaded.");
     }
 
-    return { outcome: "created", article };
+    return {
+      outcome: "created",
+      article,
+      tags: await this.#listTagsForArticle(article.id),
+    };
   }
 
   async update(input: UpdateArticleInput): Promise<UpdateArticleResult> {

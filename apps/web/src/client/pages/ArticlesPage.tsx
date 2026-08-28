@@ -237,22 +237,30 @@ export function ArticlesPage() {
     }
   }
 
-  async function handleCreate(url: string): Promise<boolean> {
+  async function handleCreate(url: string, tagIds: readonly string[]): Promise<boolean> {
     try {
-      const response = await createArticle(url);
+      const response = await createArticle(url, { tagIds });
+      setTagsByArticleId((current) => ({
+        ...current,
+        [response.article.id]: response.tags,
+      }));
+      setArticles((current) =>
+        matchesList(response.article, status, query, selectedTagId, response.tags)
+          ? upsertArticle(current, response.article, sort)
+          : current.filter((item) => item.id !== response.article.id),
+      );
       if (response.result === "alreadyExists") {
         showToast({
-          message: "この記事はすでに登録されています。",
+          message:
+            tagIds.length === 0
+              ? "この記事はすでに登録されています。"
+              : "登録済みの記事に選択したタグを反映しました。",
           tone: "info",
           action: { label: "記事を見る", href: response.article.originalUrl },
         });
         return true;
       }
 
-      if (matchesList(response.article, status, query, selectedTagId, [])) {
-        setArticles((current) => upsertArticle(current, response.article, sort));
-        setTagsByArticleId((current) => ({ ...current, [response.article.id]: [] }));
-      }
       showToast({ message: "記事を保存しました。", tone: "success" });
       return true;
     } catch (error) {
@@ -411,12 +419,22 @@ export function ArticlesPage() {
             </p>
           </div>
           <div className="shrink-0 md:hidden">
-            <ArticleComposer onCreate={handleCreate} variant="mobile" />
+            <ArticleComposer
+              availableTags={tags}
+              onCreate={handleCreate}
+              onCreateTag={handleCreateTag}
+              variant="mobile"
+            />
           </div>
         </div>
 
         <div className="mt-6 hidden md:block">
-          <ArticleComposer onCreate={handleCreate} variant="desktop" />
+          <ArticleComposer
+            availableTags={tags}
+            onCreate={handleCreate}
+            onCreateTag={handleCreateTag}
+            variant="desktop"
+          />
         </div>
 
         <div className="mt-6 rounded-xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">

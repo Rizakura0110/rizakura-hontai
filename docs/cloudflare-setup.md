@@ -73,6 +73,8 @@ remote migrationの直前には`tech-inbox`とproduction対象であることを
 - 許可された所有者がCloudflare loginから入り、一覧表示、URL登録、pendingからready、検索、既読化とundo、title編集、JSON export、削除をdesktop Chromeで確認した。
 - final deploymentはガイド指定の`jose`でAccess JWTを再検証する。最終版の再読み込みと認証付き一覧表示を所有者が確認した。
 - 2026-08-28に未読専用画面を削除したUIを既存app Workerへ再deployした。新規resourceは作成せず、`/`は全記事画面へredirectし、未読・既読filterは維持した。deployment versionは`e1c03d86-0314-42c2-9676-4109e0c8c2c1`である。
+- 2026-08-28にタグ機能用migration `0001_swift_rockslide.sql`を同じremote D1へ適用し、タグUI・export schema version 2・canonical重複時のタグ統合を含むapp Workerをdeployした。deployment versionは`44b7011a-e46e-4f2b-b040-1c675925a560`である。適用直後のremote D1は記事0件、タグ0件、関連0件で、未認証root/APIのAccess 302とownerの認証済み表示を確認した。
+- URL保存フォームでタグを同時指定する追加機能は上記deploymentへ含まれず、local検証・commit後に別の明示許可を得てdeployする。
 - Workers Logsでappのwarm requestは2〜7 ms、metadata-fetcherは最大4 ms、認証を伴うcold requestは14〜21 msだった。すべて`outcome: ok`で、Error 1102、`exceededCpu`、例外はなかった。判定基準は[ADR-0004](decisions/0004-workers-free-cpu-gate.md)に記録した。
 - Phase 9ではWorkers Paidやその他の有料製品を新たに有効化していない。API tokenにBilling Readを与えていないため、accountに以前から存在するsubscriptionの有無はrepositoryから断定せず、ownerがdashboardのBilling画面で確認する。
 

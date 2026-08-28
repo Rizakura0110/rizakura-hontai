@@ -110,9 +110,20 @@ export const listArticlesResponseSchema = z
 
 export type ListArticlesResponse = z.output<typeof listArticlesResponseSchema>;
 
-export const createArticleRequestSchema = z.strictObject({
-  url: httpUrlSchema,
-});
+export const createArticleRequestSchema = z
+  .strictObject({
+    url: httpUrlSchema,
+    tagIds: z.array(tagIdSchema).max(MAX_TAGS_PER_ARTICLE).default([]),
+  })
+  .superRefine(({ tagIds }, context) => {
+    if (new Set(tagIds).size !== tagIds.length) {
+      context.addIssue({
+        code: "custom",
+        message: "Tag IDs must be unique",
+        path: ["tagIds"],
+      });
+    }
+  });
 
 export type CreateArticleRequest = z.output<typeof createArticleRequestSchema>;
 
@@ -120,10 +131,12 @@ export const createArticleResponseSchema = z.discriminatedUnion("result", [
   z.strictObject({
     result: z.literal("created"),
     article: articleDtoSchema,
+    tags: z.array(tagDtoSchema).max(MAX_TAGS_PER_ARTICLE),
   }),
   z.strictObject({
     result: z.literal("alreadyExists"),
     article: articleDtoSchema,
+    tags: z.array(tagDtoSchema).max(MAX_TAGS_PER_ARTICLE),
   }),
 ]);
 

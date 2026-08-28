@@ -173,11 +173,11 @@ const requestJson = async (path, init) => {
   return { response, body };
 };
 
-const createArticle = async (url) =>
+const createArticle = async (url, tagIds = []) =>
   requestJson("/api/v1/articles", {
     method: "POST",
     headers: mutationHeaders,
-    body: JSON.stringify({ url }),
+    body: JSON.stringify({ url, tagIds }),
   });
 
 const createTag = async (name) =>
@@ -323,9 +323,6 @@ try {
   assert.deepEqual(concurrent.map(({ response }) => response.status).sort(), [200, 201]);
   assert.equal(concurrent[0].body.article.id, concurrent[1].body.article.id);
 
-  const third = await createArticle("https://example.com/third");
-  assert.equal(third.response.status, 201);
-
   const emptyTags = await requestJson("/api/v1/tags");
   assert.equal(emptyTags.response.status, 200);
   assert.deepEqual(emptyTags.body, { tags: [] });
@@ -346,6 +343,28 @@ try {
   assert.equal(cloudflareTag.response.status, 201);
   assert.notEqual(cloudflareTag.body.tag.colorHue, reactTag.body.tag.colorHue);
 
+  assertApiError(
+    await createArticle("https://example.com/missing-tag-create", ["missing-tag"]),
+    400,
+    "VALIDATION_ERROR",
+  );
+
+  const third = await createArticle("https://example.com/third", [reactTag.body.tag.id]);
+  assert.equal(third.response.status, 201);
+  assert.deepEqual(
+    third.body.tags.map(({ id }) => id),
+    [reactTag.body.tag.id],
+  );
+  const taggedDuplicate = await createArticle("https://example.com/third", [
+    cloudflareTag.body.tag.id,
+  ]);
+  assert.equal(taggedDuplicate.response.status, 200);
+  assert.equal(taggedDuplicate.body.article.id, third.body.article.id);
+  assert.deepEqual(
+    new Set(taggedDuplicate.body.tags.map(({ id }) => id)),
+    new Set([reactTag.body.tag.id, cloudflareTag.body.tag.id]),
+  );
+
   const assignedTags = await requestJson(`/api/v1/articles/${first.body.article.id}/tags`, {
     method: "PUT",
     headers: mutationHeaders,
@@ -364,7 +383,7 @@ try {
   assert.equal(tagFilteredArticles.response.status, 200);
   assert.deepEqual(
     tagFilteredArticles.body.articles.map(({ id }) => id),
-    [first.body.article.id],
+    [third.body.article.id, first.body.article.id],
   );
   assert.deepEqual(
     new Set(tagFilteredArticles.body.availableTags.map(({ id }) => id)),
@@ -439,9 +458,13 @@ try {
     exported.body.tags.map(({ id, name }) => ({ id, name })),
     [{ id: reactTag.body.tag.id, name: "TypeScript" }],
   );
-  assert.deepEqual(exported.body.articleTags, [
-    { articleId: first.body.article.id, tagId: reactTag.body.tag.id },
-  ]);
+  assert.deepEqual(
+    new Set(exported.body.articleTags.map(({ articleId, tagId }) => `${articleId}:${tagId}`)),
+    new Set([
+      `${first.body.article.id}:${reactTag.body.tag.id}`,
+      `${third.body.article.id}:${reactTag.body.tag.id}`,
+    ]),
+  );
   const exportedArticleIds = new Set(exported.body.articles.map(({ id }) => id));
   const exportedTagIds = new Set(exported.body.tags.map(({ id }) => id));
   assert.equal(exportedArticleIds.size, 4);

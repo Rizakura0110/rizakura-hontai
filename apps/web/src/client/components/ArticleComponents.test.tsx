@@ -148,18 +148,26 @@ describe("ArticleCard", () => {
 describe("ArticleComposer", () => {
   it("keeps the URL when creation declines and reports a rejected creation", async () => {
     const onCreate = vi
-      .fn<(url: string) => Promise<boolean>>()
+      .fn<(url: string, tagIds: readonly string[]) => Promise<boolean>>()
       .mockResolvedValueOnce(false)
       .mockRejectedValueOnce(new Error("保存要求を完了できません。"));
     const user = userEvent.setup();
-    const { container } = render(<ArticleComposer onCreate={onCreate} variant="desktop" />);
+    const { container } = render(
+      <ArticleComposer
+        availableTags={[tag]}
+        onCreate={onCreate}
+        onCreateTag={vi.fn(async () => tag)}
+        variant="desktop"
+      />,
+    );
     const input = screen.getByLabelText("保存する記事のURL");
 
     fireEvent.submit(container.querySelector("form") as HTMLFormElement);
     expect(screen.getByText("URLを入力してください。")).toBeTruthy();
     await user.type(input, " https://example.org/keep ");
+    await user.click(screen.getByRole("checkbox", { name: "React" }));
     await user.click(screen.getByRole("button", { name: "保存" }));
-    expect(onCreate).toHaveBeenLastCalledWith("https://example.org/keep");
+    expect(onCreate).toHaveBeenLastCalledWith("https://example.org/keep", [tag.id]);
     expect((input as HTMLInputElement).value).toBe("https://example.org/keep");
 
     await user.click(screen.getByRole("button", { name: "保存" }));
@@ -167,18 +175,37 @@ describe("ArticleComposer", () => {
   });
 
   it("opens, cancels, and clears a successful mobile submission", async () => {
-    const onCreate = vi.fn(async () => true);
+    const onCreate = vi.fn(async (_url: string, _tagIds: readonly string[]) => true);
+    const createdTag: TagDto = { ...tag, id: "tag-created", name: "Cloudflare", colorHue: 40 };
+    const onCreateTag = vi.fn(async () => createdTag);
     const user = userEvent.setup();
-    render(<ArticleComposer onCreate={onCreate} variant="mobile" />);
+    render(
+      <ArticleComposer
+        availableTags={[tag]}
+        onCreate={onCreate}
+        onCreateTag={onCreateTag}
+        variant="mobile"
+      />,
+    );
 
     await user.click(screen.getByRole("button", { name: "追加" }));
     const dialog = screen.getByRole("dialog", { name: "記事を追加" });
+    await user.click(screen.getByRole("checkbox", { name: "React" }));
+    await user.type(screen.getByLabelText("新しいタグを作成して選択"), "Cloudflare");
+    await user.click(screen.getByRole("button", { name: "タグを作成" }));
+    expect(onCreateTag).toHaveBeenCalledWith("Cloudflare");
+    expect((screen.getByRole("checkbox", { name: "Cloudflare" }) as HTMLInputElement).checked).toBe(
+      true,
+    );
     await user.type(screen.getByLabelText("記事URL"), "https://example.org/mobile");
     await user.click(screen.getByRole("button", { name: "保存" }));
     await waitFor(() => expect(dialog.hasAttribute("open")).toBe(false));
-    expect(onCreate).toHaveBeenCalledWith("https://example.org/mobile");
+    expect(onCreate).toHaveBeenCalledWith("https://example.org/mobile", [tag.id, createdTag.id]);
 
     await user.click(screen.getByRole("button", { name: "追加" }));
+    expect((screen.getByRole("checkbox", { name: "React" }) as HTMLInputElement).checked).toBe(
+      false,
+    );
     await user.click(screen.getByRole("button", { name: "キャンセル" }));
     await waitFor(() => expect(dialog.hasAttribute("open")).toBe(false));
   });

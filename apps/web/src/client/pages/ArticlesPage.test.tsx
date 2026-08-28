@@ -186,7 +186,7 @@ describe("ArticlesPage core flows", () => {
     const fetchMock = vi.fn(
       async (_input: string | URL | Request, init?: RequestInit): Promise<Response> => {
         if (init?.method === "POST") {
-          return jsonResponse({ result: "alreadyExists", article: baseArticle });
+          return jsonResponse({ result: "alreadyExists", article: baseArticle, tags: [] });
         }
         return jsonResponse({
           articles: [],

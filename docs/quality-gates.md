@@ -25,7 +25,7 @@ V8 coverageはstatements、branches、functions、linesの全指標に80%の最�
 
 | 対象 | Statements | Branches | Functions | Lines |
 |---|---:|---:|---:|---:|
-| テスト可能コード全体 | 85.70% | 80.91% | 85.19% | 87.58% |
+| テスト可能コード全体 | 85.99% | 81.06% | 85.82% | 87.83% |
 | URL正規化 | 100% | 96.15% | 100% | 100% |
 | SSRF URL判定 | 100% | 96.00% | 100% | 100% |
 | 契約schema | 100% | 100% | 100% | 100% |
@@ -46,6 +46,7 @@ V8 unit coverageから次だけを除外する。
 | 必須フロー | 自動検証 |
 |---|---|
 | URL登録、duplicate登録 | Playwright状態付きAPI mockと画面通知 |
+| URL保存時のタグ付け | 既存タグ選択、その場でのタグ作成、保存直後の複数チップ表示 |
 | pendingからready、metadata失敗 | 画面polling後のterminal表示 |
 | 既読化、undo、未読へ戻す | 全記事一覧の状態表示と未読・既読filterの更新 |
 | 検索、filter | query結果とstatus radio |
@@ -65,6 +66,7 @@ V8 unit coverageから次だけを除外する。
 | 名前変更 | 正規化名の競合拒否と色相維持 |
 | タグ削除 | 関連だけをcascade削除し、記事本体を保持 |
 | 不正な関連付け | 存在しないタグと上限超過を安全な4xxで拒否 |
+| 記事作成時のタグ関連 | 新規記事・URL alias・関連の同時保存、duplicate記事へのタグ追加 |
 
 タグUIと統合フェーズでは、次をcomponent test、Playwright、Codex内ブラウザsmokeで確認する。
 
@@ -99,10 +101,10 @@ Playwrightのmobile viewport成功は実機確認の代替にしない。手順�
 
 | 成果物 | Raw | Gzip |
 |---|---:|---:|
-| app Worker | 430.4 KiB | 93.1 KiB |
-| metadata-fetcher Worker | 577.7 KiB | 87.3 KiB |
-| client JavaScript合計 | 342.1 KiB | 101.2 KiB |
-| client CSS合計 | 27.8 KiB | 6.2 KiB |
+| app Worker | 433.3 KiB | 93.5 KiB |
+| metadata-fetcher Worker | 578.1 KiB | 87.3 KiB |
+| client JavaScript合計 | 345.1 KiB | 101.6 KiB |
+| client CSS合計 | 28.0 KiB | 6.2 KiB |
 
 ## Worker CPU review
 

@@ -27,6 +27,10 @@ type MutationOptions = {
   readonly signal?: AbortSignal;
 };
 
+type CreateArticleOptions = MutationOptions & {
+  readonly tagIds?: readonly string[];
+};
+
 export async function listArticles(options: ListArticleOptions) {
   const query = new URLSearchParams({
     status: options.status,
@@ -46,10 +50,10 @@ export async function exportArticles(options: MutationOptions = {}) {
   return exportResponseSchema.parse(await assertSuccess(response));
 }
 
-export async function createArticle(url: string, options: MutationOptions = {}) {
+export async function createArticle(url: string, options: CreateArticleOptions = {}) {
   const response = await apiFetch(
     "/api/v1/articles",
-    { method: "POST", body: JSON.stringify({ url }) },
+    { method: "POST", body: JSON.stringify({ url, tagIds: options.tagIds ?? [] }) },
     options.signal,
   );
   return createArticleResponseSchema.parse(await assertSuccess(response));

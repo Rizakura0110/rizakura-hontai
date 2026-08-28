@@ -76,6 +76,7 @@ describe("API request contracts", () => {
   it("trims an HTTP URL and rejects unsafe URL forms", () => {
     expect(createArticleRequestSchema.parse({ url: "  https://example.com/article  " })).toEqual({
       url: "https://example.com/article",
+      tagIds: [],
     });
     expect(createArticleRequestSchema.safeParse({ url: "file:///tmp/article" }).success).toBe(
       false,
@@ -100,6 +101,27 @@ describe("API request contracts", () => {
       createArticleRequestSchema.safeParse({
         url: "https://example.com/article",
         status: "read",
+      }).success,
+    ).toBe(false);
+  });
+
+  it("accepts up to ten unique tags when creating an article", () => {
+    expect(
+      createArticleRequestSchema.parse({
+        url: "https://example.com/article",
+        tagIds: ["tag-react", "tag-cloudflare"],
+      }).tagIds,
+    ).toEqual(["tag-react", "tag-cloudflare"]);
+    expect(
+      createArticleRequestSchema.safeParse({
+        url: "https://example.com/article",
+        tagIds: ["tag-react", "tag-react"],
+      }).success,
+    ).toBe(false);
+    expect(
+      createArticleRequestSchema.safeParse({
+        url: "https://example.com/article",
+        tagIds: Array.from({ length: 11 }, (_, index) => `tag-${index}`),
       }).success,
     ).toBe(false);
   });
@@ -190,7 +212,8 @@ describe("API response contracts", () => {
 
   it.each(["created", "alreadyExists"] as const)("accepts the %s create result", (result) => {
     expect(
-      createArticleResponseSchema.safeParse({ result, article: articleDtoFixture() }).success,
+      createArticleResponseSchema.safeParse({ result, article: articleDtoFixture(), tags: [] })
+        .success,
     ).toBe(true);
   });
 

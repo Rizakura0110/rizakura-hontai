@@ -14,10 +14,18 @@ export type CreateArticleResult =
   | {
       readonly outcome: "created";
       readonly article: Article;
+      readonly tags: readonly Tag[];
     }
   | {
       readonly outcome: "alreadyExists";
       readonly article: Article;
+      readonly tags: readonly Tag[];
+    }
+  | {
+      readonly outcome: "tagNotFound";
+    }
+  | {
+      readonly outcome: "tagLimitExceeded";
     };
 
 export type UpdateArticleResult =

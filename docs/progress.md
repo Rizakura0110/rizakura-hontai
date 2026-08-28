@@ -720,7 +720,7 @@
 - 両記事のタグ和集合が10件を超える場合は後順位の関連を移さず、件数を`droppedTagCount`としてmetadata consumerの構造化logへ含める。タグ定義自体は保持する。
 - 実D1統合fixtureを追加し、残存記事9タグ・重複記事3タグの統合後に、記事が1件、関連が10件、未移行が2件となり、12タグの定義が残ることを実HTTPで確認した。
 - Playwrightの状態付きAPI mockへタグAPIと記事関連を追加し、作成、複数付与、絞り込み、解除、再付与、名前変更、削除、記事保持、version 2 downloadをdesktop/mobile両方で検証した。
-- production D1 migration、Worker deploy、remote dataの変更は行っていない。
+- このフェーズの実装・検証時点ではproduction D1 migration、Worker deploy、remote dataの変更は行っていない。後述のproduction反映はユーザーの明示許可後に別工程で実施した。
 
 ### 採用判断
 
@@ -746,9 +746,44 @@
 - Playwright: desktop/mobile合計14 tests pass
 - Codex内ブラウザ: 設定画面のタグを含むexport説明と、320 × 700で横幅超過なしを確認
 - audit: high 0、critical 0、既知moderate 1
-- remote Cloudflare changes: なし
+- remote Cloudflare changes: フェーズ実装・検証時点ではなし
 
-### 次フェーズ
+### Production反映（2026-08-28）
 
-- ownerの明示許可後、production D1へタグmigrationを適用し、app Workerをdeployする。
-- productionでタグ作成・付与・絞り込み・名前変更・削除、記事保持、version 2 export、既存記事・認証・Free枠への影響を確認する。
+- ownerの明示許可後、production D1 `tech-inbox`へ`0001_swift_rockslide.sql`を適用した。適用後は`0000`と`0001`がmigration履歴にあり、記事0件、タグ0件、記事タグ関連0件だった。
+- 既存のAccess、D1、Queue、Service Binding、Rate Limiting設定を維持してapp Workerをdeployした。deployment versionは`44b7011a-e46e-4f2b-b040-1c675925a560`である。
+- 未認証rootと記事APIがAccessへ302になることを確認し、ownerがCloudflare login後にproductionを正常表示できることを確認した。
+- この反映では新しい有料productやresourceを作成していない。
+
+## Additional Feature T4: URL保存時のタグ付け
+
+### 実施内容
+
+- 記事作成requestへ最大10件の`tagIds`を追加し、保存後の記事タグをresponseで返すようにした。タグ未指定の既存requestは空配列として扱う。
+- 新規記事では記事本体、original URL alias、タグ関連をD1の同一batchへまとめ、記事だけが保存される部分成功を避けた。
+- 正規化URLが登録済みの場合は新しい記事を作らず、既存タグを維持して選択タグを追加する。和集合が10件を超える場合と存在しないタグはvalidation errorにした。
+- desktopのURL保存フォームとmobileの追加dialogへ、既存タグの複数選択、その場での新規タグ作成・即時選択、選択数表示を追加した。
+- 保存responseを使って記事カードのタグチップと現在のタグ絞り込み結果を即時更新する。登録済みURLへタグを反映した場合は専用通知を表示する。
+- fresh local D1と実HTTPで、新規記事へのタグ同時保存、登録済みURLへのタグ追加、存在しないタグの拒否を確認した。
+- desktop/mobile PlaywrightへURL保存時の既存タグ選択、新規タグ作成、保存直後の複数タグ表示を追加した。
+- 設計判断は[ADR-0007](decisions/0007-tagging-during-article-creation.md)へ記録した。
+- production deployはこのフェーズに含めていない。
+
+### 採用判断
+
+- 新規記事とタグ関連は同時確定するが、新しいタグ定義は既存のタグAPIで先に作成する。記事保存を取り消して未使用タグが残った場合は設定画面から削除できる。
+- duplicate登録ではタグを置換せず和集合にする。これにより既存の分類を失わず、同じURLの再登録をタグ追加操作として利用できる。
+- API responseへ保存後のタグを含め、保存直後の追加GETを行わず一覧状態を更新する。
+
+### 検証結果
+
+- `pnpm test`: pass（29 files、312 tests）
+- coverage: statements 85.99%、branches 81.06%、functions 85.82%、lines 87.83%
+- `pnpm api:verify:local`: pass
+- `pnpm build`: pass
+- artifact budget: pass（app Worker 433.3 KiB、client JavaScript 345.1 KiB）
+- Playwright: pass（desktop/mobile合計16 tests）
+- Codex内ブラウザ: desktopの保存フォームと320 × 700のmobile追加dialogを確認し、mobileはdocument幅320 px、dialog幅267 pxで横overflowなし
+- full `pnpm check`: pass
+- audit: high 0、critical 0、既知moderate 1
+- remote Cloudflare changes: なし。productionはT3 deployment versionのまま

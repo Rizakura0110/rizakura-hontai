@@ -50,7 +50,7 @@ function articleRepository(): ArticleRepository {
     exportAll: async () => ({ articles: [article], articleUrls: [], tags: [], articleTags: [] }),
     findById: async () => article,
     findByNormalizedUrl: async () => null,
-    createWithOriginalAlias: async () => ({ outcome: "created", article }),
+    createWithOriginalAlias: async () => ({ outcome: "created", article, tags: [] }),
     update: async () => ({ outcome: "updated", article }),
     applyMetadata: async () => ({ outcome: "updated", article }),
     recordMetadataFailure: async () => ({ outcome: "updated", article }),

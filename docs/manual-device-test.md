@@ -6,8 +6,8 @@
 
 | 対象 | 状態 | 備考 |
 |---|---|---|
-| Playwright desktop Chrome 1280 × 800 | 成功 | 自動E2E 6シナリオ |
-| Playwright mobile Chrome 320 × 700 | 成功 | 自動E2E 6シナリオ。実機確認の代替ではない |
+| Playwright desktop Chrome 1280 × 800 | 成功 | 自動E2E 8シナリオ |
+| Playwright mobile Chrome 320 × 700 | 成功 | 自動E2E 8シナリオ。実機確認の代替ではない |
 | iPhone Google Chrome | 成功 | 2026-08-27の実機共通チェックに成功。UI簡素化後はowner表示確認とmobile E2Eで補完 |
 | Android Google Chrome | スキップ | 所有者判断でPhase 9では実施しない。成功扱いにはしない |
 
@@ -30,7 +30,7 @@
 | 1 | 未認証状態でURLを開く | Cloudflare Access loginへ移動し、アプリやAPIデータを表示しない | 未実施 |
 | 2 | 許可されたemailでloginする | 全記事一覧を表示でき、`/`も`/articles`へ移動する | 未実施 |
 | 3 | URL入力をfocusしてkeyboardを表示する | 入力欄、保存操作、本文が横にはみ出さず操作できる | 未実施 |
-| 4 | 技術記事URLを貼り付けて保存する | 保存通知とpending表示が出て、最終的にreadyまたは安全なfailed表示になる | 未実施 |
+| 4 | 技術記事URLを貼り付け、既存タグとその場で作成したタグを選んで保存する | 保存通知とタグチップ、pending表示が出て、最終的にreadyまたは安全なfailed表示になる | 未実施 |
 | 5 | 追加・編集・削除dialogを開閉する | focusがdialog内へ移り、閉じた後は開始位置へ戻る | 未実施 |
 | 6 | 記事を既読化し、undoする | 全記事一覧の状態表示が変わり、undoで未読へ戻る | 未実施 |
 | 7 | すべて一覧で既読を未読へ戻す | 未読状態へ変わり、filter結果も更新される | 未実施 |

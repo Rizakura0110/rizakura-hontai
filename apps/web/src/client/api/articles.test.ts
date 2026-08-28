@@ -76,7 +76,7 @@ describe("article API client", () => {
         }
         if (path === "/api/v1/export") return jsonResponse(exported);
         if (path === "/api/v1/articles" && init?.method === "POST") {
-          return jsonResponse({ result: "created", article }, 201);
+          return jsonResponse({ result: "created", article, tags: [] }, 201);
         }
         if (path.endsWith("/retry-metadata")) return jsonResponse({ article });
         if (init?.method === "PATCH") return jsonResponse({ article });
@@ -104,7 +104,12 @@ describe("article API client", () => {
       nextCursor: null,
     });
     await expect(exportArticles({ signal: controller.signal })).resolves.toEqual(exported);
-    await expect(createArticle(article.originalUrl)).resolves.toMatchObject({ result: "created" });
+    await expect(
+      createArticle(article.originalUrl, { tagIds: ["tag-react"] }),
+    ).resolves.toMatchObject({
+      result: "created",
+      tags: [],
+    });
     await expect(updateArticle(article.id, { title: "Updated" })).resolves.toEqual(article);
     await expect(deleteArticle(article.id)).resolves.toBeUndefined();
     await expect(retryArticleMetadata(article.id)).resolves.toEqual(article);
@@ -125,6 +130,13 @@ describe("article API client", () => {
     expect(fetchMock.mock.calls.map(([path]) => String(path))).toContain(
       "/api/v1/articles/article%2F1",
     );
+    const createCall = fetchMock.mock.calls.find(
+      ([path, init]) => String(path) === "/api/v1/articles" && init?.method === "POST",
+    );
+    expect(JSON.parse(String(createCall?.[1]?.body))).toEqual({
+      url: article.originalUrl,
+      tagIds: ["tag-react"],
+    });
   });
 
   it("uses list defaults without adding empty optional query parameters", async () => {

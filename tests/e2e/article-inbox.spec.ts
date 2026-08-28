@@ -192,10 +192,17 @@ async function mockArticleApi(page: Page) {
     }
 
     if (url.pathname === "/api/v1/articles" && method === "POST") {
-      const body = request.postDataJSON() as { url: string };
+      const body = request.postDataJSON() as { url: string; tagIds?: string[] };
+      const requestedTagIds = body.tagIds ?? [];
       const existing = articles.find((article) => article.originalUrl === body.url);
       if (existing !== undefined) {
-        await route.fulfill({ json: { result: "alreadyExists", article: existing }, status: 200 });
+        tagIdsByArticleId[existing.id] = Array.from(
+          new Set([...(tagIdsByArticleId[existing.id] ?? []), ...requestedTagIds]),
+        );
+        await route.fulfill({
+          json: { result: "alreadyExists", article: existing, tags: assignedTags(existing.id) },
+          status: 200,
+        });
         return;
       }
       const article = fixture({
@@ -208,10 +215,13 @@ async function mockArticleApi(page: Page) {
         metadataFetchedAt: null,
       });
       articles = [article, ...articles];
-      tagIdsByArticleId[article.id] = [];
+      tagIdsByArticleId[article.id] = [...requestedTagIds];
       if (body.url.includes("metadata-ready")) metadataTransitions.set(article.id, "ready");
       if (body.url.includes("metadata-failed")) metadataTransitions.set(article.id, "failed");
-      await route.fulfill({ json: { result: "created", article }, status: 201 });
+      await route.fulfill({
+        json: { result: "created", article, tags: assignedTags(article.id) },
+        status: 201,
+      });
       return;
     }
 
@@ -289,11 +299,14 @@ async function addArticle(page: Page, mobile: boolean, url: string) {
     const addDialog = page.getByRole("dialog", { name: "記事を追加" });
     await addDialog.getByLabel("記事URL").fill(url);
     await addDialog.getByRole("button", { name: "保存" }).click();
+    await expect(addDialog).toBeHidden();
     return;
   }
 
-  await page.getByLabel("保存する記事のURL").fill(url);
+  const urlInput = page.getByLabel("保存する記事のURL");
+  await urlInput.fill(url);
   await page.getByRole("button", { name: "保存" }).click();
+  await expect(urlInput).toHaveValue("");
 }
 
 test.beforeEach(async ({ page }) => {
@@ -427,6 +440,36 @@ test("add, search, edit, delete, and settings routes work", async ({ page }, tes
   expect(JSON.stringify(exported)).not.toContain("TEAM_DOMAIN");
   expect(JSON.stringify(exported)).not.toContain("ALLOWED_EMAIL");
   expect(JSON.stringify(exported)).not.toContain("POLICY_AUD");
+});
+
+test("existing and newly created tags can be selected while saving a URL", async ({
+  page,
+}, testInfo) => {
+  await page.goto("/articles");
+
+  const mobile = testInfo.project.name === "mobile-chrome-320";
+  if (mobile) {
+    await page.getByRole("button", { name: "追加" }).click();
+  }
+  const scope = mobile ? page.getByRole("dialog", { name: "記事を追加" }) : page;
+  await scope.getByRole("checkbox", { name: "React" }).check();
+  await scope.getByRole("textbox", { name: "新しいタグを作成して選択" }).fill("Cloudflare");
+  await scope.getByRole("button", { name: "タグを作成" }).click();
+  await expect(scope.getByRole("checkbox", { name: "Cloudflare" })).toBeChecked();
+
+  const url = "https://example.com/tagged-at-save";
+  if (mobile) {
+    await scope.getByLabel("記事URL").fill(url);
+  } else {
+    await scope.getByLabel("保存する記事のURL").fill(url);
+  }
+  await scope.getByRole("button", { name: "保存" }).click();
+
+  await expect(page.getByText("記事を保存しました。")).toBeVisible();
+  const card = page.locator("article").filter({ hasText: url });
+  await expect(card).toBeVisible();
+  await expect(card.getByText("React", { exact: true })).toBeVisible();
+  await expect(card.getByText("Cloudflare", { exact: true })).toBeVisible();
 });
 
 test("tag creation, filtering, assignment, rename, and deletion preserve the article", async ({

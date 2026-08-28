@@ -79,6 +79,7 @@ export type CreateArticleInput = {
   readonly id: string;
   readonly originalUrl: string;
   readonly normalizedUrl: NormalizedUrl;
+  readonly tagIds: readonly string[];
   readonly savedAt: string;
   readonly createdAt: string;
   readonly updatedAt: string;
