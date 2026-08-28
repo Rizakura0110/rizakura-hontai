@@ -767,7 +767,7 @@
 - fresh local D1と実HTTPで、新規記事へのタグ同時保存、登録済みURLへのタグ追加、存在しないタグの拒否を確認した。
 - desktop/mobile PlaywrightへURL保存時の既存タグ選択、新規タグ作成、保存直後の複数タグ表示を追加した。
 - 設計判断は[ADR-0007](decisions/0007-tagging-during-article-creation.md)へ記録した。
-- production deployはこのフェーズに含めていない。
+- 実装フェーズ完了時点ではproduction deployを行わず、commit後にownerの明示許可を得て後述のproduction反映を実施した。
 
 ### 採用判断
 
@@ -786,4 +786,24 @@
 - Codex内ブラウザ: desktopの保存フォームと320 × 700のmobile追加dialogを確認し、mobileはdocument幅320 px、dialog幅267 pxで横overflowなし
 - full `pnpm check`: pass
 - audit: high 0、critical 0、既知moderate 1
-- remote Cloudflare changes: なし。productionはT3 deployment versionのまま
+- remote Cloudflare changes: 実装フェーズ完了時点ではなし
+
+### Production反映（2026-08-28）
+
+- ownerの明示許可後、commit `9608e9d`を既存の`tech-inbox-app`へdeployした。deployment versionは`948efd5a-da7e-4cc3-9409-197418317d25`である。
+- D1 migrationと新規resource作成は行わず、既存のD1、Queue producer/consumer、metadata-fetcher Service Binding、5種類のRate Limiting binding、production変数を維持した。
+- deploy後、未認証rootと記事APIがともにCloudflare Accessへ302になることを確認した。
+
+### 設定画面のタグ名保存修正とProduction反映（2026-08-28）
+
+- 設定画面で複数タグを編集し、1件目を保存した際に別タグの未保存名が戻る問題を修正した。タグ一覧更新時は既存draftを保持し、保存行だけAPIの確定名へ同期する。
+- 2タグを同時に編集して順番に保存できるcomponent回帰testを追加し、full `pnpm check`をpassした（Vitest 313件、desktop/mobile Playwright 16件、high/critical audit 0、既知moderate 1）。
+- commit `a47add2`を既存の`tech-inbox-app`へdeployした。deployment versionは`3e3a02bf-d6b0-40ea-9dec-8fb37b1f0e3a`である。
+- D1 migrationと新規resource作成は行わず、既存bindingを維持した。deploy後、未認証rootと記事APIがともにCloudflare Accessへ302になることを確認した。ownerの認証済み画面確認は後続deploymentへ引き継いだ。
+
+### 設定画面のタグ追加とProduction反映（2026-08-28）
+
+- 設定画面のタグ管理へ「新しいタグ名」と「追加」フォームを設け、追加直後に自動色付きのタグを一覧へ反映するようにした。同名タグ、100件上限、操作中の重複送信も画面上で処理する。
+- component testで新規追加と同名案内、desktop/mobile Playwrightで設定画面からの追加を確認した。full quality gateはVitest 315件、Playwright 18件、high/critical audit 0、既知moderate 1でpassした。
+- commit `aa9dc59`を既存の`tech-inbox-app`へdeployした。deployment versionは`ce9014c2-9cd4-4a73-b59c-2fceb1a4a30f`である。
+- D1 migrationと新規resource作成は行わず、既存bindingを維持した。deploy後、未認証rootと記事APIがともにCloudflare Accessへ302になることを確認し、ownerが認証済み設定画面で「新しいタグ名」と「追加」フォームの表示を確認した。
