@@ -57,7 +57,7 @@ function repository(
 ): ArticleRepository {
   return {
     list: async () => ({ items: [], availableTags: [], tagsByArticleId: {}, nextCursor: null }),
-    exportAll: async () => ({ articles: [], articleUrls: [] }),
+    exportAll: async () => ({ articles: [], articleUrls: [], tags: [], articleTags: [] }),
     findById: async () => getState(),
     findByNormalizedUrl: async () => null,
     createWithOriginalAlias: async () => {
@@ -164,6 +164,44 @@ describe("processMetadataQueueMessage", () => {
       ),
     ).resolves.toMatchObject({ action: "ack", log: { result: "stale" } });
     expect(fetchMetadata).not.toHaveBeenCalled();
+  });
+
+  it("reports tag assignments omitted by a canonical duplicate merge", async () => {
+    let state: Article | null = article();
+    const baseRepository = repository(
+      () => state,
+      (value) => (state = value),
+    );
+    const mergedArticle = article({
+      id: "article-keeper",
+      metadataStatus: "ready",
+      metadataAttemptCount: 1,
+    });
+    const dependencies: MetadataConsumerDependencies = {
+      repositoryFactory: () => ({
+        ...baseRepository,
+        applyMetadata: async () => ({
+          outcome: "merged",
+          article: mergedArticle,
+          removedArticleId: "article-1",
+          droppedTagCount: 2,
+        }),
+      }),
+      fetchMetadata: async () => ({ ok: true, metadata: fetchedMetadata }),
+      clock: () => new Date("2026-08-27T01:00:00.000Z"),
+      log: () => undefined,
+    };
+
+    await expect(
+      processMetadataQueueMessage(
+        { articleId: "article-1", url: "https://example.com/article", attempt: 0 },
+        bindings(),
+        dependencies,
+      ),
+    ).resolves.toMatchObject({
+      action: "ack",
+      log: { result: "ready", attempt: 1, droppedTagCount: 2 },
+    });
   });
 
   it("hands a capped temporary failure to native retries for DLQ delivery", async () => {

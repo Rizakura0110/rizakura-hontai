@@ -35,7 +35,7 @@ const article: ArticleDto = {
 };
 
 const exported: ExportResponse = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   exportedAt: now,
   articles: [article],
   articleUrls: [
@@ -46,6 +46,8 @@ const exported: ExportResponse = {
       createdAt: now,
     },
   ],
+  tags: [],
+  articleTags: [],
 };
 
 function jsonResponse(body: unknown, status = 200): Response {

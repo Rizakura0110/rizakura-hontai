@@ -106,7 +106,7 @@ export function SettingsPage() {
         設定
       </h1>
       <p className="mt-2 text-sm leading-6 text-slate-600">
-        保存した記事の件数を確認し、URL aliasを含むJSONバックアップを書き出せます。
+        保存した記事の件数を確認し、URL aliasとタグを含むJSONバックアップを書き出せます。
       </p>
 
       <div className="mt-6 rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
@@ -159,7 +159,8 @@ export function SettingsPage() {
               JSONを書き出す
             </button>
             <p className="mt-3 text-xs leading-5 text-slate-500">
-              ファイルには記事とURL aliasだけが含まれ、認証情報やアプリ設定は含まれません。
+              ファイルには記事、URL
+              alias、タグとタグ付け情報が含まれ、認証情報やアプリ設定は含まれません。
             </p>
           </>
         ) : null}

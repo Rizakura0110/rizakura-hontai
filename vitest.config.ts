@@ -18,6 +18,7 @@ export default defineConfig({
         "apps/web/src/client/main.tsx",
         // Runtime composition is covered by typecheck, dry-run builds, and integration/E2E gates.
         "apps/web/src/worker/index.ts",
+        "apps/web/src/worker/d1-article-repository.integration-fixture.ts",
         "workers/metadata-fetcher/src/index.ts",
         // The D1 adapter is exercised against a real local D1 process by api:verify:local.
         "apps/web/src/worker/repositories/d1-article-repository.ts",

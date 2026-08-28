@@ -47,7 +47,7 @@ function articleRepository(): ArticleRepository {
       tagsByArticleId: { [article.id]: [] },
       nextCursor: null,
     }),
-    exportAll: async () => ({ articles: [article], articleUrls: [] }),
+    exportAll: async () => ({ articles: [article], articleUrls: [], tags: [], articleTags: [] }),
     findById: async () => article,
     findByNormalizedUrl: async () => null,
     createWithOriginalAlias: async () => ({ outcome: "created", article }),

@@ -39,7 +39,7 @@ const existingTag: Tag = {
 function repository(overrides: Partial<ArticleRepository> = {}): ArticleRepository {
   return {
     list: async () => ({ items: [], availableTags: [], tagsByArticleId: {}, nextCursor: null }),
-    exportAll: async () => ({ articles: [], articleUrls: [] }),
+    exportAll: async () => ({ articles: [], articleUrls: [], tags: [], articleTags: [] }),
     findById: async () => existingArticle,
     findByNormalizedUrl: async () => null,
     createWithOriginalAlias: async () => ({ outcome: "created", article: existingArticle }),
@@ -98,6 +98,8 @@ describe("ArticleService", () => {
               createdAt: existingArticle.createdAt,
             },
           ],
+          tags: [existingTag],
+          articleTags: [{ articleId: existingArticle.id, tagId: existingTag.id }],
         }),
       }),
       () => new Date("2026-08-27T02:03:04.000Z"),
@@ -106,7 +108,7 @@ describe("ArticleService", () => {
     );
 
     await expect(service.exportAll()).resolves.toEqual({
-      schemaVersion: 1,
+      schemaVersion: 2,
       exportedAt: "2026-08-27T02:03:04.000Z",
       articles: [
         expect.objectContaining({
@@ -122,6 +124,14 @@ describe("ArticleService", () => {
           createdAt: existingArticle.createdAt,
         },
       ],
+      tags: [
+        expect.objectContaining({
+          id: existingTag.id,
+          name: existingTag.name,
+          colorHue: existingTag.colorHue,
+        }),
+      ],
+      articleTags: [{ articleId: existingArticle.id, tagId: existingTag.id }],
     });
   });
 
@@ -135,7 +145,9 @@ describe("ArticleService", () => {
       }),
     );
     const service = new ArticleService(
-      repository({ exportAll: async () => ({ articles, articleUrls: [] }) }),
+      repository({
+        exportAll: async () => ({ articles, articleUrls: [], tags: [], articleTags: [] }),
+      }),
       () => new Date("2026-08-27T02:03:04.000Z"),
       () => "unused-id",
       { send: async () => undefined },

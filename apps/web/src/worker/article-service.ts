@@ -78,10 +78,12 @@ export class ArticleService {
   async exportAll(): Promise<ExportResponse> {
     const snapshot = await this.#repository.exportAll();
     return {
-      schemaVersion: 1,
+      schemaVersion: 2,
       exportedAt: this.#clock().toISOString(),
       articles: snapshot.articles.map(toArticleDto),
       articleUrls: snapshot.articleUrls.map((alias) => ({ ...alias })),
+      tags: snapshot.tags.map(toTagDto),
+      articleTags: snapshot.articleTags.map((assignment) => ({ ...assignment })),
     };
   }
 

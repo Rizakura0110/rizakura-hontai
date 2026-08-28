@@ -1,11 +1,18 @@
 import { readFile } from "node:fs/promises";
-import type { ArticleDto } from "@tech-inbox/contracts";
+import type { ArticleDto, TagDto } from "@tech-inbox/contracts";
 import { expect, type Page, test } from "@playwright/test";
 
 type MetadataTransition = "ready" | "failed";
 
 const now = "2026-08-27T01:02:03.000Z";
 const unsafeTitle = '<img src=x onerror="window.pwned=true">';
+const reactTag: TagDto = {
+  id: "tag-react",
+  name: "React",
+  colorHue: 220,
+  createdAt: now,
+  updatedAt: now,
+};
 
 function fixture(overrides: Partial<ArticleDto> = {}): ArticleDto {
   return {
@@ -34,13 +41,20 @@ function fixture(overrides: Partial<ArticleDto> = {}): ArticleDto {
 
 async function mockArticleApi(page: Page) {
   let articles = [fixture()];
+  let tags = [reactTag];
+  const tagIdsByArticleId: Record<string, string[]> = { "article-1": [reactTag.id] };
   const metadataTransitions = new Map<string, MetadataTransition>();
+
+  const assignedTags = (articleId: string): TagDto[] => {
+    const assignedIds = new Set(tagIdsByArticleId[articleId] ?? []);
+    return tags.filter(({ id }) => assignedIds.has(id));
+  };
 
   await page.route("**/api/v1/export", async (route) => {
     const exportedAt = now;
     await route.fulfill({
       body: JSON.stringify({
-        schemaVersion: 1,
+        schemaVersion: 2,
         exportedAt,
         articles,
         articleUrls: articles.map((article) => ({
@@ -49,6 +63,13 @@ async function mockArticleApi(page: Page) {
           kind: "original",
           createdAt: article.createdAt,
         })),
+        tags,
+        articleTags: articles.flatMap((article) =>
+          (tagIdsByArticleId[article.id] ?? []).map((tagId) => ({
+            articleId: article.id,
+            tagId,
+          })),
+        ),
       }),
       headers: {
         "Content-Disposition": 'attachment; filename="tech-inbox-export-2026-08-27.json"',
@@ -59,17 +80,67 @@ async function mockArticleApi(page: Page) {
   });
 
   await page.route("**/api/v1/tags**", async (route) => {
-    if (route.request().method() === "GET") {
-      await route.fulfill({ json: { tags: [] } });
+    const request = route.request();
+    const url = new URL(request.url());
+    const method = request.method();
+    const detailMatch = url.pathname.match(/^\/api\/v1\/tags\/([^/]+)$/);
+
+    if (url.pathname === "/api/v1/tags" && method === "GET") {
+      await route.fulfill({ json: { tags } });
       return;
     }
-    await route.fallback();
+    if (url.pathname === "/api/v1/tags" && method === "POST") {
+      const body = request.postDataJSON() as { name: string };
+      const existing = tags.find(
+        ({ name }) => name.toLocaleLowerCase("ja-JP") === body.name.toLocaleLowerCase("ja-JP"),
+      );
+      if (existing !== undefined) {
+        await route.fulfill({ json: { result: "alreadyExists", tag: existing } });
+        return;
+      }
+      const tag: TagDto = {
+        id: `tag-${tags.length + 1}`,
+        name: body.name,
+        colorHue: (220 + tags.length * 137) % 360,
+        createdAt: now,
+        updatedAt: now,
+      };
+      tags = [...tags, tag];
+      await route.fulfill({ json: { result: "created", tag }, status: 201 });
+      return;
+    }
+    if (detailMatch !== null && method === "PATCH") {
+      const id = decodeURIComponent(detailMatch[1] ?? "");
+      const body = request.postDataJSON() as { name: string };
+      const current = tags.find((tag) => tag.id === id);
+      if (current === undefined) {
+        await route.fulfill({ json: { error: "missing" }, status: 404 });
+        return;
+      }
+      const tag = { ...current, name: body.name, updatedAt: now };
+      tags = tags.map((item) => (item.id === id ? tag : item));
+      await route.fulfill({ json: { tag } });
+      return;
+    }
+    if (detailMatch !== null && method === "DELETE") {
+      const id = decodeURIComponent(detailMatch[1] ?? "");
+      tags = tags.filter((tag) => tag.id !== id);
+      for (const articleId of Object.keys(tagIdsByArticleId)) {
+        tagIdsByArticleId[articleId] = (tagIdsByArticleId[articleId] ?? []).filter(
+          (tagId) => tagId !== id,
+        );
+      }
+      await route.fulfill({ json: { result: "deleted" } });
+      return;
+    }
+    await route.fulfill({ json: { error: "unexpected tag request" }, status: 500 });
   });
 
   await page.route("**/api/v1/articles**", async (route) => {
     const request = route.request();
     const url = new URL(request.url());
     const method = request.method();
+    const articleTagsMatch = url.pathname.match(/^\/api\/v1\/articles\/([^/]+)\/tags$/);
     const detailMatch = url.pathname.match(/^\/api\/v1\/articles\/([^/]+)$/);
 
     if (url.pathname === "/api/v1/articles" && method === "GET") {
@@ -98,8 +169,10 @@ async function mockArticleApi(page: Page) {
       });
       const status = url.searchParams.get("status") ?? "all";
       const query = (url.searchParams.get("q") ?? "").toLocaleLowerCase("ja-JP");
+      const tagId = url.searchParams.get("tagId") ?? "";
       const visible = articles.filter((article) => {
         if (status !== "all" && article.status !== status) return false;
+        if (tagId !== "" && !(tagIdsByArticleId[article.id] ?? []).includes(tagId)) return false;
         if (query === "") return true;
         return [article.title, article.originalUrl, article.siteName].some((value) =>
           value?.toLocaleLowerCase("ja-JP").includes(query),
@@ -108,8 +181,10 @@ async function mockArticleApi(page: Page) {
       await route.fulfill({
         json: {
           articles: visible,
-          availableTags: [],
-          tagsByArticleId: Object.fromEntries(visible.map((article) => [article.id, []])),
+          availableTags: tags,
+          tagsByArticleId: Object.fromEntries(
+            visible.map((article) => [article.id, assignedTags(article.id)]),
+          ),
           nextCursor: null,
         },
       });
@@ -133,9 +208,24 @@ async function mockArticleApi(page: Page) {
         metadataFetchedAt: null,
       });
       articles = [article, ...articles];
+      tagIdsByArticleId[article.id] = [];
       if (body.url.includes("metadata-ready")) metadataTransitions.set(article.id, "ready");
       if (body.url.includes("metadata-failed")) metadataTransitions.set(article.id, "failed");
       await route.fulfill({ json: { result: "created", article }, status: 201 });
+      return;
+    }
+
+    if (articleTagsMatch !== null && method === "GET") {
+      const id = decodeURIComponent(articleTagsMatch[1] ?? "");
+      await route.fulfill({ json: { tags: assignedTags(id) } });
+      return;
+    }
+
+    if (articleTagsMatch !== null && method === "PUT") {
+      const id = decodeURIComponent(articleTagsMatch[1] ?? "");
+      const body = request.postDataJSON() as { tagIds: string[] };
+      tagIdsByArticleId[id] = [...body.tagIds];
+      await route.fulfill({ json: { tags: assignedTags(id) } });
       return;
     }
 
@@ -184,6 +274,7 @@ async function mockArticleApi(page: Page) {
     if (detailMatch !== null && method === "DELETE") {
       const id = decodeURIComponent(detailMatch[1] ?? "");
       articles = articles.filter((article) => article.id !== id);
+      delete tagIdsByArticleId[id];
       await route.fulfill({ json: { result: "deleted" } });
       return;
     }
@@ -311,7 +402,7 @@ test("add, search, edit, delete, and settings routes work", async ({ page }, tes
   await expect(page.getByRole("heading", { name: "設定" })).toBeVisible();
   await expect(page.getByText("保存記事数").locator("..").getByText("1件")).toBeVisible();
   await expect(page.getByText("未読記事数").locator("..").getByText("1件")).toBeVisible();
-  await expect(page.getByText("JSON schema v1")).toBeVisible();
+  await expect(page.getByText("JSON schema v2")).toBeVisible();
 
   const downloadPromise = page.waitForEvent("download");
   await page.getByRole("button", { name: "JSONを書き出す" }).click();
@@ -321,17 +412,78 @@ test("add, search, edit, delete, and settings routes work", async ({ page }, tes
   if (downloadPath === null) throw new Error("The export download did not produce a local file.");
   const exported = JSON.parse(await readFile(downloadPath, "utf8")) as Record<string, unknown>;
   expect(Object.keys(exported).sort()).toEqual([
+    "articleTags",
     "articleUrls",
     "articles",
     "exportedAt",
     "schemaVersion",
+    "tags",
   ]);
-  expect(exported.schemaVersion).toBe(1);
+  expect(exported.schemaVersion).toBe(2);
   expect(exported.articles).toHaveLength(1);
   expect(exported.articleUrls).toHaveLength(1);
+  expect(exported.tags).toEqual([expect.objectContaining({ id: reactTag.id, name: "React" })]);
+  expect(exported.articleTags).toEqual([{ articleId: "article-1", tagId: reactTag.id }]);
   expect(JSON.stringify(exported)).not.toContain("TEAM_DOMAIN");
   expect(JSON.stringify(exported)).not.toContain("ALLOWED_EMAIL");
   expect(JSON.stringify(exported)).not.toContain("POLICY_AUD");
+});
+
+test("tag creation, filtering, assignment, rename, and deletion preserve the article", async ({
+  page,
+}) => {
+  await page.goto("/articles");
+
+  const articleCard = page.locator("article").filter({ hasText: unsafeTitle });
+  await expect(articleCard.getByText("React", { exact: true })).toBeVisible();
+  await articleCard.locator("summary").click();
+  await articleCard.getByRole("button", { name: "タグを編集" }).click();
+
+  const tagDialog = page.getByRole("dialog", { name: "タグを編集" });
+  await tagDialog.getByLabel("新しいタグを作成").fill("Cloudflare");
+  await tagDialog.getByRole("button", { name: "作成", exact: true }).click();
+  await expect(tagDialog.getByRole("checkbox", { name: "Cloudflare" })).toBeChecked();
+  await tagDialog.getByRole("button", { name: "タグを保存" }).click();
+  await expect(articleCard.getByText("Cloudflare", { exact: true })).toBeVisible();
+
+  await page.getByRole("combobox", { name: "タグ" }).selectOption({ label: "Cloudflare" });
+  await expect(page.getByRole("link", { name: unsafeTitle })).toBeVisible();
+  await articleCard.locator("summary").click();
+  await articleCard.getByRole("button", { name: "タグを編集" }).click();
+  const filteredTagDialog = page.getByRole("dialog", { name: "タグを編集" });
+  await filteredTagDialog.getByRole("checkbox", { name: "Cloudflare" }).uncheck();
+  await filteredTagDialog.getByRole("button", { name: "タグを保存" }).click();
+  await expect(page.getByRole("link", { name: unsafeTitle })).toHaveCount(0);
+
+  await page.getByRole("button", { name: "タグ絞り込みを解除" }).click();
+  const restoredCard = page.locator("article").filter({ hasText: unsafeTitle });
+  await expect(restoredCard).toBeVisible();
+  await restoredCard.locator("summary").click();
+  await restoredCard.getByRole("button", { name: "タグを編集" }).click();
+  const restoredTagDialog = page.getByRole("dialog", { name: "タグを編集" });
+  await restoredTagDialog.getByRole("checkbox", { name: "Cloudflare" }).check();
+  await restoredTagDialog.getByRole("button", { name: "タグを保存" }).click();
+
+  await page.getByRole("link", { name: "設定" }).click();
+  const cloudflareName = page.getByLabel("Cloudflareの新しい名前");
+  await cloudflareName.fill("Edge");
+  await cloudflareName
+    .locator("xpath=ancestor::form")
+    .getByRole("button", { name: "保存" })
+    .click();
+  await expect(page.getByLabel("Edgeの新しい名前")).toBeVisible();
+  const edgeForm = page.getByLabel("Edgeの新しい名前").locator("xpath=ancestor::form");
+  await edgeForm.getByRole("button", { name: "削除" }).click();
+  const deleteDialog = page.getByRole("dialog", { name: "タグを削除しますか？" });
+  await expect(deleteDialog.getByText(/記事自体は削除されません/u)).toBeVisible();
+  await deleteDialog.getByRole("button", { name: "削除する" }).click();
+  await expect(page.getByLabel("Edgeの新しい名前")).toHaveCount(0);
+
+  await page.getByRole("link", { name: "すべて", exact: true }).click();
+  const preservedCard = page.locator("article").filter({ hasText: unsafeTitle });
+  await expect(preservedCard).toBeVisible();
+  await expect(preservedCard.getByText("React", { exact: true })).toBeVisible();
+  await expect(preservedCard.getByText("Edge", { exact: true })).toHaveCount(0);
 });
 
 test("duplicate registration, read filter, and returning an article to unread work", async ({

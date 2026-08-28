@@ -7,6 +7,7 @@ import type {
   UpdateArticleInput,
 } from "@tech-inbox/core/article";
 import type { ArticleMetadata, MetadataErrorCode } from "@tech-inbox/core/metadata";
+import type { Tag } from "@tech-inbox/core/tag";
 import type { NormalizedUrl } from "@tech-inbox/core/url-normalization";
 
 export type CreateArticleResult =
@@ -42,6 +43,13 @@ export type DeleteArticleResult =
 export type ArticleExportSnapshot = {
   readonly articles: readonly Article[];
   readonly articleUrls: readonly ArticleUrlAlias[];
+  readonly tags: readonly Tag[];
+  readonly articleTags: readonly ArticleTagAssignment[];
+};
+
+export type ArticleTagAssignment = {
+  readonly articleId: string;
+  readonly tagId: string;
 };
 
 export type CanonicalAliasInput = {
@@ -61,7 +69,12 @@ export type ApplyMetadataInput = {
 
 export type ApplyMetadataResult =
   | { readonly outcome: "updated"; readonly article: Article }
-  | { readonly outcome: "merged"; readonly article: Article; readonly removedArticleId: string }
+  | {
+      readonly outcome: "merged";
+      readonly article: Article;
+      readonly removedArticleId: string;
+      readonly droppedTagCount: number;
+    }
   | { readonly outcome: "stale" };
 
 export type RecordMetadataFailureInput = {

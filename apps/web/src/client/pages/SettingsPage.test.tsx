@@ -28,8 +28,16 @@ const unreadArticle: ArticleDto = {
   updatedAt: "2026-08-27T00:00:00.000Z",
 };
 
+const reactTag: TagDto = {
+  id: "tag-react",
+  name: "React",
+  colorHue: 220,
+  createdAt: "2026-08-28T00:00:00.000Z",
+  updatedAt: "2026-08-28T00:00:00.000Z",
+};
+
 const exportResponse: ExportResponse = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   exportedAt: "2026-08-27T01:02:03.000Z",
   articles: [
     unreadArticle,
@@ -49,14 +57,8 @@ const exportResponse: ExportResponse = {
       createdAt: unreadArticle.createdAt,
     },
   ],
-};
-
-const reactTag: TagDto = {
-  id: "tag-react",
-  name: "React",
-  colorHue: 220,
-  createdAt: "2026-08-28T00:00:00.000Z",
-  updatedAt: "2026-08-28T00:00:00.000Z",
+  tags: [reactTag],
+  articleTags: [{ articleId: unreadArticle.id, tagId: reactTag.id }],
 };
 
 function jsonResponse(value: unknown, status = 200): Response {
@@ -80,7 +82,7 @@ describe("SettingsPage", () => {
     render(<SettingsPage />);
 
     expect(screen.getByText("件数を確認しています…")).toBeTruthy();
-    await screen.findByText("JSON schema v1");
+    await screen.findByText("JSON schema v2");
 
     const totalRow = screen.getByText("保存記事数").closest("div");
     const unreadRow = screen.getByText("未読記事数").closest("div");
@@ -126,7 +128,7 @@ describe("SettingsPage", () => {
     );
     await user.click(screen.getByRole("button", { name: "再読み込み" }));
 
-    await screen.findByText("JSON schema v1");
+    await screen.findByText("JSON schema v2");
     await waitFor(() => expect(exportCalls).toBe(2));
   });
 

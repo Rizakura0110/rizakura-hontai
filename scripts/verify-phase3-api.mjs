@@ -206,7 +206,14 @@ try {
         name: `tech-inbox-api-integration-${process.pid}`,
         main: relative(
           persistenceDirectory,
-          join(projectRoot, "apps", "web", "src", "worker", "index.ts"),
+          join(
+            projectRoot,
+            "apps",
+            "web",
+            "src",
+            "worker",
+            "d1-article-repository.integration-fixture.ts",
+          ),
         ),
         compatibility_date: "2026-08-15",
         d1_databases: [
@@ -418,18 +425,33 @@ try {
     /^attachment; filename="tech-inbox-export-\d{4}-\d{2}-\d{2}\.json"$/u,
   );
   assert.deepEqual(Object.keys(exported.body).sort(), [
+    "articleTags",
     "articleUrls",
     "articles",
     "exportedAt",
     "schemaVersion",
+    "tags",
   ]);
-  assert.equal(exported.body.schemaVersion, 1);
+  assert.equal(exported.body.schemaVersion, 2);
   assert.equal(exported.body.articles.length, 4);
   assert.equal(exported.body.articleUrls.length, 5);
+  assert.deepEqual(
+    exported.body.tags.map(({ id, name }) => ({ id, name })),
+    [{ id: reactTag.body.tag.id, name: "TypeScript" }],
+  );
+  assert.deepEqual(exported.body.articleTags, [
+    { articleId: first.body.article.id, tagId: reactTag.body.tag.id },
+  ]);
   const exportedArticleIds = new Set(exported.body.articles.map(({ id }) => id));
+  const exportedTagIds = new Set(exported.body.tags.map(({ id }) => id));
   assert.equal(exportedArticleIds.size, 4);
   assert.ok(exportedArticleIds.has("site-filter-article"));
   assert.ok(exported.body.articleUrls.every(({ articleId }) => exportedArticleIds.has(articleId)));
+  assert.ok(
+    exported.body.articleTags.every(
+      ({ articleId, tagId }) => exportedArticleIds.has(articleId) && exportedTagIds.has(tagId),
+    ),
+  );
   assert.equal(JSON.stringify(exported.body).includes("TEAM_DOMAIN"), false);
   assert.equal(JSON.stringify(exported.body).includes("ALLOWED_EMAIL"), false);
 
@@ -580,6 +602,73 @@ try {
     }),
     404,
     "NOT_FOUND",
+  );
+
+  const mergeKeeper = await createArticle("https://merge.example/canonical");
+  const mergeDuplicate = await createArticle("https://merge.example/duplicate");
+  assert.equal(mergeKeeper.response.status, 201);
+  assert.equal(mergeDuplicate.response.status, 201);
+  const mergeTags = [];
+  for (let index = 0; index < 12; index += 1) {
+    const createdTag = await createTag(`Merge ${index}`);
+    assert.equal(createdTag.response.status, 201);
+    mergeTags.push(createdTag.body.tag);
+  }
+  const keeperTagIds = mergeTags.slice(0, 9).map(({ id }) => id);
+  const duplicateTagIds = mergeTags.slice(9).map(({ id }) => id);
+  await requestJson(`/api/v1/articles/${mergeKeeper.body.article.id}/tags`, {
+    method: "PUT",
+    headers: mutationHeaders,
+    body: JSON.stringify({ tagIds: keeperTagIds }),
+  });
+  await requestJson(`/api/v1/articles/${mergeDuplicate.body.article.id}/tags`, {
+    method: "PUT",
+    headers: mutationHeaders,
+    body: JSON.stringify({ tagIds: duplicateTagIds }),
+  });
+
+  const mergeResponse = await requestJson("/__integration/apply-metadata", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      id: mergeDuplicate.body.article.id,
+      expectedUrl: mergeDuplicate.body.article.originalUrl,
+      metadata: {
+        canonicalUrl: mergeKeeper.body.article.originalUrl,
+        title: "Merged article",
+        siteName: "Merge Example",
+        description: null,
+        faviconUrl: null,
+        imageUrl: null,
+        publishedAt: null,
+      },
+      canonicalAlias: {
+        normalizedUrl: mergeKeeper.body.article.originalUrl,
+        createdAt: "2026-08-28T02:00:00.000Z",
+      },
+      attemptCount: 1,
+      fetchedAt: "2026-08-28T02:00:00.000Z",
+      updatedAt: "2026-08-28T02:00:00.000Z",
+    }),
+  });
+  assert.equal(mergeResponse.body.outcome, "merged");
+  assert.equal(mergeResponse.body.removedArticleId, mergeDuplicate.body.article.id);
+  assert.equal(mergeResponse.body.droppedTagCount, 2);
+  const tagsAfterMerge = await requestJson(`/api/v1/articles/${mergeKeeper.body.article.id}/tags`);
+  const expectedTransferredTagId = [...duplicateTagIds].sort()[0];
+  assert.equal(tagsAfterMerge.body.tags.length, 10);
+  assert.deepEqual(
+    new Set(tagsAfterMerge.body.tags.map(({ id }) => id)),
+    new Set([...keeperTagIds, expectedTransferredTagId]),
+  );
+  assertApiError(
+    await requestJson(`/api/v1/articles/${mergeDuplicate.body.article.id}`),
+    404,
+    "NOT_FOUND",
+  );
+  const tagsAfterMergeList = await requestJson("/api/v1/tags");
+  assert.ok(
+    duplicateTagIds.every((id) => tagsAfterMergeList.body.tags.some((tag) => tag.id === id)),
   );
 } catch (error) {
   verificationError = error;

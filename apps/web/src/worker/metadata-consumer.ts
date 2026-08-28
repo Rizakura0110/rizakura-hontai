@@ -27,6 +27,7 @@ export type MetadataConsumerLogEvent = {
   readonly result: "invalid" | "stale" | "ready" | "failed" | "rescheduled" | "retry";
   readonly attempt?: number;
   readonly errorCode?: MetadataErrorCode;
+  readonly droppedTagCount?: number;
 };
 
 type ProcessResult =
@@ -158,6 +159,7 @@ export async function processMetadataQueueMessage(
         route: "metadata.consume",
         result: result.outcome === "stale" ? "stale" : "ready",
         attempt: article.metadataAttemptCount,
+        ...(result.outcome === "merged" ? { droppedTagCount: result.droppedTagCount } : {}),
       },
     };
   }
@@ -199,6 +201,7 @@ export async function processMetadataQueueMessage(
         route: "metadata.consume",
         result: result.outcome === "stale" ? "stale" : "ready",
         attempt: nextAttempt,
+        ...(result.outcome === "merged" ? { droppedTagCount: result.droppedTagCount } : {}),
       },
     };
   }

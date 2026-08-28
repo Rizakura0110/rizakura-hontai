@@ -253,8 +253,8 @@ describe("API response contracts", () => {
     ).toBe(false);
   });
 
-  it("accepts only a versioned export of public article and alias fields", () => {
-    const exported = {
+  it("accepts v1 exports and v2 exports with normalized tag relationships", () => {
+    const exportedV1 = {
       schemaVersion: 1,
       exportedAt: "2026-08-27T00:00:00.000Z",
       articles: [articleDtoFixture()],
@@ -267,16 +267,72 @@ describe("API response contracts", () => {
         },
       ],
     };
+    const tag = {
+      id: "tag-1",
+      name: "React",
+      colorHue: 220,
+      createdAt: "2026-08-27T00:00:00.000Z",
+      updatedAt: "2026-08-27T00:00:00.000Z",
+    };
+    const exportedV2 = {
+      ...exportedV1,
+      schemaVersion: 2,
+      tags: [tag],
+      articleTags: [{ articleId: "article-1", tagId: tag.id }],
+    };
 
-    expect(exportResponseSchema.safeParse(exported).success).toBe(true);
-    expect(exportResponseSchema.safeParse({ ...exported, schemaVersion: 2 }).success).toBe(false);
+    expect(exportResponseSchema.safeParse(exportedV1).success).toBe(true);
+    expect(exportResponseSchema.safeParse(exportedV2).success).toBe(true);
+    expect(exportResponseSchema.safeParse({ ...exportedV1, schemaVersion: 3 }).success).toBe(false);
     expect(
-      exportResponseSchema.safeParse({ ...exported, TEAM_DOMAIN: "secret.example" }).success,
+      exportResponseSchema.safeParse({ ...exportedV1, TEAM_DOMAIN: "secret.example" }).success,
     ).toBe(false);
     expect(
       exportResponseSchema.safeParse({
-        ...exported,
-        articleUrls: [{ ...exported.articleUrls[0], internalId: "secret" }],
+        ...exportedV1,
+        articleUrls: [{ ...exportedV1.articleUrls[0], internalId: "secret" }],
+      }).success,
+    ).toBe(false);
+    expect(
+      exportResponseSchema.safeParse({
+        ...exportedV1,
+        articleUrls: [{ ...exportedV1.articleUrls[0], articleId: "missing-article" }],
+      }).success,
+    ).toBe(false);
+    expect(
+      exportResponseSchema.safeParse({
+        ...exportedV2,
+        articleTags: [{ articleId: "missing-article", tagId: tag.id }],
+      }).success,
+    ).toBe(false);
+    expect(
+      exportResponseSchema.safeParse({
+        ...exportedV2,
+        articleTags: [{ articleId: "article-1", tagId: "missing-tag" }],
+      }).success,
+    ).toBe(false);
+    expect(
+      exportResponseSchema.safeParse({
+        ...exportedV2,
+        articleTags: [
+          { articleId: "article-1", tagId: tag.id },
+          { articleId: "article-1", tagId: tag.id },
+        ],
+      }).success,
+    ).toBe(false);
+
+    const tagsOverArticleLimit = Array.from(
+      { length: CONTRACT_LIMITS.tagsPerArticle + 1 },
+      (_, index) => ({ ...tag, id: `tag-${index}`, name: `Tag ${index}`, colorHue: index }),
+    );
+    expect(
+      exportResponseSchema.safeParse({
+        ...exportedV2,
+        tags: tagsOverArticleLimit,
+        articleTags: tagsOverArticleLimit.map(({ id }) => ({
+          articleId: "article-1",
+          tagId: id,
+        })),
       }).success,
     ).toBe(false);
   });

@@ -708,3 +708,47 @@
 - URL重複統合時のタグunion方針を実装し、上限超過時の扱いを決める。
 - タグ作成・割当・絞り込み・名前変更・削除をdesktop/mobile Playwright E2Eへ追加する。
 - 全ゲート通過後、明示許可を得たうえでproduction D1 migrationとapp Worker deployを行い、本番で動作確認する。
+
+## Additional Feature T3: タグ統合
+
+### 実施内容
+
+- JSON exportをschema version 2へ更新し、従来の記事・URL aliasに加えて、タグcatalogと記事・タグの関連を正規化形式で含めた。
+- client contractはversion 1とversion 2のdiscriminated unionとし、既存exportを読める互換性を維持した。version 2ではURL aliasとタグ関連の参照整合性、関連の重複、1記事10タグ上限をruntime検証する。
+- D1 repositoryは記事、URL alias、タグ、タグ関連を1回のbatchで読み、すべて決定的な順序で出力する。設定画面の説明とdownload testもversion 2へ更新した。
+- metadata取得でcanonical URLが既存記事へ重複した場合、残存記事のタグを優先し、重複記事だけにあるタグを作成日時・タグID順で空き枠へ移すようにした。
+- 両記事のタグ和集合が10件を超える場合は後順位の関連を移さず、件数を`droppedTagCount`としてmetadata consumerの構造化logへ含める。タグ定義自体は保持する。
+- 実D1統合fixtureを追加し、残存記事9タグ・重複記事3タグの統合後に、記事が1件、関連が10件、未移行が2件となり、12タグの定義が残ることを実HTTPで確認した。
+- Playwrightの状態付きAPI mockへタグAPIと記事関連を追加し、作成、複数付与、絞り込み、解除、再付与、名前変更、削除、記事保持、version 2 downloadをdesktop/mobile両方で検証した。
+- production D1 migration、Worker deploy、remote dataの変更は行っていない。
+
+### 採用判断
+
+- exportとcanonical重複統合の詳細は[ADR-0006](decisions/0006-tag-export-and-canonical-merge.md)へ記録した。
+- canonical URLを先に所有していた記事を残存記事とし、その記事の既存タグを利用者の優先判断として保持する。
+- 上限超過を暗黙に無視せず、決定的な選択と欠落件数の構造化logを組み合わせる。
+- 実D1 adapterはfake DBによるcoverage対象にせず、productionと同じrepository実装を一時的なlocal Worker entrypointから呼ぶ統合testで検証する。
+
+### 検証結果
+
+- `pnpm check`: pass
+- format、lint、Cloudflare生成型差分、TypeScript: pass
+- Vitest: 29 files、310 tests pass
+- coverage: statements 85.70%、branches 80.91%、functions 85.19%、lines 87.58%
+- 契約schema branch coverage: 100%
+- fresh local D1 migration/constraint verification: pass
+- local実HTTP export version 2、参照整合性、canonical重複タグ統合verification: pass
+- production build、fetcher dry-run、artifact budget: pass
+  - app Worker: raw 430.4 KiB、gzip 93.1 KiB
+  - metadata-fetcher: raw 577.7 KiB、gzip 87.3 KiB
+  - client JavaScript: raw 342.1 KiB、gzip 101.2 KiB
+  - client CSS: raw 27.8 KiB、gzip 6.2 KiB
+- Playwright: desktop/mobile合計14 tests pass
+- Codex内ブラウザ: 設定画面のタグを含むexport説明と、320 × 700で横幅超過なしを確認
+- audit: high 0、critical 0、既知moderate 1
+- remote Cloudflare changes: なし
+
+### 次フェーズ
+
+- ownerの明示許可後、production D1へタグmigrationを適用し、app Workerをdeployする。
+- productionでタグ作成・付与・絞り込み・名前変更・削除、記事保持、version 2 export、既存記事・認証・Free枠への影響を確認する。

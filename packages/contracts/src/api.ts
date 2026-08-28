@@ -251,11 +251,74 @@ export const articleUrlDtoSchema = z.strictObject({
 
 export type ArticleUrlDto = z.output<typeof articleUrlDtoSchema>;
 
-export const exportResponseSchema = z.strictObject({
+export const exportArticleTagDtoSchema = z.strictObject({
+  articleId: articleIdSchema,
+  tagId: tagIdSchema,
+});
+
+export type ExportArticleTagDto = z.output<typeof exportArticleTagDtoSchema>;
+
+export const exportResponseV1Schema = z.strictObject({
   schemaVersion: z.literal(1),
   exportedAt: utcDateTimeSchema,
   articles: z.array(articleDtoSchema),
   articleUrls: z.array(articleUrlDtoSchema),
 });
 
+export const exportResponseV2Schema = z.strictObject({
+  schemaVersion: z.literal(2),
+  exportedAt: utcDateTimeSchema,
+  articles: z.array(articleDtoSchema),
+  articleUrls: z.array(articleUrlDtoSchema),
+  tags: z.array(tagDtoSchema).max(CONTRACT_LIMITS.tags),
+  articleTags: z.array(exportArticleTagDtoSchema),
+});
+
+export const exportResponseSchema = z
+  .discriminatedUnion("schemaVersion", [exportResponseV1Schema, exportResponseV2Schema])
+  .superRefine((snapshot, context) => {
+    const articleIds = new Set(snapshot.articles.map(({ id }) => id));
+    if (snapshot.articleUrls.some(({ articleId }) => !articleIds.has(articleId))) {
+      context.addIssue({
+        code: "custom",
+        message: "Exported URL aliases must reference exported articles",
+        path: ["articleUrls"],
+      });
+    }
+
+    if (snapshot.schemaVersion === 1) return;
+    const tagIds = new Set(snapshot.tags.map(({ id }) => id));
+    const assignments = new Set<string>();
+    const assignmentCounts = new Map<string, number>();
+    for (const assignment of snapshot.articleTags) {
+      const key = `${assignment.articleId}\u0000${assignment.tagId}`;
+      if (assignments.has(key)) {
+        context.addIssue({
+          code: "custom",
+          message: "Exported tag assignments must be unique",
+          path: ["articleTags"],
+        });
+      }
+      assignments.add(key);
+      if (!articleIds.has(assignment.articleId) || !tagIds.has(assignment.tagId)) {
+        context.addIssue({
+          code: "custom",
+          message: "Exported tag assignments must reference exported records",
+          path: ["articleTags"],
+        });
+      }
+      const count = (assignmentCounts.get(assignment.articleId) ?? 0) + 1;
+      assignmentCounts.set(assignment.articleId, count);
+      if (count > CONTRACT_LIMITS.tagsPerArticle) {
+        context.addIssue({
+          code: "custom",
+          message: "Exported articles must not exceed the tag assignment limit",
+          path: ["articleTags"],
+        });
+      }
+    }
+  });
+
 export type ExportResponse = z.output<typeof exportResponseSchema>;
+export type ExportResponseV1 = z.output<typeof exportResponseV1Schema>;
+export type ExportResponseV2 = z.output<typeof exportResponseV2Schema>;

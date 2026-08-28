@@ -7,7 +7,7 @@ import type {
   CreateArticleInput,
   UpdateArticleInput,
 } from "@tech-inbox/core/article";
-import type { Tag } from "@tech-inbox/core/tag";
+import { MAX_TAGS_PER_ARTICLE, type Tag } from "@tech-inbox/core/tag";
 import type { NormalizedUrl } from "@tech-inbox/core/url-normalization";
 import { articles, articleTags, articleUrls, type ArticleRow, tags } from "@tech-inbox/db";
 import { and, asc, desc, eq, gt, inArray, isNull, lt, or, type SQL, sql } from "drizzle-orm";
@@ -207,9 +207,14 @@ class D1ArticleRepository implements ArticleRepository {
   }
 
   async exportAll() {
-    const [articleRows, articleUrlRows] = await this.#database.batch([
+    const [articleRows, articleUrlRows, tagRows, articleTagRows] = await this.#database.batch([
       this.#database.select().from(articles).orderBy(desc(articles.savedAt), desc(articles.id)),
       this.#database.select().from(articleUrls).orderBy(asc(articleUrls.normalizedUrl)),
+      this.#database.select().from(tags).orderBy(asc(tags.normalizedName), asc(tags.id)),
+      this.#database
+        .select({ articleId: articleTags.articleId, tagId: articleTags.tagId })
+        .from(articleTags)
+        .orderBy(asc(articleTags.articleId), asc(articleTags.tagId)),
     ]);
 
     return {
@@ -222,6 +227,8 @@ class D1ArticleRepository implements ArticleRepository {
           createdAt: row.createdAt,
         }),
       ),
+      tags: tagRows.map(mapTagRow),
+      articleTags: articleTagRows,
     };
   }
 
@@ -446,6 +453,32 @@ class D1ArticleRepository implements ArticleRepository {
       duplicate.metadataAttemptCount,
       input.attemptCount,
     );
+    const [keeperTagRows, duplicateTagRows] = await this.#database.batch([
+      this.#database
+        .select({ tagId: articleTags.tagId })
+        .from(articleTags)
+        .where(eq(articleTags.articleId, keeper.id))
+        .orderBy(asc(articleTags.createdAt), asc(articleTags.tagId)),
+      this.#database
+        .select({ tagId: articleTags.tagId })
+        .from(articleTags)
+        .where(eq(articleTags.articleId, duplicate.id))
+        .orderBy(asc(articleTags.createdAt), asc(articleTags.tagId)),
+    ]);
+    const keeperTagIds = new Set(keeperTagRows.map(({ tagId }) => tagId));
+    const transferableTagIds = duplicateTagRows
+      .map(({ tagId }) => tagId)
+      .filter((tagId) => !keeperTagIds.has(tagId));
+    const availableTagSlots = Math.max(0, MAX_TAGS_PER_ARTICLE - keeperTagIds.size);
+    const selectedTagIds = transferableTagIds.slice(0, availableTagSlots);
+    const droppedTagCount = transferableTagIds.length - selectedTagIds.length;
+    const tagTransferStatements = selectedTagIds.map((tagId) =>
+      this.#binding
+        .prepare(
+          "INSERT OR IGNORE INTO article_tags (article_id, tag_id, created_at) SELECT ?, tag_id, created_at FROM article_tags WHERE article_id = ? AND tag_id = ? AND (SELECT COUNT(*) FROM article_tags WHERE article_id = ?) < ?",
+        )
+        .bind(keeper.id, duplicate.id, tagId, keeper.id, MAX_TAGS_PER_ARTICLE),
+    );
 
     await this.#binding.batch([
       this.#binding
@@ -479,6 +512,7 @@ class D1ArticleRepository implements ArticleRepository {
           duplicate.id,
           input.expectedUrl,
         ),
+      ...tagTransferStatements,
       this.#binding
         .prepare("DELETE FROM articles WHERE id = ? AND original_url = ?")
         .bind(duplicate.id, input.expectedUrl),
@@ -494,6 +528,7 @@ class D1ArticleRepository implements ArticleRepository {
       outcome: "merged",
       article: keeperAfterMerge,
       removedArticleId: duplicate.id,
+      droppedTagCount,
     };
   }
 

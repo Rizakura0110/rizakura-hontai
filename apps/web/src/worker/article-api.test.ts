@@ -37,7 +37,7 @@ function stubRepository(overrides: Partial<ArticleRepository> = {}): ArticleRepo
       tagsByArticleId: { [article.id]: [] },
       nextCursor: null,
     }),
-    exportAll: async () => ({ articles: [article], articleUrls: [] }),
+    exportAll: async () => ({ articles: [article], articleUrls: [], tags: [], articleTags: [] }),
     findById: async () => article,
     findByNormalizedUrl: async () => null,
     createWithOriginalAlias: async () => ({ outcome: "created", article }),
@@ -80,6 +80,8 @@ describe("article API", () => {
                 createdAt: now,
               },
             ],
+            tags: [],
+            articleTags: [],
           }),
         }),
       clock: () => new Date(now),
@@ -97,7 +99,7 @@ describe("article API", () => {
     expect(responseText).not.toContain("ALLOWED_EMAIL");
     expect(responseText).not.toContain("POLICY_AUD");
     expect(JSON.parse(responseText)).toEqual({
-      schemaVersion: 1,
+      schemaVersion: 2,
       exportedAt: now,
       articles: [expect.objectContaining({ id: article.id })],
       articleUrls: [
@@ -108,6 +110,8 @@ describe("article API", () => {
           createdAt: now,
         },
       ],
+      tags: [],
+      articleTags: [],
     });
   });
 

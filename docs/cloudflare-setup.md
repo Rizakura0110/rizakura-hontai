@@ -151,7 +151,7 @@ remote migrationの直前には`tech-inbox`とproduction対象であることを
 ## Phase 7 local export configuration
 
 - `GET /api/v1/export`は記事APIと同じAccess JWT再検証を通し、export専用Rate Limiting bindingを5 requests/minuteで設定した。binding keyはPhase 6と同じくAccess principalのhashと固定route categoryだけを使用する。
-- exportはD1から全記事と全URL aliasを同一batchで読み、`schemaVersion: 1`のJSONとして返す。API responseは`no-store`で、UTC日付を含むASCII filenameの`Content-Disposition: attachment`を付ける。
+- exportはD1から全記事、全URL alias、全タグ、記事とタグの関連を同一batchで読み、`schemaVersion: 2`のJSONとして返す。clientは既存の`schemaVersion: 1`も検証できる。API responseは`no-store`で、UTC日付を含むASCII filenameの`Content-Disposition: attachment`を付ける。
 - 設定画面は検証済みexport responseから保存記事数と未読記事数を表示する。同じresponseをBlobへ変換してdownloadするため、画面表示とdownloadでRate Limiting枠を二重消費しない。
-- export contractは記事DTOとURL aliasだけを許可し、JWT、email、Worker設定、内部errorを受け入れないstrict schemaとした。
+- export contractは公開用の記事DTO、URL alias、タグ、記事とタグの関連だけを許可し、JWT、email、Worker設定、内部errorを受け入れないstrict schemaとした。
 - remote Rate Limiting bindingの変更、deploy、Cloudflare accountへのloginは行っていない。Phase 9で既存4 bindingと合わせてexport bindingの料金表示を再確認する。
