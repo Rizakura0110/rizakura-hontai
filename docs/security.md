@@ -104,6 +104,7 @@ backupと復元手順は[Operations](operations.md)を参照してください�
 - high/critical advisoryは0件を必須にする
 - GitHub Actionsは`contents: read`だけを許可し、checkout credentialを保持せず、Cloudflare secretを渡さない
 - workflowが使用する公式actionは完全なcommit SHAへ固定し、tagの移動による内容変更を避ける
+- CIのNode.jsは固定URLから取得し、SHA-256一致後だけworkspace配下へ展開・実行する
 - CIのpnpmは固定URLから取得し、dependency baselineのSHA-512 integrity一致後だけ展開・実行する
 
 既知のmoderate advisory 1件はDrizzle Kit配下の開発専用推移依存で、runtime bundleには含まれません。上流解消をdependency更新時に再確認し、互換範囲外の強制overrideは行いません。詳細は[Dependency baseline](dependency-baseline.md)を参照してください。
