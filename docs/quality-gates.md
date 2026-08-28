@@ -6,6 +6,8 @@
 
 `pnpm check`はformat、lint、Cloudflare生成型、TypeScript、unit/component/integration test、coverage、fresh local D1、実HTTP API、production build、artifact budget、desktop/mobile Chrome E2E、dependency auditを順に実行する。
 
+2026-08-28のPhase 10最終実行では、Vitest 29 files・315 tests、Playwright desktop/mobile合計18 testsが成功した。
+
 個別確認には次を使う。
 
 ```bash
@@ -25,7 +27,7 @@ V8 coverageはstatements、branches、functions、linesの全指標に80%の最�
 
 | 対象 | Statements | Branches | Functions | Lines |
 |---|---:|---:|---:|---:|
-| テスト可能コード全体 | 85.99% | 81.06% | 85.82% | 87.83% |
+| テスト可能コード全体 | 86.05% | 81.33% | 86.13% | 87.89% |
 | URL正規化 | 100% | 96.15% | 100% | 100% |
 | SSRF URL判定 | 100% | 96.00% | 100% | 100% |
 | 契約schema | 100% | 100% | 100% | 100% |
@@ -76,7 +78,7 @@ V8 unit coverageから次だけを除外する。
 | 既存タグの選択と解除 | dialog component testで上限と一括保存を確認 |
 | dialog内での新規タグ作成 | component/page testで作成後の選択と記事への保存を確認 |
 | タグ絞り込み | page/service/実HTTP testで条件とcursor文脈を確認 |
-| 設定画面の名前変更・削除 | component/page testで確認dialogと記事保持の案内を確認 |
+| 設定画面のタグ管理 | component/page testで追加、同名案内、複数行の未保存入力保持、名前変更、削除確認、記事保持の案内を確認 |
 | タグ操作の一連の状態遷移 | desktop/mobile Playwrightで作成から削除、記事保持まで確認 |
 | 320 × 700 layout | Playwright E2Eに加えCodex内ブラウザで横幅超過なしを確認 |
 
@@ -103,7 +105,7 @@ Playwrightのmobile viewport成功は実機確認の代替にしない。手順�
 |---|---:|---:|
 | app Worker | 433.3 KiB | 93.5 KiB |
 | metadata-fetcher Worker | 578.1 KiB | 87.3 KiB |
-| client JavaScript合計 | 345.1 KiB | 101.6 KiB |
+| client JavaScript合計 | 347.1 KiB | 101.9 KiB |
 | client CSS合計 | 28.0 KiB | 6.2 KiB |
 
 ## Worker CPU review

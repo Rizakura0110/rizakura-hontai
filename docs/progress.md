@@ -807,3 +807,74 @@
 - component testで新規追加と同名案内、desktop/mobile Playwrightで設定画面からの追加を確認した。full quality gateはVitest 315件、Playwright 18件、high/critical audit 0、既知moderate 1でpassした。
 - commit `aa9dc59`を既存の`tech-inbox-app`へdeployした。deployment versionは`ce9014c2-9cd4-4a73-b59c-2fceb1a4a30f`である。
 - D1 migrationと新規resource作成は行わず、既存bindingを維持した。deploy後、未認証rootと記事APIがともにCloudflare Accessへ302になることを確認し、ownerが認証済み設定画面で「新しいタグ名」と「追加」フォームの表示を確認した。
+
+## Phase 10: 最終文書化
+
+### 実施内容
+
+- `README.md`を作成し、目的、機能、技術構成、対応環境、local setup、品質ゲート、migration、deploy、secret、費用方針、非対応機能、troubleshootingを1か所から参照できるようにした。
+- `docs/security.md`を作成し、AccessとWorker内JWT再検証、API入力防御、Rate Limiting、SSRF分離、security headers、データ・秘密情報・log・供給網、残余リスク、incident responseを整理した。
+- `docs/operations.md`を作成し、JSON export、Queue・DLQ、Workers Logs、release、migration、deploy、rollback、D1 Time Travel、障害切り分け、定期確認を運用手順として整理した。
+- dependency baseline、Cloudflare setup、quality gates、manual device testを最終状態へ同期した。過去のiPhone実機passを後から追加したタグ機能へ拡張せず、タグ機能の自動E2E・owner表示確認と未実施の実機再確認を分けて記録した。
+- `.env`系の秘密情報ファイルもrepository全階層で無視し、exampleだけを明示的に許可するようにした。
+- 実装ガイドのDefinition of Doneを、後続のowner要件で変更された専用未読画面と追加されたタグ機能も含めて監査した。
+
+### 変更ファイル
+
+- `.gitignore`
+- `README.md`
+- `docs/security.md`
+- `docs/operations.md`
+- `docs/dependency-baseline.md`
+- `docs/cloudflare-setup.md`
+- `docs/quality-gates.md`
+- `docs/manual-device-test.md`
+- `docs/progress.md`
+
+### 採用判断
+
+- READMEへproduction URL、Access設定値、個人email、token等を記載せず、保護前URLを公開しない方針を維持する。
+- remote migration、rollback、D1 restore、Queue pause・purgeは通常の品質ゲートやphase終了処理へ含めず、対象と影響を確認した明示的な運用操作とする。
+- Phase 10では新しいarchitecture判断を追加していないため、ADRは新設せず既存ADRへリンクする。
+- 専用未読画面はownerの後続指示で削除済みだが、全記事画面の未読・既読状態とfilter、保存直後の反映は維持している。タグ機能はownerの後続指示を正として初期仕様へ追加した。
+
+### Definition of Done監査
+
+| 分類 | 判定 | 根拠 |
+|---|---|---|
+| 記事管理 | pass | URL登録、重複防止、canonical統合、非同期metadata、失敗時URL保持、既読・未読、検索・filter・sort、編集、削除をunit・実D1・実HTTP・E2Eで確認 |
+| タグ | pass | 複数タグ、自動一意色、追加・名前変更・削除、記事保持、URL保存時付与、filter、export、canonical統合を自動検証 |
+| Export | pass | schema version 2で記事、alias、タグ、関連を検証しdownload E2Eを確認。version 1の読取互換も維持 |
+| Browser品質 | pass | desktop/mobile Chrome E2E 18 tests。iPhone ChromeはPhase 9共通項目を実機pass。Android実機はowner判断でスキップし、手順だけを維持 |
+| 認証・security | pass | Accessの所有者email完全一致、Worker内JWT再検証、非公開fetcher、SSRF、security headers、secret非混入を確認 |
+| 品質・供給網 | pass | format、lint、生成型、TypeScript、315 tests、coverage、実D1、実HTTP、build、artifact budget、high/critical audit 0 |
+| 費用・scope | pass | Phase作業で月額有料serviceを新規有効化せず、PWA・React Native・記事本文保存等を実装していない |
+| 文書・運用 | pass | README、security、Cloudflare、operations、device test、quality、dependency、progress、ADRを整備 |
+| 変更境界 | pass | projectのtool・cache・一時状態をrepository配下に限定。Phase 10ではCloudflare remote stateを変更していない |
+
+### 実行したコマンド
+
+- `pnpm check`
+- Markdown relative link検査
+- Phase 10変更ファイルのsecret候補scan
+- `git diff --check`
+- `git check-ignore`による生成物・cache・secret fileのignore確認
+
+### 検証結果
+
+- format、lint、Cloudflare生成型差分、TypeScript: pass
+- Vitest: 29 files、315 tests pass
+- coverage: statements 86.05%、branches 81.33%、functions 86.13%、lines 87.89%
+- fresh local D1 migration/constraint verification: pass
+- local実HTTP CRUD、入力防御、タグ、export、canonical統合verification: pass
+- production build、metadata-fetcher dry-run、artifact budget: pass
+- Playwright: desktop/mobile合計18 tests pass
+- audit: high 0、critical 0、既知moderate 1
+- Markdown relative link、secret候補、whitespace、ignore確認: pass
+- remote Cloudflare changes: なし
+
+### 未解決事項
+
+- Android Chrome実機はowner判断でスキップした。手順を維持し、成功扱いにはしていない。
+- タグ機能追加後のiPhone Chrome実機再確認は未実施である。desktop/mobile自動E2Eとownerの認証済み表示確認は成功しているが、実機再確認の代替とは記録しない。
+- 既知のmoderate advisory 1件はDrizzle Kit配下の開発専用推移依存でruntime bundleには含まれない。上流更新時に再確認する。

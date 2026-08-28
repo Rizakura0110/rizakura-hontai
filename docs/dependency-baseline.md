@@ -1,6 +1,6 @@
 # Dependency baseline
 
-確認日: 2026-08-26
+確認日: 2026-08-28
 対象環境: macOS arm64 / Cloudflare Workers / Node.js 24 LTS / pnpm 11
 
 ## 選定ルール
@@ -99,7 +99,7 @@ Phase 1の初回installで報告されたbuild scriptを確認し、次だけを
 ## Lockfileと監査結果
 
 - Phase 1で`pnpm-lock.yaml`を生成し、`pnpm install --frozen-lockfile`の再現実行に成功した。
-- `pnpm audit --audit-level high`は成功し、高0件・重大0件だった。
+- 2026-08-28のPhase 10最終監査でも`pnpm audit --audit-level high`は成功し、高0件・重大0件だった。direct dependencyとlockfileの変更はない。
 - 中程度が1件ある。`drizzle-kit 0.31.10`の開発時だけ使われる推移依存`@esbuild-kit/esm-loader > @esbuild-kit/core-utils > esbuild 0.18.20`が[GHSA-67mh-4wv8-2f99](https://github.com/advisories/GHSA-67mh-4wv8-2f99)に該当する。これはesbuild開発サーバーのアクセス制御に関する問題で、本アプリのruntime bundleには含まれない。修正版はesbuild 0.24.3以上だが、上流が`~0.18.20`を要求しているため、互換範囲を越える強制overrideは行わない。
 - install時に`@esbuild-kit/core-utils 3.3.2`と`@esbuild-kit/esm-loader 2.6.5`のdeprecated警告がある。どちらも最新Stableの`drizzle-kit 0.31.10`から到達する推移依存で、direct dependencyではない。Phase 2以降の依存更新時に上流解消を再確認する。
 - StableのWranglerとCloudflare Vite pluginが内部で固定する`miniflare 5.20260815.0-alpha`、`unenv 2.0.0-rc.24`、`youch 4.1.0-beta.10`がlockfileに含まれる。直接採用やruntime API利用はせず、互換性を壊す強制overrideも行わない。例外条件と更新方針は[ADR-0003](decisions/0003-toolchain-transitive-prereleases.md)へ記録した。

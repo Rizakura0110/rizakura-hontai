@@ -159,3 +159,10 @@ remote migrationの直前には`tech-inbox`とproduction対象であることを
 - 設定画面は検証済みexport responseから保存記事数と未読記事数を表示する。同じresponseをBlobへ変換してdownloadするため、画面表示とdownloadでRate Limiting枠を二重消費しない。
 - export contractは公開用の記事DTO、URL alias、タグ、記事とタグの関連だけを許可し、JWT、email、Worker設定、内部errorを受け入れないstrict schemaとした。
 - remote Rate Limiting bindingの変更、deploy、Cloudflare accountへのloginは行っていない。Phase 9で既存4 bindingと合わせてexport bindingの料金表示を再確認する。
+
+## Phase 10 operations references
+
+- 現在のproduction構成、Access保護、secret、fetcher分離、残余リスクは[Security](security.md)を正とする。
+- release、migration、rollback、D1 Time Travel、Queue、DLQ、Workers Logs、定期確認は[Operations](operations.md)に集約した。
+- remote migration、deploy、rollback、restore、Queue pause・purgeは品質ゲートへ含めず、対象と影響を確認した明示的な運用操作としてだけ実行する。
+- Access保護前のURL、production URL、secret実値、個人email allowlistはREADMEや運用文書へ記録しない。

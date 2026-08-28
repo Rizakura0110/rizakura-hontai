@@ -6,8 +6,8 @@
 
 | 対象 | 状態 | 備考 |
 |---|---|---|
-| Playwright desktop Chrome 1280 × 800 | 成功 | 自動E2E 8シナリオ |
-| Playwright mobile Chrome 320 × 700 | 成功 | 自動E2E 8シナリオ。実機確認の代替ではない |
+| Playwright desktop Chrome 1280 × 800 | 成功 | 自動E2E 9シナリオ |
+| Playwright mobile Chrome 320 × 700 | 成功 | 自動E2E 9シナリオ。実機確認の代替ではない |
 | iPhone Google Chrome | 成功 | 2026-08-27の実機共通チェックに成功。UI簡素化後はowner表示確認とmobile E2Eで補完 |
 | Android Google Chrome | スキップ | 所有者判断でPhase 9では実施しない。成功扱いにはしない |
 
@@ -40,6 +40,7 @@
 | 11 | 縦向きで主要画面を操作する | 横overflowや操作不能なcontrolがない | 未実施 |
 | 12 | 横向きで主要画面を操作する | 可能な端末では横overflowやdialog切れがない | 未実施 |
 | 13 | logoutまたはAccess session無効化後にAPIへアクセスする | private data APIが401または403で拒否される | 未実施 |
+| 14 | 設定画面でタグを追加し、名前変更後に削除する | タグごとに異なる色で追加され、名前変更しても色が維持され、削除しても記事は残る | 未実施 |
 
 ## 結果記録テンプレート
 
@@ -74,7 +75,7 @@ failまたはblockedがあればPhase 9完了扱いにせず、再現条件と�
 - 向き: 縦・横
 - 結果: pass
 - 失敗したcheck番号: なし
-- 備考: 所有者から「iPhone全部OK」と報告された。Access login、keyboard中layout、追加・編集・削除dialog、記事保存、検索、既読化とundo、元記事の新規tab、JSON download、縦横layout、未認証時のAccess遮断を確認した。監視したapp Worker requestはすべて`outcome: ok`、例外なし。cold requestは17 ms、その後は2〜7 msだった。実機テスト用記事がremote D1に0件であることを終了後に確認した。
+- 備考: 所有者から「iPhone全部OK」と報告され、当時のcheck 1〜13を完了した。Access login、keyboard中layout、追加・編集・削除dialog、記事保存、検索、既読化とundo、元記事の新規tab、JSON download、縦横layout、未認証時のAccess遮断を確認した。監視したapp Worker requestはすべて`outcome: ok`、例外なし。cold requestは17 ms、その後は2〜7 msだった。実機テスト用記事がremote D1に0件であることを終了後に確認した。check 14とタグ付き保存は後から追加されたため、この実機passには含めない。
 
 ### Android Google Chrome
 
@@ -91,3 +92,12 @@ failまたはblockedがあればPhase 9完了扱いにせず、再現条件と�
 - 未認証root/APIのAccess redirect: pass
 - Access applicationとowner email完全一致policy: pass
 - 認証済みowner browser表示: pass。ownerが`/`から全記事画面を表示でき、ナビゲーションが「すべて」「設定」だけであることを確認した。確認端末は未記録のため、iPhone実機でUI更新版を再実施したとは記録しない。
+
+### 2026-08-28 タグ機能更新後の再確認
+
+- 対象deployment: `ce9014c2-9cd4-4a73-b59c-2fceb1a4a30f`
+- local desktop/mobile E2E: pass（合計18 tests。タグ作成、付与、絞り込み、名前変更、削除、URL保存時のタグ付けを含む）
+- 未認証root/APIのAccess redirect: pass
+- 認証済みowner browser表示: pass。設定画面の「新しいタグ名」と「追加」フォームが表示されることを確認した
+- iPhone Chromeでのタグ機能再確認: 未実施。2026-08-27の実機passをタグ機能へ拡張して扱わない
+- Android Chrome実機: owner判断により引き続きスキップ。自動mobile E2Eを実機passとは扱わない
