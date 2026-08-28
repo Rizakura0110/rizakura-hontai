@@ -15,7 +15,7 @@ export type FetchMetadataDependencies = {
 };
 
 const defaultDependencies: FetchMetadataDependencies = {
-  fetch,
+  fetch: (input, init) => fetch(input, init),
   parse: parseHtmlMetadata,
   setTimeout,
   clearTimeout,

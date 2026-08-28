@@ -28,9 +28,28 @@ function dependencies(fetchImplementation: typeof fetch): FetchMetadataDependenc
 
 afterEach(() => {
   vi.useRealTimers();
+  vi.unstubAllGlobals();
 });
 
 describe("fetchMetadata", () => {
+  it("does not rebind the Workers runtime fetch receiver", async () => {
+    const runtimeFetch = vi.fn(function (this: unknown) {
+      if (this !== undefined) throw new TypeError("Illegal invocation");
+      return Promise.resolve(
+        new Response("{}", { headers: { "Content-Type": "application/json" } }),
+      );
+    });
+    vi.stubGlobal("fetch", runtimeFetch);
+    vi.resetModules();
+    const { fetchMetadata: fetchMetadataWithRuntimeDefault } = await import("./fetch-metadata");
+
+    await expect(fetchMetadataWithRuntimeDefault("https://example.org/article")).resolves.toEqual({
+      ok: false,
+      error: { code: "UNSUPPORTED_CONTENT_TYPE" },
+    });
+    expect(runtimeFetch).toHaveBeenCalledOnce();
+  });
+
   it("returns parsed metadata for a bounded HTML response", async () => {
     const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
       new Response("<title>Example</title>", {
