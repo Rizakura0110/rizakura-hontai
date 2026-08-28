@@ -1,4 +1,5 @@
 import type { MetadataErrorCode, MetadataStatus } from "./metadata";
+import type { Tag } from "./tag";
 import type { NormalizedUrl } from "./url-normalization";
 import type { ArticleCursorPosition } from "./article-cursor";
 
@@ -61,6 +62,7 @@ export type ArticleListCriteria = {
   readonly status: ArticleListStatus;
   readonly search: string | null;
   readonly site: string | null;
+  readonly tagId: string | null;
   readonly sort: ArticleSort;
   readonly limit: number;
   readonly cursor: ArticleCursorPosition | null;
@@ -68,6 +70,8 @@ export type ArticleListCriteria = {
 
 export type ArticlePage = {
   readonly items: readonly Article[];
+  readonly availableTags: readonly Tag[];
+  readonly tagsByArticleId: Readonly<Record<string, readonly Tag[]>>;
   readonly nextCursor: ArticleCursorPosition | null;
 };
 

@@ -31,7 +31,12 @@ const article: Article = {
 
 function stubRepository(overrides: Partial<ArticleRepository> = {}): ArticleRepository {
   return {
-    list: async () => ({ items: [article], nextCursor: null }),
+    list: async () => ({
+      items: [article],
+      availableTags: [],
+      tagsByArticleId: { [article.id]: [] },
+      nextCursor: null,
+    }),
     exportAll: async () => ({ articles: [article], articleUrls: [] }),
     findById: async () => article,
     findByNormalizedUrl: async () => null,

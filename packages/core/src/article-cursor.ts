@@ -29,6 +29,7 @@ export type ArticleCursorContext = {
   readonly status: ArticleListStatus;
   readonly search: string | null;
   readonly site: string | null;
+  readonly tagId: string | null;
   readonly sort: ArticleSort;
 };
 
@@ -52,7 +53,7 @@ export type DecodeArticleCursorResult =
       readonly code: "INVALID_CURSOR";
     };
 
-const payloadKeys = ["id", "search", "site", "sort", "sortValue", "status", "version"];
+const payloadKeys = ["id", "search", "site", "sort", "sortValue", "status", "tagId", "version"];
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -98,6 +99,7 @@ function isArticleCursorPayload(value: unknown): value is ArticleCursorPayload {
     isNullableString(value.sortValue) &&
     isNullableString(value.search) &&
     isNullableString(value.site) &&
+    isNullableString(value.tagId) &&
     typeof value.status === "string" &&
     ARTICLE_LIST_STATUSES.includes(value.status as ArticleListStatus) &&
     typeof value.sort === "string" &&
@@ -145,6 +147,7 @@ export function encodeArticleCursor(
     status: context.status,
     search: context.search,
     site: context.site,
+    tagId: context.tagId,
     sort: context.sort,
     sortValue: position.sortValue,
     id: position.id,
@@ -173,6 +176,7 @@ export function decodeArticleCursor(
       payload.status !== expectedContext.status ||
       payload.search !== expectedContext.search ||
       payload.site !== expectedContext.site ||
+      payload.tagId !== expectedContext.tagId ||
       payload.sort !== expectedContext.sort
     ) {
       return { ok: false, code: "INVALID_CURSOR" };

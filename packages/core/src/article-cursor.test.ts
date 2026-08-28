@@ -10,6 +10,7 @@ const context = {
   status: "unread",
   search: "型 安全",
   site: "Example",
+  tagId: "tag-typescript",
   sort: "saved_desc",
 } as const satisfies ArticleCursorContext;
 
@@ -63,6 +64,7 @@ describe("article cursor", () => {
     ["status", { ...context, status: "read" }],
     ["search", { ...context, search: "different" }],
     ["site", { ...context, site: null }],
+    ["tag", { ...context, tagId: "tag-react" }],
     ["sort", { ...context, sort: "saved_asc" }],
   ] as const)("rejects a cursor reused with different %s criteria", (_field, otherContext) => {
     const cursor = encodeArticleCursor(context, {

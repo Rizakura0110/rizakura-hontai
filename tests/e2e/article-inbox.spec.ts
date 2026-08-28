@@ -58,6 +58,14 @@ async function mockArticleApi(page: Page) {
     });
   });
 
+  await page.route("**/api/v1/tags**", async (route) => {
+    if (route.request().method() === "GET") {
+      await route.fulfill({ json: { tags: [] } });
+      return;
+    }
+    await route.fallback();
+  });
+
   await page.route("**/api/v1/articles**", async (route) => {
     const request = route.request();
     const url = new URL(request.url());
@@ -97,7 +105,14 @@ async function mockArticleApi(page: Page) {
           value?.toLocaleLowerCase("ja-JP").includes(query),
         );
       });
-      await route.fulfill({ json: { articles: visible, nextCursor: null } });
+      await route.fulfill({
+        json: {
+          articles: visible,
+          availableTags: [],
+          tagsByArticleId: Object.fromEntries(visible.map((article) => [article.id, []])),
+          nextCursor: null,
+        },
+      });
       return;
     }
 
@@ -277,7 +292,7 @@ test("add, search, edit, delete, and settings routes work", async ({ page }, tes
 
   const card = page.locator("article").filter({ hasText: newUrl });
   await card.locator("summary").click();
-  await card.getByRole("button", { name: "編集" }).click();
+  await card.getByRole("button", { name: "編集", exact: true }).click();
   const dialog = page.getByRole("dialog", { name: "記事を編集" });
   await dialog.getByLabel("タイトル").fill("編集済みのPlaywright記事");
   await dialog.getByRole("button", { name: "変更を保存" }).click();
@@ -374,7 +389,7 @@ test("editing an article URL reports a conflict without losing the original", as
 
   const originalCard = page.locator("article").filter({ hasText: unsafeTitle });
   await originalCard.locator("summary").click();
-  await originalCard.getByRole("button", { name: "編集" }).click();
+  await originalCard.getByRole("button", { name: "編集", exact: true }).click();
   const dialog = page.getByRole("dialog", { name: "記事を編集" });
   await dialog.getByLabel("記事URL").fill(conflictingUrl);
   await dialog.getByRole("button", { name: "変更を保存" }).click();

@@ -1,4 +1,5 @@
 import type { Article, UpdateArticleInput } from "@tech-inbox/core/article";
+import type { Tag } from "@tech-inbox/core/tag";
 import type { NormalizedUrl } from "@tech-inbox/core/url-normalization";
 import { describe, expect, it, vi } from "vitest";
 import { ArticleService } from "./article-service";
@@ -26,9 +27,18 @@ const existingArticle: Article = {
   updatedAt: "2026-08-26T01:00:00.000Z",
 };
 
+const existingTag: Tag = {
+  id: "tag-react",
+  name: "React",
+  normalizedName: "react",
+  colorHue: 220,
+  createdAt: "2026-08-28T00:00:00.000Z",
+  updatedAt: "2026-08-28T00:00:00.000Z",
+};
+
 function repository(overrides: Partial<ArticleRepository> = {}): ArticleRepository {
   return {
-    list: async () => ({ items: [], nextCursor: null }),
+    list: async () => ({ items: [], availableTags: [], tagsByArticleId: {}, nextCursor: null }),
     exportAll: async () => ({ articles: [], articleUrls: [] }),
     findById: async () => existingArticle,
     findByNormalizedUrl: async () => null,
@@ -42,6 +52,39 @@ function repository(overrides: Partial<ArticleRepository> = {}): ArticleReposito
 }
 
 describe("ArticleService", () => {
+  it("includes assigned tags and binds the tag filter into list criteria", async () => {
+    const list = vi.fn<ArticleRepository["list"]>(async () => ({
+      items: [existingArticle],
+      availableTags: [existingTag],
+      tagsByArticleId: { [existingArticle.id]: [existingTag] },
+      nextCursor: null,
+    }));
+    const service = new ArticleService(
+      repository({ list }),
+      () => new Date("2026-08-28T00:00:00.000Z"),
+      () => "unused-id",
+      { send: async () => undefined },
+    );
+
+    await expect(
+      service.list({ status: "all", tagId: existingTag.id, sort: "saved_desc", limit: 30 }),
+    ).resolves.toMatchObject({
+      articles: [{ id: existingArticle.id }],
+      availableTags: [{ id: existingTag.id, colorHue: existingTag.colorHue }],
+      tagsByArticleId: { [existingArticle.id]: [{ id: existingTag.id }] },
+      nextCursor: null,
+    });
+    expect(list).toHaveBeenCalledWith({
+      status: "all",
+      search: null,
+      site: null,
+      tagId: existingTag.id,
+      sort: "saved_desc",
+      limit: 30,
+      cursor: null,
+    });
+  });
+
   it("creates a complete versioned export snapshot", async () => {
     const service = new ArticleService(
       repository({

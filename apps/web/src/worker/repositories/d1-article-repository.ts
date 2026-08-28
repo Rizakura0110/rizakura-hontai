@@ -7,9 +7,10 @@ import type {
   CreateArticleInput,
   UpdateArticleInput,
 } from "@tech-inbox/core/article";
+import type { Tag } from "@tech-inbox/core/tag";
 import type { NormalizedUrl } from "@tech-inbox/core/url-normalization";
-import { articles, articleUrls, type ArticleRow } from "@tech-inbox/db";
-import { and, asc, desc, eq, gt, isNull, lt, or, type SQL, sql } from "drizzle-orm";
+import { articles, articleTags, articleUrls, type ArticleRow, tags } from "@tech-inbox/db";
+import { and, asc, desc, eq, gt, inArray, isNull, lt, or, type SQL, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 import type {
   ArticleRepository,
@@ -22,6 +23,7 @@ import type {
   UpdateArticleResult,
 } from "./article-repository";
 import { mapArticleRow } from "./article-mapper";
+import { mapTagRow } from "./tag-mapper";
 
 type ArticleDatabase = ReturnType<typeof drizzle>;
 
@@ -85,6 +87,12 @@ function listConditions(criteria: ArticleListCriteria): SQL[] {
 
   if (criteria.site !== null) {
     conditions.push(eq(articles.siteName, criteria.site));
+  }
+
+  if (criteria.tagId !== null) {
+    conditions.push(
+      sql`EXISTS (SELECT 1 FROM ${articleTags} WHERE ${articleTags.articleId} = ${articles.id} AND ${articleTags.tagId} = ${criteria.tagId})`,
+    );
   }
 
   const afterCursor = cursorCondition(criteria);
@@ -166,10 +174,34 @@ class D1ArticleRepository implements ArticleRepository {
       .limit(criteria.limit + 1);
     const hasNextPage = rows.length > criteria.limit;
     const items = rows.slice(0, criteria.limit).map(mapArticleRow);
+    const articleIds = items.map((article) => article.id);
+    const tagRows =
+      articleIds.length === 0
+        ? []
+        : await this.#database
+            .select({ articleId: articleTags.articleId, tag: tags })
+            .from(articleTags)
+            .innerJoin(tags, eq(articleTags.tagId, tags.id))
+            .where(inArray(articleTags.articleId, articleIds))
+            .orderBy(asc(articleTags.articleId), asc(tags.normalizedName), asc(tags.id));
+    const availableTags = (
+      await this.#database.select().from(tags).orderBy(asc(tags.normalizedName), asc(tags.id))
+    ).map(mapTagRow);
+    const tagsByArticleId: Record<string, Tag[]> = Object.fromEntries(
+      articleIds.map((articleId) => [articleId, []]),
+    );
+    for (const row of tagRows) {
+      const assignedTags = tagsByArticleId[row.articleId];
+      if (assignedTags !== undefined) {
+        assignedTags.push(mapTagRow(row.tag));
+      }
+    }
     const finalItem = items.at(-1);
 
     return {
       items,
+      availableTags,
+      tagsByArticleId,
       nextCursor: hasNextPage && finalItem !== undefined ? positionFor(finalItem, criteria) : null,
     };
   }

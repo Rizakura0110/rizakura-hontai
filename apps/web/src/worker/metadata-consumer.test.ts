@@ -56,7 +56,7 @@ function repository(
   setState: (value: Article) => void,
 ): ArticleRepository {
   return {
-    list: async () => ({ items: [], nextCursor: null }),
+    list: async () => ({ items: [], availableTags: [], tagsByArticleId: {}, nextCursor: null }),
     exportAll: async () => ({ articles: [], articleUrls: [] }),
     findById: async () => getState(),
     findByNormalizedUrl: async () => null,

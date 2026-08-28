@@ -47,6 +47,11 @@ describe("API request contracts", () => {
     ).toBe(false);
   });
 
+  it("accepts a tag filter and rejects an empty tag id", () => {
+    expect(listArticlesQuerySchema.parse({ tagId: " tag-react " }).tagId).toBe("tag-react");
+    expect(listArticlesQuerySchema.safeParse({ tagId: " " }).success).toBe(false);
+  });
+
   it("rejects invalid enums, malformed cursors, and unknown query fields", () => {
     expect(listArticlesQuerySchema.safeParse({ status: "archived" }).success).toBe(false);
     expect(listArticlesQuerySchema.safeParse({ sort: "title_asc" }).success).toBe(false);
@@ -193,13 +198,57 @@ describe("API response contracts", () => {
     expect(
       listArticlesResponseSchema.safeParse({
         articles: [articleDtoFixture()],
+        availableTags: [],
+        tagsByArticleId: { "article-1": [] },
         nextCursor: "eyJ2IjoxfQ",
       }).success,
     ).toBe(true);
     expect(
       listArticlesResponseSchema.safeParse({
         articles: [],
+        availableTags: [],
+        tagsByArticleId: {},
         nextCursor: "not+base64url",
+      }).success,
+    ).toBe(false);
+    expect(
+      listArticlesResponseSchema.safeParse({
+        articles: [articleDtoFixture()],
+        availableTags: [],
+        tagsByArticleId: {},
+        nextCursor: null,
+      }).success,
+    ).toBe(false);
+    expect(
+      listArticlesResponseSchema.safeParse({
+        articles: [articleDtoFixture()],
+        availableTags: [],
+        tagsByArticleId: {
+          "article-1": [
+            {
+              id: "tag-1",
+              name: "React",
+              colorHue: 220,
+              createdAt: "2026-08-27T00:00:00.000Z",
+              updatedAt: "2026-08-27T00:00:00.000Z",
+            },
+          ],
+        },
+        nextCursor: null,
+      }).success,
+    ).toBe(false);
+    expect(
+      listArticlesResponseSchema.safeParse({
+        articles: [],
+        availableTags: Array.from({ length: CONTRACT_LIMITS.tags + 1 }, (_, index) => ({
+          id: `tag-${index}`,
+          name: `Tag ${index}`,
+          colorHue: index,
+          createdAt: "2026-08-27T00:00:00.000Z",
+          updatedAt: "2026-08-27T00:00:00.000Z",
+        })),
+        tagsByArticleId: {},
+        nextCursor: null,
       }).success,
     ).toBe(false);
   });

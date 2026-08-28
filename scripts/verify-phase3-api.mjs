@@ -351,6 +351,22 @@ try {
   );
   const fetchedTags = await requestJson(`/api/v1/articles/${first.body.article.id}/tags`);
   assert.deepEqual(fetchedTags.body, assignedTags.body);
+  const tagFilteredArticles = await requestJson(
+    `/api/v1/articles?tagId=${encodeURIComponent(reactTag.body.tag.id)}`,
+  );
+  assert.equal(tagFilteredArticles.response.status, 200);
+  assert.deepEqual(
+    tagFilteredArticles.body.articles.map(({ id }) => id),
+    [first.body.article.id],
+  );
+  assert.deepEqual(
+    new Set(tagFilteredArticles.body.availableTags.map(({ id }) => id)),
+    new Set([reactTag.body.tag.id, cloudflareTag.body.tag.id]),
+  );
+  assert.deepEqual(
+    new Set(tagFilteredArticles.body.tagsByArticleId[first.body.article.id].map(({ id }) => id)),
+    new Set([reactTag.body.tag.id, cloudflareTag.body.tag.id]),
+  );
 
   const renamedTag = await requestJson(`/api/v1/tags/${reactTag.body.tag.id}`, {
     method: "PATCH",
@@ -435,6 +451,13 @@ try {
     `/api/v1/articles?sort=saved_asc&limit=2&cursor=${firstPage.body.nextCursor}`,
   );
   assertApiError(mismatchedCursor, 400, "VALIDATION_ERROR");
+  assertApiError(
+    await requestJson(
+      `/api/v1/articles?sort=saved_desc&limit=2&tagId=${encodeURIComponent(reactTag.body.tag.id)}&cursor=${firstPage.body.nextCursor}`,
+    ),
+    400,
+    "VALIDATION_ERROR",
+  );
   assertApiError(
     await requestJson("/api/v1/articles?cursor=not-a-cursor"),
     400,

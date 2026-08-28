@@ -1,10 +1,13 @@
-import type { ArticleDto } from "@tech-inbox/contracts";
+import type { ArticleDto, TagDto } from "@tech-inbox/contracts";
+import { TagChip } from "./TagChip";
 
 type ArticleCardProps = {
   readonly article: ArticleDto;
+  readonly tags: readonly TagDto[];
   readonly busy: boolean;
   readonly onToggleRead: (article: ArticleDto) => void;
   readonly onEdit: (article: ArticleDto) => void;
+  readonly onEditTags: (article: ArticleDto) => void;
   readonly onDelete: (article: ArticleDto) => void;
   readonly onRetryMetadata: (article: ArticleDto) => void;
 };
@@ -34,9 +37,11 @@ function closeMenu(target: HTMLElement): void {
 
 export function ArticleCard({
   article,
+  tags,
   busy,
   onToggleRead,
   onEdit,
+  onEditTags,
   onDelete,
   onRetryMetadata,
 }: ArticleCardProps) {
@@ -92,6 +97,17 @@ export function ArticleCard({
                   編集
                 </button>
                 <button
+                  className="min-h-11 w-full rounded-md px-3 text-left text-sm text-slate-700 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-blue-600"
+                  disabled={busy}
+                  onClick={(event) => {
+                    closeMenu(event.currentTarget);
+                    onEditTags(article);
+                  }}
+                  type="button"
+                >
+                  タグを編集
+                </button>
+                <button
                   className="min-h-11 w-full rounded-md px-3 text-left text-sm text-red-700 hover:bg-red-50 focus-visible:outline-2 focus-visible:outline-red-600"
                   disabled={busy}
                   onClick={(event) => {
@@ -122,6 +138,16 @@ export function ArticleCard({
               {article.status === "unread" ? "未読" : "既読"}
             </span>
           </div>
+
+          {tags.length === 0 ? null : (
+            <ul aria-label="記事のタグ" className="mt-3 flex flex-wrap gap-1.5">
+              {tags.map((tag) => (
+                <li key={tag.id}>
+                  <TagChip tag={tag} />
+                </li>
+              ))}
+            </ul>
+          )}
 
           {article.metadataStatus === "pending" ? (
             <p className="mt-3 flex items-center gap-2 text-xs text-slate-500">

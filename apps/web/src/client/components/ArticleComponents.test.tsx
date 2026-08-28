@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import type { ArticleDto } from "@tech-inbox/contracts";
+import type { ArticleDto, TagDto } from "@tech-inbox/contracts";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -34,6 +34,14 @@ const article: ArticleDto = {
   updatedAt: now,
 };
 
+const tag: TagDto = {
+  id: "tag-react",
+  name: "React",
+  colorHue: 220,
+  createdAt: now,
+  updatedAt: now,
+};
+
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
@@ -63,6 +71,7 @@ describe("ArticleCard", () => {
   it("renders defensive fallbacks and invokes every available card action", async () => {
     const onToggleRead = vi.fn();
     const onEdit = vi.fn();
+    const onEditTags = vi.fn();
     const onDelete = vi.fn();
     const onRetryMetadata = vi.fn();
     const user = userEvent.setup();
@@ -84,14 +93,17 @@ describe("ArticleCard", () => {
         busy={false}
         onDelete={onDelete}
         onEdit={onEdit}
+        onEditTags={onEditTags}
         onRetryMetadata={onRetryMetadata}
         onToggleRead={onToggleRead}
+        tags={[tag]}
       />,
     );
 
     expect(screen.getByText("W")).toBeTruthy();
     expect(screen.getByText("保存 invalid date")).toBeTruthy();
     expect(screen.getByText("公開 2026年8月27日")).toBeTruthy();
+    expect(screen.getByText("React")).toBeTruthy();
     await user.click(screen.getByRole("button", { name: "未読に戻す" }));
     await user.click(screen.getByRole("button", { name: "記事情報を再取得" }));
     const details = screen.getByText("not a URLのその他の操作").closest("details");
@@ -100,11 +112,14 @@ describe("ArticleCard", () => {
     await user.click(screen.getByRole("button", { name: "編集" }));
     expect(details?.hasAttribute("open")).toBe(false);
     details?.setAttribute("open", "");
+    await user.click(screen.getByRole("button", { name: "タグを編集" }));
+    details?.setAttribute("open", "");
     await user.click(screen.getByRole("button", { name: "削除" }));
 
     expect(onToggleRead).toHaveBeenCalledWith(failedArticle);
     expect(onRetryMetadata).toHaveBeenCalledWith(failedArticle);
     expect(onEdit).toHaveBeenCalledWith(failedArticle);
+    expect(onEditTags).toHaveBeenCalledWith(failedArticle);
     expect(onDelete).toHaveBeenCalledWith(failedArticle);
   });
 
@@ -115,8 +130,10 @@ describe("ArticleCard", () => {
         busy={true}
         onDelete={vi.fn()}
         onEdit={vi.fn()}
+        onEditTags={vi.fn()}
         onRetryMetadata={vi.fn()}
         onToggleRead={vi.fn()}
+        tags={[]}
       />,
     );
 

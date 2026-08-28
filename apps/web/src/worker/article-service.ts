@@ -17,6 +17,7 @@ import { toArticleDto } from "./article-dto";
 import { ApiError, validationError } from "./errors";
 import type { MetadataQueueProducer } from "./metadata-queue";
 import type { ArticleRepository } from "./repositories/article-repository";
+import { toTagDto } from "./tag-dto";
 
 export type Clock = () => Date;
 export type IdGenerator = () => string;
@@ -44,6 +45,7 @@ export class ArticleService {
       status: query.status,
       search: query.q ?? null,
       site: query.site ?? null,
+      tagId: query.tagId ?? null,
       sort: query.sort,
     };
     const decodedCursor =
@@ -61,6 +63,13 @@ export class ArticleService {
 
     return {
       articles: page.items.map(toArticleDto),
+      availableTags: page.availableTags.map(toTagDto),
+      tagsByArticleId: Object.fromEntries(
+        Object.entries(page.tagsByArticleId).map(([articleId, tags]) => [
+          articleId,
+          tags.map(toTagDto),
+        ]),
+      ),
       nextCursor:
         page.nextCursor === null ? null : encodeArticleCursor(cursorContext, page.nextCursor),
     };

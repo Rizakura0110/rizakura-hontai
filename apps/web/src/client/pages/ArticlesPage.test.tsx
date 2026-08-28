@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
-import type { ArticleDto } from "@tech-inbox/contracts";
-import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
+import type { ArticleDto, TagDto } from "@tech-inbox/contracts";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ArticlesPage } from "./ArticlesPage";
@@ -28,6 +28,21 @@ const baseArticle: ArticleDto = {
   updatedAt: "2026-08-26T01:02:03.000Z",
 };
 
+const reactTag: TagDto = {
+  id: "tag-react",
+  name: "React",
+  colorHue: 220,
+  createdAt: "2026-08-28T00:00:00.000Z",
+  updatedAt: "2026-08-28T00:00:00.000Z",
+};
+
+const cloudflareTag: TagDto = {
+  ...reactTag,
+  id: "tag-cloudflare",
+  name: "Cloudflare",
+  colorHue: 40,
+};
+
 function jsonResponse(value: unknown, status = 200): Response {
   return new Response(JSON.stringify(value), {
     headers: { "Content-Type": "application/json" },
@@ -52,8 +67,22 @@ describe("ArticlesPage core flows", () => {
     };
     const fetchMock = vi
       .fn()
-      .mockResolvedValueOnce(jsonResponse({ articles: [pendingArticle], nextCursor: null }))
-      .mockResolvedValue(jsonResponse({ articles: [baseArticle], nextCursor: null }));
+      .mockResolvedValueOnce(
+        jsonResponse({
+          articles: [pendingArticle],
+          availableTags: [],
+          tagsByArticleId: { [pendingArticle.id]: [] },
+          nextCursor: null,
+        }),
+      )
+      .mockResolvedValue(
+        jsonResponse({
+          articles: [baseArticle],
+          availableTags: [],
+          tagsByArticleId: { [baseArticle.id]: [] },
+          nextCursor: null,
+        }),
+      );
     vi.stubGlobal("fetch", fetchMock);
 
     await act(async () => {
@@ -79,6 +108,8 @@ describe("ArticlesPage core flows", () => {
       vi.fn().mockResolvedValue(
         jsonResponse({
           articles: [{ ...baseArticle, title: unsafeTitle }],
+          availableTags: [],
+          tagsByArticleId: { [baseArticle.id]: [] },
           nextCursor: null,
         }),
       ),
@@ -96,6 +127,8 @@ describe("ArticlesPage core flows", () => {
     const fetchMock = vi.fn().mockResolvedValue(
       jsonResponse({
         articles: [],
+        availableTags: [],
+        tagsByArticleId: {},
         nextCursor: null,
       }),
     );
@@ -122,7 +155,12 @@ describe("ArticlesPage core flows", () => {
     const fetchMock = vi.fn(
       async (input: string | URL | Request, init?: RequestInit): Promise<Response> => {
         if (String(input).startsWith("/api/v1/articles?")) {
-          return jsonResponse({ articles: [baseArticle], nextCursor: null });
+          return jsonResponse({
+            articles: [baseArticle],
+            availableTags: [],
+            tagsByArticleId: { [baseArticle.id]: [] },
+            nextCursor: null,
+          });
         }
         const body = JSON.parse(String(init?.body)) as { status?: string };
         return jsonResponse({ article: body.status === "read" ? readArticle : baseArticle });
@@ -150,7 +188,12 @@ describe("ArticlesPage core flows", () => {
         if (init?.method === "POST") {
           return jsonResponse({ result: "alreadyExists", article: baseArticle });
         }
-        return jsonResponse({ articles: [], nextCursor: null });
+        return jsonResponse({
+          articles: [],
+          availableTags: [],
+          tagsByArticleId: {},
+          nextCursor: null,
+        });
       },
     );
     vi.stubGlobal("fetch", fetchMock);
@@ -189,7 +232,12 @@ describe("ArticlesPage core flows", () => {
         if (String(input).endsWith("/retry-metadata") && init?.method === "POST") {
           return jsonResponse({ article: pendingArticle });
         }
-        return jsonResponse({ articles: [failedArticle], nextCursor: null });
+        return jsonResponse({
+          articles: [failedArticle],
+          availableTags: [],
+          tagsByArticleId: { [failedArticle.id]: [] },
+          nextCursor: null,
+        });
       },
     );
     vi.stubGlobal("fetch", fetchMock);
@@ -209,6 +257,88 @@ describe("ArticlesPage core flows", () => {
 });
 
 describe("ArticlesPage quality flows", () => {
+  it("filters by tag and creates and assigns a new tag from the article dialog", async () => {
+    let resolveFilteredList: (response: Response) => void = () => undefined;
+    const filteredList = new Promise<Response>((resolve) => {
+      resolveFilteredList = resolve;
+    });
+    const fetchMock = vi.fn(
+      async (input: string | URL | Request, init?: RequestInit): Promise<Response> => {
+        const path = String(input);
+        if (path.startsWith("/api/v1/articles?") && init?.method === undefined) {
+          if (new URL(path, "https://local.invalid").searchParams.has("tagId")) {
+            return filteredList;
+          }
+          return jsonResponse({
+            articles: [baseArticle],
+            availableTags: [reactTag],
+            tagsByArticleId: { [baseArticle.id]: [reactTag] },
+            nextCursor: null,
+          });
+        }
+        if (path === "/api/v1/tags" && init?.method === "POST") {
+          return jsonResponse({ result: "created", tag: cloudflareTag }, 201);
+        }
+        if (path.endsWith(`/articles/${baseArticle.id}/tags`) && init?.method === "PUT") {
+          return jsonResponse({ tags: [cloudflareTag, reactTag] });
+        }
+        throw new Error(`Unexpected request: ${path}`);
+      },
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const user = userEvent.setup();
+    render(<ArticlesPage />);
+
+    await screen.findByRole("link", { name: baseArticle.title ?? "" });
+    expect(screen.getAllByText("React").length).toBeGreaterThan(0);
+    await user.selectOptions(screen.getByLabelText("タグ"), reactTag.id);
+    await waitFor(() =>
+      expect(
+        fetchMock.mock.calls.some(([path]) => String(path).includes(`tagId=${reactTag.id}`)),
+      ).toBe(true),
+    );
+    await act(async () => {
+      resolveFilteredList(
+        jsonResponse({
+          articles: [baseArticle],
+          availableTags: [reactTag],
+          tagsByArticleId: { [baseArticle.id]: [reactTag] },
+          nextCursor: null,
+        }),
+      );
+      await filteredList;
+    });
+    await screen.findByRole("link", { name: baseArticle.title ?? "" });
+
+    const card = screen.getByRole("link", { name: baseArticle.title ?? "" }).closest("article");
+    await user.click(card?.querySelector("summary") as HTMLElement);
+    await user.click(screen.getByRole("button", { name: "タグを編集" }));
+    const newTagInput = screen.getByLabelText("新しいタグを作成") as HTMLInputElement;
+    fireEvent.change(newTagInput, { target: { value: cloudflareTag.name } });
+    expect(newTagInput.value).toBe(cloudflareTag.name);
+    const createButton = screen.getByRole("button", { name: "作成" }) as HTMLButtonElement;
+    await waitFor(() => expect(createButton.disabled).toBe(false));
+    await user.click(createButton);
+    await waitFor(() =>
+      expect(
+        fetchMock.mock.calls.some(
+          ([path, init]) => String(path) === "/api/v1/tags" && init?.method === "POST",
+        ),
+      ).toBe(true),
+    );
+    expect(
+      (await screen.findAllByText(cloudflareTag.name, undefined, { timeout: 5_000 })).length,
+    ).toBeGreaterThan(0);
+    await user.click(screen.getByRole("button", { name: "タグを保存" }));
+
+    expect(await screen.findByText("タグを更新しました。")).toBeTruthy();
+    expect(screen.getAllByText(cloudflareTag.name).length).toBeGreaterThan(0);
+    const putCall = fetchMock.mock.calls.find(([, init]) => init?.method === "PUT");
+    expect(JSON.parse(String(putCall?.[1]?.body))).toEqual({
+      tagIds: expect.arrayContaining([reactTag.id, cloudflareTag.id]),
+    });
+  });
+
   it("loads another page, changes sort and status filters, and returns a read item to unread", async () => {
     const readArticle: ArticleDto = {
       ...baseArticle,
@@ -232,12 +362,27 @@ describe("ArticlesPage quality flows", () => {
         }
         const url = new URL(path, "https://local.invalid");
         if (url.searchParams.get("cursor") === "next_cursor") {
-          return jsonResponse({ articles: [baseArticle, nextArticle], nextCursor: null });
+          return jsonResponse({
+            articles: [baseArticle, nextArticle],
+            availableTags: [],
+            tagsByArticleId: { [baseArticle.id]: [], [nextArticle.id]: [] },
+            nextCursor: null,
+          });
         }
         if (url.searchParams.get("status") === "read") {
-          return jsonResponse({ articles: [readArticle], nextCursor: null });
+          return jsonResponse({
+            articles: [readArticle],
+            availableTags: [],
+            tagsByArticleId: { [readArticle.id]: [] },
+            nextCursor: null,
+          });
         }
-        return jsonResponse({ articles: [baseArticle], nextCursor: "next_cursor" });
+        return jsonResponse({
+          articles: [baseArticle],
+          availableTags: [],
+          tagsByArticleId: { [baseArticle.id]: [] },
+          nextCursor: "next_cursor",
+        });
       },
     );
     vi.stubGlobal("fetch", fetchMock);
@@ -278,7 +423,9 @@ describe("ArticlesPage quality flows", () => {
           503,
         ),
       )
-      .mockResolvedValueOnce(jsonResponse({ articles: [], nextCursor: null }));
+      .mockResolvedValueOnce(
+        jsonResponse({ articles: [], availableTags: [], tagsByArticleId: {}, nextCursor: null }),
+      );
     vi.stubGlobal("fetch", fetchMock);
     const user = userEvent.setup();
     render(<ArticlesPage />);
@@ -302,7 +449,12 @@ describe("ArticlesPage quality flows", () => {
       async (_input: string | URL | Request, init?: RequestInit): Promise<Response> => {
         if (init?.method === "PATCH") return jsonResponse({ article: updatedArticle });
         if (init?.method === "DELETE") return jsonResponse({ result: "deleted" });
-        return jsonResponse({ articles: [baseArticle], nextCursor: null });
+        return jsonResponse({
+          articles: [baseArticle],
+          availableTags: [],
+          tagsByArticleId: { [baseArticle.id]: [] },
+          nextCursor: null,
+        });
       },
     );
     vi.stubGlobal("fetch", fetchMock);

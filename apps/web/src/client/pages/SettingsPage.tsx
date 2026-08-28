@@ -1,6 +1,8 @@
-import type { ExportResponse } from "@tech-inbox/contracts";
+import type { ExportResponse, TagDto } from "@tech-inbox/contracts";
 import { useEffect, useState } from "react";
 import { exportArticles, userFacingError } from "../api/articles";
+import { deleteTag, listTags, updateTag } from "../api/tags";
+import { TagManager } from "../components/TagManager";
 
 function downloadExport(data: ExportResponse): void {
   const blob = new Blob([`${JSON.stringify(data, null, 2)}\n`], {
@@ -21,6 +23,10 @@ export function SettingsPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [refreshToken, setRefreshToken] = useState(0);
+  const [tags, setTags] = useState<TagDto[]>([]);
+  const [tagError, setTagError] = useState("");
+  const [tagLoading, setTagLoading] = useState(true);
+  const [tagRefreshToken, setTagRefreshToken] = useState(0);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -43,6 +49,49 @@ export function SettingsPage() {
 
     return () => controller.abort();
   }, [refreshToken]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    void tagRefreshToken;
+    setTagLoading(true);
+    setTagError("");
+
+    listTags({ signal: controller.signal })
+      .then((response) => {
+        if (!controller.signal.aborted) setTags(response.tags);
+      })
+      .catch((caught: unknown) => {
+        const message = userFacingError(caught);
+        if (message !== "") setTagError(message);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setTagLoading(false);
+      });
+
+    return () => controller.abort();
+  }, [tagRefreshToken]);
+
+  async function renameTag(id: string, name: string) {
+    try {
+      const updated = await updateTag(id, name);
+      setTags((current) =>
+        current
+          .map((tag) => (tag.id === updated.id ? updated : tag))
+          .sort((left, right) => left.name.localeCompare(right.name, "ja-JP")),
+      );
+    } catch (caught) {
+      throw new Error(userFacingError(caught));
+    }
+  }
+
+  async function removeTag(id: string) {
+    try {
+      await deleteTag(id);
+      setTags((current) => current.filter((tag) => tag.id !== id));
+    } catch (caught) {
+      throw new Error(userFacingError(caught));
+    }
+  }
 
   const articleCount = data?.articles.length ?? 0;
   const unreadCount = data?.articles.filter((article) => article.status === "unread").length ?? 0;
@@ -115,6 +164,14 @@ export function SettingsPage() {
           </>
         ) : null}
       </div>
+      <TagManager
+        error={tagError}
+        loading={tagLoading}
+        onDelete={removeTag}
+        onRename={renameTag}
+        onRetry={() => setTagRefreshToken((value) => value + 1)}
+        tags={tags}
+      />
     </section>
   );
 }

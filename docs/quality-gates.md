@@ -21,11 +21,11 @@ pnpm audit --audit-level high
 
 V8 coverageはstatements、branches、functions、linesの全指標に80%の最低値を設定する。さらにURL正規化、metadata-fetcherのSSRF URL判定、契約schemaはbranch coverage 90%以上を必須にする。
 
-2026-08-27時点の実測値:
+2026-08-28時点の実測値:
 
 | 対象 | Statements | Branches | Functions | Lines |
 |---|---:|---:|---:|---:|
-| テスト可能コード全体 | 89.50% | 85.62% | 89.49% | 90.82% |
+| テスト可能コード全体 | 85.47% | 80.68% | 85.00% | 87.39% |
 | URL正規化 | 100% | 96.15% | 100% | 100% |
 | SSRF URL判定 | 100% | 96.00% | 100% | 100% |
 | 契約schema | 100% | 100% | 100% | 100% |
@@ -64,6 +64,17 @@ V8 unit coverageから次だけを除外する。
 | タグ削除 | 関連だけをcascade削除し、記事本体を保持 |
 | 不正な関連付け | 存在しないタグと上限超過を安全な4xxで拒否 |
 
+タグUIフェーズでは、次をcomponent testとCodex内ブラウザsmokeで確認する。タグ操作を含むPlaywright E2Eは、JSON exportとURL重複統合を扱うタグ統合フェーズで追加する。
+
+| 必須UI | 自動・ブラウザ検証 |
+|---|---|
+| 記事カードの色付きタグチップ | component testでタグ名と保存済み色相を確認 |
+| 既存タグの選択と解除 | dialog component testで上限と一括保存を確認 |
+| dialog内での新規タグ作成 | component/page testで作成後の選択と記事への保存を確認 |
+| タグ絞り込み | page/service/実HTTP testで条件とcursor文脈を確認 |
+| 設定画面の名前変更・削除 | component/page testで確認dialogと記事保持の案内を確認 |
+| 320 × 700 layout | Playwright E2Eに加えCodex内ブラウザで横幅超過なしを確認 |
+
 Playwrightのmobile viewport成功は実機確認の代替にしない。手順と結果は`docs/manual-device-test.md`へ残す。
 
 ## Artifact size budgets
@@ -83,10 +94,10 @@ Playwrightのmobile viewport成功は実機確認の代替にしない。手順�
 
 | 成果物 | Raw | Gzip |
 |---|---:|---:|
-| app Worker | 424.6 KiB | 92.0 KiB |
-| metadata-fetcher Worker | 574.6 KiB | 86.8 KiB |
-| client JavaScript合計 | 328.3 KiB | 98.6 KiB |
-| client CSS合計 | 27.1 KiB | 6.1 KiB |
+| app Worker | 426.8 KiB | 92.4 KiB |
+| metadata-fetcher Worker | 575.6 KiB | 87.0 KiB |
+| client JavaScript合計 | 341.0 KiB | 100.9 KiB |
+| client CSS合計 | 27.8 KiB | 6.2 KiB |
 
 ## Worker CPU review
 

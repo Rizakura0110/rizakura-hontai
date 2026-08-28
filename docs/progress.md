@@ -666,3 +666,45 @@
 
 - 記事取得DTOへタグを含め、カードの色付きチップ、タグ編集・その場での新規作成、タグ絞り込み、設定画面の名前変更・削除を実装する。
 - JSON export、URL重複統合、E2E、production migration/deployはUI完成後の統合フェーズで扱う。
+
+## Additional Feature T2: タグUI
+
+### 実施内容
+
+- 記事一覧responseへ全タグcatalogと記事ごとのタグ割当を追加し、D1では記事ごとのN+1 queryを使わず一括取得するようにした。
+- 記事カードへ、タグごとに保存された色相を使う色付きチップを表示した。色だけに依存せず、タグ名を常に表示する。
+- 記事メニューへ「タグを編集」を追加し、既存タグの複数選択・解除と、dialog内での新規タグ作成・即時選択を実装した。
+- 一覧へタグ絞り込みを追加した。filter条件をopaque cursorへ含め、異なるタグ条件でcursorを再利用した場合は拒否する。
+- 設定画面へタグ管理を追加し、タグ名の変更と確認付き削除を実装した。削除時に記事自体は残ることを画面上でも明示した。
+- API clientの共通HTTP・エラー処理を分離し、記事APIとタグAPIの認証失敗・validation error表示を統一した。
+- 一覧取得とタグ作成が並行した場合も、新規タグをdialog内に保持して即時表示・保存できるようにした。
+- このフェーズではJSON export schema、URL重複時のタグ統合、タグ操作を含むPlaywright E2E、production migrationとdeployは扱っていない。
+
+### 採用判断
+
+- 記事DTO本体は変更せず、一覧responseの`availableTags`と`tagsByArticleId`でタグを返す。これにより既存のexport schema version 1をこのフェーズで暗黙に変更しない。
+- 一覧取得時はタグcatalogを1 query、表示記事の割当を1 queryで取得し、表示件数に比例するN+1 queryを避ける。
+- タグ絞り込み中に、その記事から選択中タグを外した場合は一覧から即時に除外する。
+- 色相はT1で永続化した値を共通利用し、UI側でタグ名や画面ごとに色を再計算しない。
+
+### 検証結果
+
+- `pnpm check`: pass
+- format、lint、Cloudflare生成型差分、TypeScript: pass
+- Vitest: 29 files、309 tests pass
+- coverage: statements 85.47%、branches 80.68%、functions 85.00%、lines 87.39%
+- 契約schema branch coverage: 100%
+- fresh local D1 migration/constraint verification: pass
+- local実HTTP tag filter、cursor文脈、タグ割当verification: pass
+- production build、fetcher dry-run、artifact budget: pass
+- Playwright: desktop/mobile合計12 tests pass
+- Codex内ブラウザ: タグ絞り込み欄、タグ管理、320 × 700で横幅超過なしを確認
+- audit: high 0、critical 0、既知moderate 1
+- remote Cloudflare changes: なし
+
+### 次フェーズ
+
+- export schemaをversion upしてタグcatalogと記事割当を含め、既存versionとの互換性を明示する。
+- URL重複統合時のタグunion方針を実装し、上限超過時の扱いを決める。
+- タグ作成・割当・絞り込み・名前変更・削除をdesktop/mobile Playwright E2Eへ追加する。
+- 全ゲート通過後、明示許可を得たうえでproduction D1 migrationとapp Worker deployを行い、本番で動作確認する。

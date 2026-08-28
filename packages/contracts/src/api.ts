@@ -66,6 +66,7 @@ export const listArticlesQuerySchema = z.strictObject({
   status: articleListStatusSchema.default("all"),
   q: z.string().trim().min(1).max(CONTRACT_LIMITS.searchQuery).optional(),
   site: z.string().trim().min(1).max(CONTRACT_LIMITS.siteName).optional(),
+  tagId: tagIdSchema.optional(),
   sort: articleSortSchema.default("saved_desc"),
   limit: articleListLimitSchema.default(30),
   cursor: opaqueCursorSchema.optional(),
@@ -74,10 +75,38 @@ export const listArticlesQuerySchema = z.strictObject({
 export type ListArticlesQueryInput = z.input<typeof listArticlesQuerySchema>;
 export type ListArticlesQuery = z.output<typeof listArticlesQuerySchema>;
 
-export const listArticlesResponseSchema = z.strictObject({
-  articles: z.array(articleDtoSchema),
-  nextCursor: opaqueCursorSchema.nullable(),
-});
+export const listArticlesResponseSchema = z
+  .strictObject({
+    articles: z.array(articleDtoSchema),
+    availableTags: z.array(tagDtoSchema).max(CONTRACT_LIMITS.tags),
+    tagsByArticleId: z.record(articleIdSchema, z.array(tagDtoSchema).max(MAX_TAGS_PER_ARTICLE)),
+    nextCursor: opaqueCursorSchema.nullable(),
+  })
+  .superRefine(({ articles, availableTags, tagsByArticleId }, context) => {
+    const articleIds = new Set(articles.map(({ id }) => id));
+    if (
+      articleIds.size !== Object.keys(tagsByArticleId).length ||
+      Object.keys(tagsByArticleId).some((articleId) => !articleIds.has(articleId))
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "Tag assignments must match the listed articles",
+        path: ["tagsByArticleId"],
+      });
+    }
+    const availableTagIds = new Set(availableTags.map(({ id }) => id));
+    if (
+      Object.values(tagsByArticleId).some((assignedTags) =>
+        assignedTags.some(({ id }) => !availableTagIds.has(id)),
+      )
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "Assigned tags must exist in the available tag catalog",
+        path: ["tagsByArticleId"],
+      });
+    }
+  });
 
 export type ListArticlesResponse = z.output<typeof listArticlesResponseSchema>;
 

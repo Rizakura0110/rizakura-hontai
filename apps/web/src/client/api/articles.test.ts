@@ -65,7 +65,12 @@ describe("article API client", () => {
       async (input: string | URL | Request, init?: RequestInit): Promise<Response> => {
         const path = String(input);
         if (path.startsWith("/api/v1/articles?") && init?.method === undefined) {
-          return jsonResponse({ articles: [article], nextCursor: null });
+          return jsonResponse({
+            articles: [article],
+            availableTags: [],
+            tagsByArticleId: { [article.id]: [] },
+            nextCursor: null,
+          });
         }
         if (path === "/api/v1/export") return jsonResponse(exported);
         if (path === "/api/v1/articles" && init?.method === "POST") {
@@ -84,12 +89,18 @@ describe("article API client", () => {
       listArticles({
         status: "all",
         query: "Example Query",
+        tagId: "tag-react",
         sort: "saved_asc",
         limit: 10,
         cursor: "cursor_1",
         signal: controller.signal,
       }),
-    ).resolves.toEqual({ articles: [article], nextCursor: null });
+    ).resolves.toEqual({
+      articles: [article],
+      availableTags: [],
+      tagsByArticleId: { [article.id]: [] },
+      nextCursor: null,
+    });
     await expect(exportArticles({ signal: controller.signal })).resolves.toEqual(exported);
     await expect(createArticle(article.originalUrl)).resolves.toMatchObject({ result: "created" });
     await expect(updateArticle(article.id, { title: "Updated" })).resolves.toEqual(article);
@@ -97,7 +108,7 @@ describe("article API client", () => {
     await expect(retryArticleMetadata(article.id)).resolves.toEqual(article);
 
     expect(String(fetchMock.mock.calls[0]?.[0])).toBe(
-      "/api/v1/articles?status=all&sort=saved_asc&limit=10&q=Example+Query&cursor=cursor_1",
+      "/api/v1/articles?status=all&sort=saved_asc&limit=10&q=Example+Query&tagId=tag-react&cursor=cursor_1",
     );
     expect(fetchMock.mock.calls[0]?.[1]?.signal).toBe(controller.signal);
     const mutationCalls = fetchMock.mock.calls.filter(([, init]) => init?.body !== undefined);
@@ -116,7 +127,7 @@ describe("article API client", () => {
 
   it("uses list defaults without adding empty optional query parameters", async () => {
     const fetchMock = vi.fn(async (_input: string | URL | Request) =>
-      jsonResponse({ articles: [], nextCursor: null }),
+      jsonResponse({ articles: [], availableTags: [], tagsByArticleId: {}, nextCursor: null }),
     );
     vi.stubGlobal("fetch", fetchMock);
 
