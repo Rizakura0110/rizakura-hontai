@@ -106,14 +106,14 @@ let verificationError;
 
 try {
   const firstApplication = runWrangler(["d1", "migrations", "apply", ...d1Arguments]);
-  if (!firstApplication.includes("0000_")) {
-    throw new Error("The initial migration was not reported as applied.");
+  if (!firstApplication.includes("0000_") || !firstApplication.includes("0001_")) {
+    throw new Error("The article and tag migrations were not reported as applied.");
   }
 
   runWrangler(["d1", "migrations", "list", ...d1Arguments]);
   const appliedMigrations = execute("SELECT name FROM d1_migrations ORDER BY id;");
-  if (!appliedMigrations.includes("0000_")) {
-    throw new Error("The initial migration is missing from the local D1 migration history.");
+  if (!appliedMigrations.includes("0000_") || !appliedMigrations.includes("0001_")) {
+    throw new Error("A required migration is missing from the local D1 migration history.");
   }
 
   const databaseObjects = execute(
@@ -126,6 +126,11 @@ try {
     "articles_status_read_at_id_idx",
     "articles_site_name_idx",
     "article_urls_article_id_idx",
+    "tags",
+    "article_tags",
+    "tags_normalized_name_uidx",
+    "tags_color_hue_uidx",
+    "article_tags_tag_id_idx",
   ]) {
     if (!databaseObjects.includes(name)) {
       throw new Error(`Expected local D1 object ${name} was not created.`);
@@ -196,6 +201,58 @@ try {
     /article_urls_kind_check/u,
   );
 
+  expectSqlFailure(
+    "INSERT INTO tags (id, name, normalized_name, color_hue, created_at, updated_at) VALUES ('empty-tag', '', '', 0, '2026-08-26T00:00:00.000Z', '2026-08-26T00:00:00.000Z');",
+    /tags_name_length_check/u,
+  );
+  expectSqlFailure(
+    `INSERT INTO tags (id, name, normalized_name, color_hue, created_at, updated_at) VALUES ('long-tag', '${"a".repeat(31)}', '${"a".repeat(31)}', 0, '2026-08-26T00:00:00.000Z', '2026-08-26T00:00:00.000Z');`,
+    /tags_name_length_check/u,
+  );
+  expectSqlFailure(
+    "INSERT INTO tags (id, name, normalized_name, color_hue, created_at, updated_at) VALUES ('invalid-hue', 'Invalid', 'invalid', 360, '2026-08-26T00:00:00.000Z', '2026-08-26T00:00:00.000Z');",
+    /tags_color_hue_check/u,
+  );
+  execute(
+    "INSERT INTO tags (id, name, normalized_name, color_hue, created_at, updated_at) VALUES ('tag-react', 'React', 'react', 220, '2026-08-26T00:00:00.000Z', '2026-08-26T00:00:00.000Z');",
+  );
+  expectSqlFailure(
+    "INSERT INTO tags (id, name, normalized_name, color_hue, created_at, updated_at) VALUES ('tag-react-duplicate', 'ＲＥＡＣＴ', 'react', 40, '2026-08-26T00:00:00.000Z', '2026-08-26T00:00:00.000Z');",
+    /UNIQUE constraint failed: tags\.normalized_name/iu,
+  );
+  expectSqlFailure(
+    "INSERT INTO tags (id, name, normalized_name, color_hue, created_at, updated_at) VALUES ('tag-color-duplicate', 'Cloudflare', 'cloudflare', 220, '2026-08-26T00:00:00.000Z', '2026-08-26T00:00:00.000Z');",
+    /UNIQUE constraint failed: tags\.color_hue/iu,
+  );
+  expectSqlFailure(
+    "INSERT INTO article_tags (article_id, tag_id, created_at) VALUES ('missing', 'tag-react', '2026-08-26T00:00:00.000Z');",
+    /FOREIGN KEY constraint failed/iu,
+  );
+  expectSqlFailure(
+    "INSERT INTO article_tags (article_id, tag_id, created_at) VALUES ('valid-article', 'missing', '2026-08-26T00:00:00.000Z');",
+    /FOREIGN KEY constraint failed/iu,
+  );
+  execute(
+    "INSERT INTO article_tags (article_id, tag_id, created_at) VALUES ('valid-article', 'tag-react', '2026-08-26T00:00:00.000Z');",
+  );
+  expectSqlFailure(
+    "INSERT INTO article_tags (article_id, tag_id, created_at) VALUES ('valid-article', 'tag-react', '2026-08-26T00:00:00.000Z');",
+    /UNIQUE constraint failed: article_tags\.article_id, article_tags\.tag_id/iu,
+  );
+  execute("DELETE FROM tags WHERE id = 'tag-react';");
+  const assignmentsAfterTagDelete = execute(
+    "SELECT CASE WHEN COUNT(*) = 0 THEN 'TAG_CASCADE_OK' ELSE 'TAG_CASCADE_FAILED' END AS cascade_result FROM article_tags WHERE tag_id = 'tag-react';",
+  );
+  if (
+    !assignmentsAfterTagDelete.includes("TAG_CASCADE_OK") ||
+    assignmentsAfterTagDelete.includes("TAG_CASCADE_FAILED")
+  ) {
+    throw new Error("Deleting a tag did not cascade to its article assignments.");
+  }
+  execute(
+    "INSERT INTO tags (id, name, normalized_name, color_hue, created_at, updated_at) VALUES ('tag-typescript', 'TypeScript', 'typescript', 40, '2026-08-26T00:00:00.000Z', '2026-08-26T00:00:00.000Z'); INSERT INTO article_tags (article_id, tag_id, created_at) VALUES ('valid-article', 'tag-typescript', '2026-08-26T00:00:00.000Z');",
+  );
+
   execute(
     "INSERT INTO articles (id, original_url, title_is_manual, status, metadata_status, metadata_attempt_count, metadata_fetched_at, saved_at, read_at, created_at, updated_at) VALUES ('valid-read-article', 'https://example.com/valid-read-article', 1, 'read', 'ready', 2, '2026-08-26T00:00:00.000Z', '2026-08-26T00:00:00.000Z', '2026-08-26T00:00:00.000Z', '2026-08-26T00:00:00.000Z', '2026-08-26T00:00:00.000Z');",
   );
@@ -209,6 +266,15 @@ try {
   );
   if (!aliasesAfterDelete.includes("CASCADE_OK") || aliasesAfterDelete.includes("CASCADE_FAILED")) {
     throw new Error("Deleting an article did not cascade to its URL aliases.");
+  }
+  const tagAssignmentsAfterArticleDelete = execute(
+    "SELECT CASE WHEN COUNT(*) = 0 THEN 'ARTICLE_TAG_CASCADE_OK' ELSE 'ARTICLE_TAG_CASCADE_FAILED' END AS cascade_result FROM article_tags WHERE article_id IN ('valid-article', 'valid-read-article');",
+  );
+  if (
+    !tagAssignmentsAfterArticleDelete.includes("ARTICLE_TAG_CASCADE_OK") ||
+    tagAssignmentsAfterArticleDelete.includes("ARTICLE_TAG_CASCADE_FAILED")
+  ) {
+    throw new Error("Deleting an article did not cascade to its tag assignments.");
   }
 
   const secondApplication = runWrangler(["d1", "migrations", "apply", ...d1Arguments]);

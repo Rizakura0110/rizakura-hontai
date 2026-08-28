@@ -1,6 +1,6 @@
 # Quality gates
 
-最終更新: 2026-08-27
+最終更新: 2026-08-28
 
 ## 標準ゲート
 
@@ -54,6 +54,16 @@ V8 unit coverageから次だけを除外する。
 | JSON export | 実downloadファイル名、schema、内容 |
 | unauthorized API拒否 | mockを通らないWorker APIの403 |
 
+タグ機能は、UI追加前の基盤フェーズから次の実D1・実HTTP検証を必須にする。
+
+| 必須境界 | 自動検証 |
+|---|---|
+| タグ名と色相の一意性 | fresh local D1のUNIQUE/CHECK制約 |
+| 複数タグの関連付け | 実HTTPで作成、記事への一括設定、一覧取得 |
+| 名前変更 | 正規化名の競合拒否と色相維持 |
+| タグ削除 | 関連だけをcascade削除し、記事本体を保持 |
+| 不正な関連付け | 存在しないタグと上限超過を安全な4xxで拒否 |
+
 Playwrightのmobile viewport成功は実機確認の代替にしない。手順と結果は`docs/manual-device-test.md`へ残す。
 
 ## Artifact size budgets
@@ -73,9 +83,9 @@ Playwrightのmobile viewport成功は実機確認の代替にしない。手順�
 
 | 成果物 | Raw | Gzip |
 |---|---:|---:|
-| app Worker | 409.1 KiB | 89.2 KiB |
-| metadata-fetcher Worker | 571.9 KiB | 86.2 KiB |
-| client JavaScript合計 | 327.4 KiB | 98.3 KiB |
+| app Worker | 424.6 KiB | 92.0 KiB |
+| metadata-fetcher Worker | 574.6 KiB | 86.8 KiB |
+| client JavaScript合計 | 328.3 KiB | 98.6 KiB |
 | client CSS合計 | 27.1 KiB | 6.1 KiB |
 
 ## Worker CPU review

@@ -16,7 +16,22 @@ function categoryForRoute(routeName: string): RateLimitCategory | undefined {
   if (routeName === "articles.create") return "create";
   if (routeName === "articles.retry_metadata") return "retry";
   if (routeName === "articles.update" || routeName === "articles.delete") return "mutate";
-  if (routeName === "articles.list" || routeName === "articles.get") return "read";
+  if (
+    routeName === "tags.create" ||
+    routeName === "tags.update" ||
+    routeName === "tags.delete" ||
+    routeName === "article_tags.replace"
+  ) {
+    return "mutate";
+  }
+  if (
+    routeName === "articles.list" ||
+    routeName === "articles.get" ||
+    routeName === "tags.list" ||
+    routeName === "article_tags.list"
+  ) {
+    return "read";
+  }
   if (routeName === "export.get") return "export";
   return undefined;
 }

@@ -6,12 +6,18 @@ import { describe, expect, expectTypeOf, it } from "vitest";
 import type { MetadataErrorCode } from "@tech-inbox/core/metadata";
 
 import {
+  type ArticleTagInsert,
+  type ArticleTagRow,
   type ArticleInsert,
   type ArticleRow,
   type ArticleUrlInsert,
   type ArticleUrlRow,
+  type TagInsert,
+  type TagRow,
+  articleTags,
   articles,
   articleUrls,
+  tags,
 } from "./schema";
 
 const dialect = new SQLiteSyncDialect();
@@ -121,6 +127,52 @@ describe("article_urls schema", () => {
   });
 });
 
+describe("tags schema", () => {
+  it("keeps normalized names and automatically assigned hues unique", () => {
+    const config = getTableConfig(tags);
+
+    expect(config.name).toBe("tags");
+    expect(config.columns.map(({ name }) => name)).toEqual([
+      "id",
+      "name",
+      "normalized_name",
+      "color_hue",
+      "created_at",
+      "updated_at",
+    ]);
+    expect(tags.id.primary).toBe(true);
+    expect(renderChecks(tags)).toEqual({
+      tags_name_length_check: 'length("tags"."name") BETWEEN 1 AND 30',
+      tags_color_hue_check: '"tags"."color_hue" >= 0 AND "tags"."color_hue" < 360',
+    });
+    expect(
+      config.indexes.map(({ config: indexConfig }) => [indexConfig.name, indexConfig.unique]),
+    ).toEqual([
+      ["tags_normalized_name_uidx", true],
+      ["tags_color_hue_uidx", true],
+    ]);
+  });
+});
+
+describe("article_tags schema", () => {
+  it("defines a cascading many-to-many relation without duplicate assignments", () => {
+    const config = getTableConfig(articleTags);
+
+    expect(config.name).toBe("article_tags");
+    expect(config.columns.map(({ name }) => name)).toEqual(["article_id", "tag_id", "created_at"]);
+    expect(config.primaryKeys[0]?.getName()).toBe("article_tags_article_id_tag_id_pk");
+    expect(config.primaryKeys[0]?.columns).toEqual([articleTags.articleId, articleTags.tagId]);
+    expect(config.indexes[0]?.config.name).toBe("article_tags_tag_id_idx");
+
+    expect(config.foreignKeys).toHaveLength(2);
+    expect(config.foreignKeys.every((foreignKey) => foreignKey.onDelete === "cascade")).toBe(true);
+    expect(config.foreignKeys.map((foreignKey) => foreignKey.reference().foreignTable)).toEqual([
+      articles,
+      tags,
+    ]);
+  });
+});
+
 describe("database record types", () => {
   it("keeps database records distinct from API DTOs", () => {
     expectTypeOf<ArticleRow["status"]>().toEqualTypeOf<"unread" | "read">();
@@ -128,5 +180,9 @@ describe("database record types", () => {
     expectTypeOf<ArticleInsert["titleIsManual"]>().toEqualTypeOf<boolean | undefined>();
     expectTypeOf<ArticleUrlRow["kind"]>().toEqualTypeOf<"original" | "canonical">();
     expectTypeOf<ArticleUrlInsert["normalizedUrl"]>().toEqualTypeOf<string>();
+    expectTypeOf<TagRow["colorHue"]>().toEqualTypeOf<number>();
+    expectTypeOf<TagInsert["normalizedName"]>().toEqualTypeOf<string>();
+    expectTypeOf<ArticleTagRow["tagId"]>().toEqualTypeOf<string>();
+    expectTypeOf<ArticleTagInsert["createdAt"]>().toEqualTypeOf<string>();
   });
 });

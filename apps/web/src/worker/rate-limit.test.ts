@@ -21,6 +21,12 @@ describe("article API rate limiting", () => {
     ["articles.delete", "RATE_LIMIT_MUTATE", "mutate"],
     ["articles.list", "RATE_LIMIT_READ", "read"],
     ["articles.get", "RATE_LIMIT_READ", "read"],
+    ["tags.create", "RATE_LIMIT_MUTATE", "mutate"],
+    ["tags.update", "RATE_LIMIT_MUTATE", "mutate"],
+    ["tags.delete", "RATE_LIMIT_MUTATE", "mutate"],
+    ["article_tags.replace", "RATE_LIMIT_MUTATE", "mutate"],
+    ["tags.list", "RATE_LIMIT_READ", "read"],
+    ["article_tags.list", "RATE_LIMIT_READ", "read"],
     ["export.get", "RATE_LIMIT_EXPORT", "export"],
   ] as const)("uses a pseudonymous key for %s", async (routeName, bindingName, category) => {
     const limiter = binding(true);

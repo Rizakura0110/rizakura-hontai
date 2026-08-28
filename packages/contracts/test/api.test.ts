@@ -3,13 +3,17 @@ import {
   apiErrorResponseSchema,
   createArticleRequestSchema,
   createArticleResponseSchema,
+  createTagRequestSchema,
+  createTagResponseSchema,
   exportResponseSchema,
   listArticlesQuerySchema,
   listArticlesResponseSchema,
+  replaceArticleTagsRequestSchema,
   updateArticleRequestSchema,
 } from "../src/api";
 import { articleDtoSchema } from "../src/article";
 import { CONTRACT_LIMITS } from "../src/primitives";
+import { tagDtoSchema } from "../src/tag";
 import { articleDtoFixture } from "./fixtures";
 
 const urlWithLength = (length: number): string => {
@@ -110,6 +114,31 @@ describe("API request contracts", () => {
     expect(
       updateArticleRequestSchema.safeParse({ title: "t".repeat(CONTRACT_LIMITS.title + 1) })
         .success,
+    ).toBe(false);
+  });
+
+  it("normalizes tag names and enforces tag assignment limits", () => {
+    expect(createTagRequestSchema.parse({ name: "  Ｒｅａｃｔ\n 入門  " })).toEqual({
+      name: "React 入門",
+    });
+    expect(createTagRequestSchema.safeParse({ name: "   " }).success).toBe(false);
+    expect(
+      createTagRequestSchema.safeParse({ name: "a".repeat(CONTRACT_LIMITS.tagName + 1) }).success,
+    ).toBe(false);
+
+    expect(replaceArticleTagsRequestSchema.safeParse({ tagIds: ["tag-1", "tag-2"] }).success).toBe(
+      true,
+    );
+    expect(replaceArticleTagsRequestSchema.safeParse({ tagIds: ["tag-1", "tag-1"] }).success).toBe(
+      false,
+    );
+    expect(
+      replaceArticleTagsRequestSchema.safeParse({
+        tagIds: Array.from(
+          { length: CONTRACT_LIMITS.tagsPerArticle + 1 },
+          (_, index) => `tag-${index}`,
+        ),
+      }).success,
     ).toBe(false);
   });
 });
@@ -226,5 +255,22 @@ describe("API response contracts", () => {
         error: { ...safeError.error, code: "SQLITE_ERROR" },
       }).success,
     ).toBe(false);
+  });
+
+  it("accepts public tag fields and both create outcomes", () => {
+    const tag = {
+      id: "tag-1",
+      name: "React",
+      colorHue: 220,
+      createdAt: "2026-08-27T00:00:00.000Z",
+      updatedAt: "2026-08-27T00:00:00.000Z",
+    };
+
+    expect(tagDtoSchema.safeParse(tag).success).toBe(true);
+    expect(tagDtoSchema.safeParse({ ...tag, normalizedName: "react" }).success).toBe(false);
+    expect(tagDtoSchema.safeParse({ ...tag, colorHue: 360 }).success).toBe(false);
+    for (const result of ["created", "alreadyExists"] as const) {
+      expect(createTagResponseSchema.safeParse({ result, tag }).success).toBe(true);
+    }
   });
 });

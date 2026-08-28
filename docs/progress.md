@@ -627,3 +627,42 @@
 - metadata DLQに確認時点で6件あった。Phase 9境界test由来とは特定できず、所有データの可能性があるためpurgeせず保持した。Free retention 24時間後の自然失効またはPhase 10の運用手順で扱う。
 - Android Chrome実機確認はowner判断でスキップした。手順は`docs/manual-device-test.md`に維持し、実施していない状態を成功とは扱わない。
 - 既知のmoderate advisory 1件はPhase 1と同じDrizzle Kit配下の開発専用推移依存であり、runtime bundleには含まれない。
+
+## Additional Feature T1: タグ基盤
+
+### 実施内容
+
+- 1記事へ複数タグを関連付ける`tags`、`article_tags` schemaとmigrationを追加した。タグ削除時は関連だけをcascade削除し、記事本体を保持する。
+- タグ名をNFKC正規化し、前後空白除去、連続空白の集約、大小文字を区別しない一意性を実装した。表示名は利用者の入力表記を維持する。
+- タグ数を100件、タグ名を30文字、1記事のタグを10件までに制限した。
+- 0〜359度の色相をタグへ永続化し、使用中の色相と最大限離れる色を決定的に自動割当するようにした。色相はDBの一意制約でも重複を防ぐ。
+- タグ一覧・作成・名前変更・削除APIと、記事ごとのタグ一覧・一括置換APIを追加した。すべて既存のAccess認証、入力防御、Rate Limit分類、安全なエラー形式の対象にした。
+- 正規化名の重複、色相割当の同時競合、存在しない記事・タグ、上限超過をservice/repository境界で処理した。
+- fresh local D1と実HTTP検証を拡張し、作成、正規化重複、異なる色、関連付け、名前変更時の色維持、競合、削除時の記事保持を確認した。
+- このフェーズでは記事DTOへのタグ埋め込み、カード表示、編集UI、絞り込み、設定画面は実装していない。production migrationとdeployも行っていない。
+
+### 採用判断
+
+- 利用者による色指定は設けず、タグごとに保存した色相を全画面で共通利用する。詳細は[ADR-0005](decisions/0005-automatic-tag-colors.md)へ記録した。
+- 色相はタグ名から算出せず、名前変更後も同じ色を維持する。
+- タグ色を視覚上の補助として扱い、後続UIでは必ずタグ名も表示する。
+- API基盤とUIを分けて検証し、このフェーズ単独ではremote DBへ未使用schemaを適用しない。
+
+### 検証結果
+
+- `pnpm check`: pass
+  - format、lint、Cloudflare生成型差分、TypeScript: pass
+  - Vitest: 28 files、302 tests pass
+  - coverage: statements 86.05%、branches 81.83%、functions 86.33%、lines 87.46%
+  - fresh local D1 migration/constraint verification: pass
+  - local実HTTP CRUD/input defense/tag verification: pass
+  - production build、fetcher dry-run、artifact budget: pass
+  - Playwright: desktop/mobile合計12 tests pass
+  - audit: high 0、critical 0、既知moderate 1
+- tag core/service/APIの追加test: 8 files、69 tests pass
+- remote Cloudflare changes: なし
+
+### 次フェーズ
+
+- 記事取得DTOへタグを含め、カードの色付きチップ、タグ編集・その場での新規作成、タグ絞り込み、設定画面の名前変更・削除を実装する。
+- JSON export、URL重複統合、E2E、production migration/deployはUI完成後の統合フェーズで扱う。

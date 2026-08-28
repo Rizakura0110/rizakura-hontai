@@ -1,5 +1,6 @@
 import { MAX_ARTICLE_CURSOR_LENGTH } from "@tech-inbox/core/article-cursor";
 import { MAX_URL_LENGTH } from "@tech-inbox/core/url-normalization";
+import { MAX_TAG_NAME_LENGTH, MAX_TAGS, MAX_TAGS_PER_ARTICLE } from "@tech-inbox/core/tag";
 import { z } from "zod";
 
 export const CONTRACT_LIMITS = {
@@ -9,6 +10,9 @@ export const CONTRACT_LIMITS = {
   searchQuery: 200,
   siteName: 500,
   cursor: MAX_ARTICLE_CURSOR_LENGTH,
+  tagName: MAX_TAG_NAME_LENGTH,
+  tags: MAX_TAGS,
+  tagsPerArticle: MAX_TAGS_PER_ARTICLE,
 } as const;
 
 const authorityWithCredentialsPattern = /^[a-z][a-z\d+.-]*:\/\/[^/?#]*@/i;

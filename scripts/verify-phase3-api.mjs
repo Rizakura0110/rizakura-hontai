@@ -180,6 +180,13 @@ const createArticle = async (url) =>
     body: JSON.stringify({ url }),
   });
 
+const createTag = async (name) =>
+  requestJson("/api/v1/tags", {
+    method: "POST",
+    headers: mutationHeaders,
+    body: JSON.stringify({ name }),
+  });
+
 const assertApiError = ({ response, body }, status, code) => {
   assert.equal(response.status, status);
   assert.equal(body.error.code, code);
@@ -311,6 +318,82 @@ try {
 
   const third = await createArticle("https://example.com/third");
   assert.equal(third.response.status, 201);
+
+  const emptyTags = await requestJson("/api/v1/tags");
+  assert.equal(emptyTags.response.status, 200);
+  assert.deepEqual(emptyTags.body, { tags: [] });
+
+  const reactTag = await createTag("  Ｒｅａｃｔ  ");
+  assert.equal(reactTag.response.status, 201);
+  assert.equal(reactTag.body.result, "created");
+  assert.equal(reactTag.body.tag.name, "React");
+  assert.equal(reactTag.body.tag.colorHue, 220);
+  assert.equal("normalizedName" in reactTag.body.tag, false);
+
+  const duplicateTag = await createTag("REACT");
+  assert.equal(duplicateTag.response.status, 200);
+  assert.equal(duplicateTag.body.result, "alreadyExists");
+  assert.equal(duplicateTag.body.tag.id, reactTag.body.tag.id);
+
+  const cloudflareTag = await createTag("Cloudflare");
+  assert.equal(cloudflareTag.response.status, 201);
+  assert.notEqual(cloudflareTag.body.tag.colorHue, reactTag.body.tag.colorHue);
+
+  const assignedTags = await requestJson(`/api/v1/articles/${first.body.article.id}/tags`, {
+    method: "PUT",
+    headers: mutationHeaders,
+    body: JSON.stringify({ tagIds: [reactTag.body.tag.id, cloudflareTag.body.tag.id] }),
+  });
+  assert.equal(assignedTags.response.status, 200);
+  assert.deepEqual(
+    new Set(assignedTags.body.tags.map(({ id }) => id)),
+    new Set([reactTag.body.tag.id, cloudflareTag.body.tag.id]),
+  );
+  const fetchedTags = await requestJson(`/api/v1/articles/${first.body.article.id}/tags`);
+  assert.deepEqual(fetchedTags.body, assignedTags.body);
+
+  const renamedTag = await requestJson(`/api/v1/tags/${reactTag.body.tag.id}`, {
+    method: "PATCH",
+    headers: mutationHeaders,
+    body: JSON.stringify({ name: "TypeScript" }),
+  });
+  assert.equal(renamedTag.response.status, 200);
+  assert.equal(renamedTag.body.tag.name, "TypeScript");
+  assert.equal(renamedTag.body.tag.colorHue, reactTag.body.tag.colorHue);
+  assertApiError(
+    await requestJson(`/api/v1/tags/${cloudflareTag.body.tag.id}`, {
+      method: "PATCH",
+      headers: mutationHeaders,
+      body: JSON.stringify({ name: "ＴＹＰＥＳＣＲＩＰＴ" }),
+    }),
+    409,
+    "TAG_CONFLICT",
+  );
+  assertApiError(
+    await requestJson(`/api/v1/articles/${first.body.article.id}/tags`, {
+      method: "PUT",
+      headers: mutationHeaders,
+      body: JSON.stringify({ tagIds: ["missing-tag"] }),
+    }),
+    400,
+    "VALIDATION_ERROR",
+  );
+
+  const deletedTag = await requestJson(`/api/v1/tags/${cloudflareTag.body.tag.id}`, {
+    method: "DELETE",
+    headers: mutationHeaders,
+  });
+  assert.equal(deletedTag.response.status, 200);
+  assert.equal(deletedTag.body.result, "deleted");
+  const tagsAfterDelete = await requestJson(`/api/v1/articles/${first.body.article.id}/tags`);
+  assert.deepEqual(
+    tagsAfterDelete.body.tags.map(({ id }) => id),
+    [reactTag.body.tag.id],
+  );
+  assert.equal(
+    (await requestJson(`/api/v1/articles/${first.body.article.id}`)).body.article.id,
+    first.body.article.id,
+  );
 
   const exported = await requestJson("/api/v1/export");
   assert.equal(exported.response.status, 200);

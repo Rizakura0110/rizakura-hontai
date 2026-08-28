@@ -13,12 +13,15 @@ const migrationSql = migrationFiles
 describe("database migrations", () => {
   it("contains a generated initial migration", () => {
     expect(migrationFiles.filter((fileName) => /^0000_.+\.sql$/u.test(fileName))).toHaveLength(1);
+    expect(migrationFiles.filter((fileName) => /^0001_.+\.sql$/u.test(fileName))).toHaveLength(1);
   });
 
   it("persists all table invariants as SQLite constraints", () => {
     for (const expectedSql of [
       "CREATE TABLE `articles`",
       "CREATE TABLE `article_urls`",
+      "CREATE TABLE `tags`",
+      "CREATE TABLE `article_tags`",
       "ON DELETE cascade",
       'CONSTRAINT "article_urls_kind_check"',
       'CONSTRAINT "articles_title_is_manual_check"',
@@ -26,6 +29,8 @@ describe("database migrations", () => {
       'CONSTRAINT "articles_metadata_status_check"',
       'CONSTRAINT "articles_metadata_attempt_count_check"',
       'CONSTRAINT "articles_status_read_at_check"',
+      'CONSTRAINT "tags_name_length_check"',
+      'CONSTRAINT "tags_color_hue_check"',
     ]) {
       expect(migrationSql).toContain(expectedSql);
     }
@@ -43,6 +48,15 @@ describe("database migrations", () => {
     );
     expect(migrationSql).toContain(
       "CREATE INDEX `article_urls_article_id_idx` ON `article_urls` (`article_id`)",
+    );
+    expect(migrationSql).toContain(
+      "CREATE UNIQUE INDEX `tags_normalized_name_uidx` ON `tags` (`normalized_name`)",
+    );
+    expect(migrationSql).toContain(
+      "CREATE UNIQUE INDEX `tags_color_hue_uidx` ON `tags` (`color_hue`)",
+    );
+    expect(migrationSql).toContain(
+      "CREATE INDEX `article_tags_tag_id_idx` ON `article_tags` (`tag_id`)",
     );
   });
 });

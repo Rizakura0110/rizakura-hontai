@@ -1,18 +1,27 @@
 import {
   type ApiErrorResponse,
+  type ArticleTagsResponse,
   type ArticleResponse,
   articleIdParamsSchema,
   createArticleRequestSchema,
+  createTagRequestSchema,
   type CreateArticleResponse,
+  type CreateTagResponse,
   type DeleteArticleResponse,
+  type DeleteTagResponse,
   type ExportResponse,
   type HealthResponse,
   listArticlesQuerySchema,
   type ListArticlesResponse,
+  type ListTagsResponse,
   type MetadataQueueMessage,
   retryMetadataRequestSchema,
   type RetryMetadataResponse,
+  replaceArticleTagsRequestSchema,
+  tagIdParamsSchema,
+  type TagResponse,
   updateArticleRequestSchema,
+  updateTagRequestSchema,
 } from "@tech-inbox/contracts";
 import { Hono, type Context } from "hono";
 import {
@@ -27,8 +36,11 @@ import { createMetadataQueueProducer, type MetadataQueueProducer } from "./metad
 import { parseQuery, parseWithSchema, readJsonBody } from "./request-validation";
 import { enforceApiRateLimit, type RateLimitBindings } from "./rate-limit";
 import { createD1ArticleRepository } from "./repositories/d1-article-repository";
+import { createD1TagRepository } from "./repositories/d1-tag-repository";
 import type { ArticleRepository } from "./repositories/article-repository";
+import type { TagRepository } from "./repositories/tag-repository";
 import { SECURITY_HEADERS } from "./security-headers";
+import { TagService } from "./tag-service";
 
 export type AppBindings = Omit<
   CloudflareBindings,
@@ -65,6 +77,7 @@ export type RequestLogEvent = {
 
 export type AppDependencies = {
   readonly repositoryFactory: (bindings: AppBindings) => ArticleRepository;
+  readonly tagRepositoryFactory: (bindings: AppBindings) => TagRepository;
   readonly clock: Clock;
   readonly idGenerator: IdGenerator;
   readonly metadataQueueFactory: (bindings: AppBindings) => MetadataQueueProducer;
@@ -85,6 +98,8 @@ const MUTATION_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 function isProtectedDataPath(pathname: string): boolean {
   return (
     pathname === "/api/v1/export" ||
+    pathname === "/api/v1/tags" ||
+    pathname.startsWith("/api/v1/tags/") ||
     pathname === "/api/v1/articles" ||
     pathname.startsWith("/api/v1/articles/")
   );
@@ -96,6 +111,21 @@ function safeRouteName(method: string, pathname: string): string {
   if (pathname === "/api/v1/articles") {
     if (method === "GET") return "articles.list";
     if (method === "POST") return "articles.create";
+  }
+
+  if (pathname === "/api/v1/tags") {
+    if (method === "GET") return "tags.list";
+    if (method === "POST") return "tags.create";
+  }
+
+  if (/^\/api\/v1\/tags\/[^/]+$/u.test(pathname)) {
+    if (method === "PATCH") return "tags.update";
+    if (method === "DELETE") return "tags.delete";
+  }
+
+  if (/^\/api\/v1\/articles\/[^/]+\/tags$/u.test(pathname)) {
+    if (method === "GET") return "article_tags.list";
+    if (method === "PUT") return "article_tags.replace";
   }
 
   if (/^\/api\/v1\/articles\/[^/]+$/u.test(pathname)) {
@@ -204,8 +234,17 @@ function articleService(context: Context<AppEnvironment>, dependencies: AppDepen
   );
 }
 
+function tagService(context: Context<AppEnvironment>, dependencies: AppDependencies) {
+  return new TagService(
+    dependencies.tagRepositoryFactory(context.env),
+    dependencies.clock,
+    dependencies.idGenerator,
+  );
+}
+
 const defaultDependencies: AppDependencies = {
   repositoryFactory: (bindings) => createD1ArticleRepository(bindings.DB),
+  tagRepositoryFactory: (bindings) => createD1TagRepository(bindings.DB),
   clock: () => new Date(),
   idGenerator: () => crypto.randomUUID(),
   metadataQueueFactory: (bindings) => createMetadataQueueProducer(bindings.METADATA_QUEUE),
@@ -294,11 +333,58 @@ export function createApp(overrides: Partial<AppDependencies> = {}) {
     return context.json<CreateArticleResponse>(response, status);
   });
 
+  app.get("/api/v1/tags", async (context) => {
+    context.set("routeName", "tags.list");
+    return context.json<ListTagsResponse>(await tagService(context, dependencies).list());
+  });
+
+  app.post("/api/v1/tags", async (context) => {
+    context.set("routeName", "tags.create");
+    const request = parseWithSchema(createTagRequestSchema, await readJsonBody(context.req.raw));
+    const response = await tagService(context, dependencies).create(request);
+    const status = response.result === "created" ? 201 : 200;
+    return context.json<CreateTagResponse>(response, status);
+  });
+
+  app.patch("/api/v1/tags/:id", async (context) => {
+    context.set("routeName", "tags.update");
+    const { id } = parseWithSchema(tagIdParamsSchema, context.req.param());
+    const request = parseWithSchema(updateTagRequestSchema, await readJsonBody(context.req.raw));
+    return context.json<TagResponse>(await tagService(context, dependencies).update(id, request));
+  });
+
+  app.delete("/api/v1/tags/:id", async (context) => {
+    context.set("routeName", "tags.delete");
+    const { id } = parseWithSchema(tagIdParamsSchema, context.req.param());
+    await tagService(context, dependencies).delete(id);
+    return context.json<DeleteTagResponse>({ result: "deleted" });
+  });
+
   app.get("/api/v1/articles/:id", async (context) => {
     context.set("routeName", "articles.get");
     const { id } = parseWithSchema(articleIdParamsSchema, context.req.param());
     const article = await articleService(context, dependencies).get(id);
     return context.json<ArticleResponse>({ article: toArticleDto(article) });
+  });
+
+  app.get("/api/v1/articles/:id/tags", async (context) => {
+    context.set("routeName", "article_tags.list");
+    const { id } = parseWithSchema(articleIdParamsSchema, { id: context.req.param("id") });
+    return context.json<ArticleTagsResponse>(
+      await tagService(context, dependencies).listForArticle(id),
+    );
+  });
+
+  app.put("/api/v1/articles/:id/tags", async (context) => {
+    context.set("routeName", "article_tags.replace");
+    const { id } = parseWithSchema(articleIdParamsSchema, { id: context.req.param("id") });
+    const request = parseWithSchema(
+      replaceArticleTagsRequestSchema,
+      await readJsonBody(context.req.raw),
+    );
+    return context.json<ArticleTagsResponse>(
+      await tagService(context, dependencies).replaceArticleTags(id, request),
+    );
   });
 
   app.patch("/api/v1/articles/:id", async (context) => {

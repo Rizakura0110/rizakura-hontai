@@ -1,6 +1,8 @@
 import { ARTICLE_LIST_STATUSES, ARTICLE_SORTS, ARTICLE_URL_KINDS } from "@tech-inbox/core/article";
+import { MAX_TAGS_PER_ARTICLE } from "@tech-inbox/core/tag";
 import { z } from "zod";
 import { articleDtoSchema, articleStatusSchema } from "./article";
+import { tagDtoSchema, tagIdSchema, tagNameSchema } from "./tag";
 import {
   articleIdSchema,
   CONTRACT_LIMITS,
@@ -15,6 +17,7 @@ export const API_ERROR_CODES = [
   "FORBIDDEN",
   "NOT_FOUND",
   "URL_CONFLICT",
+  "TAG_CONFLICT",
   "PAYLOAD_TOO_LARGE",
   "UNSUPPORTED_MEDIA_TYPE",
   "RATE_LIMITED",
@@ -134,6 +137,69 @@ export const deleteArticleResponseSchema = z.strictObject({
 });
 
 export type DeleteArticleResponse = z.output<typeof deleteArticleResponseSchema>;
+
+export const listTagsResponseSchema = z.strictObject({
+  tags: z.array(tagDtoSchema),
+});
+
+export type ListTagsResponse = z.output<typeof listTagsResponseSchema>;
+
+export const createTagRequestSchema = z.strictObject({
+  name: tagNameSchema,
+});
+
+export type CreateTagRequest = z.output<typeof createTagRequestSchema>;
+
+export const createTagResponseSchema = z.discriminatedUnion("result", [
+  z.strictObject({ result: z.literal("created"), tag: tagDtoSchema }),
+  z.strictObject({ result: z.literal("alreadyExists"), tag: tagDtoSchema }),
+]);
+
+export type CreateTagResponse = z.output<typeof createTagResponseSchema>;
+
+export const tagIdParamsSchema = z.strictObject({
+  id: tagIdSchema,
+});
+
+export const updateTagRequestSchema = z.strictObject({
+  name: tagNameSchema,
+});
+
+export type UpdateTagRequest = z.output<typeof updateTagRequestSchema>;
+
+export const tagResponseSchema = z.strictObject({
+  tag: tagDtoSchema,
+});
+
+export type TagResponse = z.output<typeof tagResponseSchema>;
+
+export const deleteTagResponseSchema = z.strictObject({
+  result: z.literal("deleted"),
+});
+
+export type DeleteTagResponse = z.output<typeof deleteTagResponseSchema>;
+
+export const replaceArticleTagsRequestSchema = z
+  .strictObject({
+    tagIds: z.array(tagIdSchema).max(MAX_TAGS_PER_ARTICLE),
+  })
+  .superRefine(({ tagIds }, context) => {
+    if (new Set(tagIds).size !== tagIds.length) {
+      context.addIssue({
+        code: "custom",
+        message: "Tag IDs must be unique",
+        path: ["tagIds"],
+      });
+    }
+  });
+
+export type ReplaceArticleTagsRequest = z.output<typeof replaceArticleTagsRequestSchema>;
+
+export const articleTagsResponseSchema = z.strictObject({
+  tags: z.array(tagDtoSchema),
+});
+
+export type ArticleTagsResponse = z.output<typeof articleTagsResponseSchema>;
 
 export const retryMetadataRequestSchema = z.strictObject({});
 
