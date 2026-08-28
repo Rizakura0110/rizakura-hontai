@@ -940,3 +940,59 @@
 
 - Android Chrome実機はowner判断でスキップした状態を維持する。
 - 既知のmoderate advisory 1件はDrizzle Kit配下の開発専用推移依存であり、runtime bundleには含まれない。
+
+## Phase 12: GitHub Actions品質ゲート
+
+### 実施内容
+
+- `main`へのpushとpull requestで、localと同じ`pnpm check`を実行するGitHub Actions workflowを追加した。Markdownと`docs/`だけの変更は実行対象外とした。
+- workflow permissionを`contents: read`だけに限定し、checkout credentialを保持せず、Cloudflare credential、Worker Secrets、production URLを渡さない構成にした。
+- checkout actionを完全なcommit SHAへ固定した。Node.js 24.19.0とpnpm 11.22.0は公式配布物を固定URLから取得し、それぞれSHA-256・SHA-512一致後だけGitHub workspace配下へ展開する。
+- pnpm store、Playwright browser、XDG data、temporary fileをGitHub workspace配下へ限定した。同一refの古いrunはcancelし、job timeoutを25分に設定した。
+- Playwright previewへ`.invalid`を含む固定test値だけを渡し、production認証値から分離した。未認証APIが401 `UNAUTHORIZED`で拒否されることをdesktop/mobileの両方で確認する。
+- E2E previewをIPv4 loopback `127.0.0.1`へ明示的にbindし、Linux runnerでもhealth checkとbrowser testが同じendpointへ接続するようにした。
+
+### 変更ファイル
+
+- `.github/workflows/quality.yml`
+- `playwright.config.ts`
+- `tests/e2e/article-inbox.spec.ts`
+- `README.md`
+- `docs/quality-gates.md`
+- `docs/security.md`
+- `docs/progress.md`
+
+### 採用判断
+
+- CIはremote Cloudflare stateを確認・変更しない。credentialが必要な読み取り専用production preflightは、Phase 11の明示的な運用コマンドとして分離したままにする。
+- GitHub runner既定のpackage manager shimに依存せず、repositoryのintegration scriptが要求するproject-local tool layoutをCIでも再現する。
+- test用のdomain、audience、emailは認証を成立させない固定placeholderとし、repository ownerのemailやAccess設定値をGitHubへ登録しない。
+- E2E serverは外部interfaceへ公開せず、loopbackだけで待ち受ける。
+
+### 実行したコマンド
+
+- `pnpm check`
+- `CI=true pnpm e2e`
+- YAML syntax check
+- `git diff --check`
+- generated file・cache・temporary fileのignore確認
+- tracked contentのcredential・個人email pattern scan
+- `gh run watch`によるpush後の実CI確認
+
+### 検証結果
+
+- local format、lint、Cloudflare生成型差分、TypeScript: pass
+- local Vitest: 30 files、325 tests pass
+- local coverage: statements 86.05%、branches 81.33%、functions 86.13%、lines 87.89%
+- local fresh D1、実HTTP API、production build、artifact budget: pass
+- local Playwright: desktop/mobile合計18 tests pass（`CI=true`を含む）
+- local audit: high 0、critical 0、既知moderate 1
+- GitHub Actions run `33185298895`: success（commit `798e84a`）
+- 初期runで検出したpnpm shim layout、project-local Node、Linux localhost解決の差はworkflowとE2E設定で解消し、失敗したgateを迂回・無効化していない。
+- credential pattern、個人Gmail、whitespace、ignore確認: pass
+- remote Cloudflare changes: なし
+
+### 未解決事項
+
+- Android Chrome実機はowner判断でスキップした状態を維持する。
+- 既知のmoderate advisory 1件はDrizzle Kit配下の開発専用推移依存であり、runtime bundleには含まれない。
