@@ -103,6 +103,7 @@ backupと復元手順は[Operations](operations.md)を参照してください�
 - Cloudflare生成型差分、strict TypeScript、unit/component/integration/E2E、coverage、実D1、artifact budget、auditを`pnpm check`で検証する
 - high/critical advisoryは0件を必須にする
 - GitHub Actionsは`contents: read`だけを許可し、checkout credentialを保持せず、Cloudflare secretを渡さない
+- Playwrightのlocal previewには無効なdomain・audience・emailの固定placeholderだけを使い、production認証値を参照しない
 - workflowが使用する公式actionは完全なcommit SHAへ固定し、tagの移動による内容変更を避ける
 - CIのNode.jsは固定URLから取得し、SHA-256一致後だけworkspace配下へ展開・実行する
 - CIのpnpmは固定URLから取得し、dependency baselineのSHA-512 integrity一致後だけ展開・実行する

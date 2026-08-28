@@ -29,6 +29,11 @@ export default defineConfig({
   ],
   webServer: {
     command: "pnpm preview -- --host 127.0.0.1 --port 4173",
+    env: {
+      ALLOWED_EMAIL: "ci-owner@example.invalid",
+      POLICY_AUD: "ci-only-placeholder",
+      TEAM_DOMAIN: "https://ci-placeholder.invalid.cloudflareaccess.com",
+    },
     reuseExistingServer: !process.env.CI,
     url: "http://127.0.0.1:4173/api/v1/health",
   },

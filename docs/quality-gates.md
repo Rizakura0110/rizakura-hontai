@@ -26,6 +26,7 @@ pnpm audit --audit-level high
 - `permissions`は`contents: read`だけに限定する
 - checkout後のcredentialを保持しない
 - Cloudflare credential、Worker Secrets、production URLをworkflowへ渡さない
+- Playwrightのlocal previewには`.invalid`を含む非機密のtest専用認証値だけを渡し、production値や有効な利用者emailは使わない
 - Node.jsは`.node-version`、pnpmは`packageManager`で固定する
 - external actionは公式`actions/*`だけを使い、release tagではなく完全なcommit SHAへ固定する
 - 公式Node.js tarballのSHA-256を照合してNode.jsをGitHub workspace配下へ展開する

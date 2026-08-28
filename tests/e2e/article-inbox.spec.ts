@@ -336,9 +336,9 @@ test("static assets and API responses include the security policy", async ({ pag
   expect(await robotsResponse.text()).toContain("Disallow: /");
 
   const unauthorizedResponse = await page.request.get("/api/v1/articles");
-  expect(unauthorizedResponse.status()).toBe(403);
+  expect(unauthorizedResponse.status()).toBe(401);
   await expect(unauthorizedResponse.json()).resolves.toMatchObject({
-    error: { code: "FORBIDDEN" },
+    error: { code: "UNAUTHORIZED" },
   });
 });
 
