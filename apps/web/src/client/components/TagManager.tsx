@@ -8,7 +8,7 @@ type TagManagerProps = {
   readonly loading: boolean;
   readonly error: string;
   readonly onRetry: () => void;
-  readonly onRename: (id: string, name: string) => Promise<void>;
+  readonly onRename: (id: string, name: string) => Promise<TagDto>;
   readonly onDelete: (id: string) => Promise<void>;
 };
 
@@ -19,7 +19,9 @@ export function TagManager({ tags, loading, error, onRetry, onRename, onDelete }
   const [deletingTag, setDeletingTag] = useState<TagDto | null>(null);
 
   useEffect(() => {
-    setDrafts(Object.fromEntries(tags.map((tag) => [tag.id, tag.name])));
+    setDrafts((current) =>
+      Object.fromEntries(tags.map((tag) => [tag.id, current[tag.id] ?? tag.name])),
+    );
   }, [tags]);
 
   async function rename(event: FormEvent<HTMLFormElement>, tag: TagDto) {
@@ -29,7 +31,8 @@ export function TagManager({ tags, loading, error, onRetry, onRename, onDelete }
     setBusyId(tag.id);
     setRowError((current) => ({ ...current, [tag.id]: "" }));
     try {
-      await onRename(tag.id, name);
+      const updated = await onRename(tag.id, name);
+      setDrafts((current) => ({ ...current, [tag.id]: updated.name }));
     } catch (caught) {
       setRowError((current) => ({
         ...current,

@@ -36,6 +36,14 @@ const reactTag: TagDto = {
   updatedAt: "2026-08-28T00:00:00.000Z",
 };
 
+const cloudflareTag: TagDto = {
+  id: "tag-cloudflare",
+  name: "Cloudflare",
+  colorHue: 40,
+  createdAt: "2026-08-28T00:00:00.000Z",
+  updatedAt: "2026-08-28T00:00:00.000Z",
+};
+
 const exportResponse: ExportResponse = {
   schemaVersion: 2,
   exportedAt: "2026-08-27T01:02:03.000Z",
@@ -170,5 +178,52 @@ describe("SettingsPage", () => {
     expect(
       screen.getByText("タグはまだありません。記事の「タグを編集」から作成できます。"),
     ).toBeTruthy();
+  });
+
+  it("preserves another tag draft after saving one tag", async () => {
+    const fetchMock = vi.fn(
+      async (input: string | URL | Request, init?: RequestInit): Promise<Response> => {
+        const path = String(input);
+        if (path === "/api/v1/export") return jsonResponse(exportResponse);
+        if (path === "/api/v1/tags" && init?.method === undefined) {
+          return jsonResponse({ tags: [cloudflareTag, reactTag] });
+        }
+        if (init?.method === "PATCH") {
+          const body = JSON.parse(String(init.body)) as { name: string };
+          const tag = path.endsWith(`/${reactTag.id}`) ? reactTag : cloudflareTag;
+          return jsonResponse({
+            tag: { ...tag, name: body.name, updatedAt: "2026-08-28T01:00:00.000Z" },
+          });
+        }
+        throw new Error(`Unexpected request: ${path}`);
+      },
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const user = userEvent.setup();
+    render(<SettingsPage />);
+
+    const reactInput = await screen.findByLabelText("Reactの新しい名前");
+    const cloudflareInput = screen.getByLabelText("Cloudflareの新しい名前");
+    await user.clear(reactInput);
+    await user.type(reactInput, "TypeScript");
+    await user.clear(cloudflareInput);
+    await user.type(cloudflareInput, "Workers");
+
+    const reactForm = reactInput.closest("form");
+    expect(reactForm).not.toBeNull();
+    await user.click(within(reactForm as HTMLFormElement).getByRole("button", { name: "保存" }));
+    await screen.findByText("TypeScript");
+
+    const preservedInput = screen.getByLabelText("Cloudflareの新しい名前");
+    expect((preservedInput as HTMLInputElement).value).toBe("Workers");
+    const cloudflareForm = preservedInput.closest("form");
+    expect(cloudflareForm).not.toBeNull();
+    await user.click(
+      within(cloudflareForm as HTMLFormElement).getByRole("button", { name: "保存" }),
+    );
+    await screen.findByText("Workers");
+
+    const patchCalls = fetchMock.mock.calls.filter(([, init]) => init?.method === "PATCH");
+    expect(patchCalls).toHaveLength(2);
   });
 });

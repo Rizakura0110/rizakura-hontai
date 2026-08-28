@@ -79,6 +79,7 @@ export function SettingsPage() {
           .map((tag) => (tag.id === updated.id ? updated : tag))
           .sort((left, right) => left.name.localeCompare(right.name, "ja-JP")),
       );
+      return updated;
     } catch (caught) {
       throw new Error(userFacingError(caught));
     }
