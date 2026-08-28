@@ -59,8 +59,8 @@ jobs:
             exit 1
           fi
           tar --extract --gzip --file "$pnpm_tarball" --directory "$PNPM_HOME" --strip-components=1
-          export PATH="$PNPM_HOME/bin:$PATH"
-          pnpm --version
-          pnpm install --frozen-lockfile
-          pnpm exec playwright install --with-deps chromium
-          pnpm check
+          pnpm_cli="$PNPM_HOME/bin/pnpm.cjs"
+          node "$pnpm_cli" --version
+          node "$pnpm_cli" install --frozen-lockfile
+          node "$pnpm_cli" exec playwright install --with-deps chromium
+          node "$pnpm_cli" check
