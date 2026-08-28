@@ -513,7 +513,7 @@
 ### 変更ファイル
 
 - Coverage/quality command: `vitest.config.ts`、`package.json`、`scripts/check-artifact-budgets.mjs`
-- Client unit/component test: `apps/web/src/client/api/articles.test.ts`、`apps/web/src/client/components/ArticleComponents.test.tsx`、`apps/web/src/client/pages/HomePage.test.tsx`
+- Client unit/component test: `apps/web/src/client/api/articles.test.ts`、`apps/web/src/client/components/ArticleComponents.test.tsx`、`apps/web/src/client/pages/ArticlesPage.test.tsx`
 - Worker unit/integration test: `apps/web/src/worker/request-validation.test.ts`、`apps/web/src/worker/metadata-consumer.test.ts`
 - Metadata fetcher test: `workers/metadata-fetcher/src/fetch-metadata.test.ts`、`html-metadata.test.ts`、`url-policy.test.ts`
 - SSRF test seam: `workers/metadata-fetcher/src/url-policy.ts`
@@ -550,4 +550,80 @@
 
 - iPhone ChromeとAndroid Chromeの実機確認はAccess保護済みURLが必要なため未実施であり、Phase 9のdeploy後に`docs/manual-device-test.md`へ結果を記録する。
 - production Worker CPU timeは未計測である。Phase 9でWorkers Logsまたはdashboardを使い、Freeプランの10 ms/invocation基準に対してlist 100件、export、1 MiB HTML、redirect 3回を確認する。
+- 既知のmoderate advisory 1件はPhase 1と同じDrizzle Kit配下の開発専用推移依存であり、runtime bundleには含まれない。
+
+## Phase 9: Cloudflareリソース作成とproduction deploy
+
+### 実施内容
+
+- ユーザーの明示許可後、repositoryへ保存しない短期・対象account限定のAPI tokenを使い、token、account、Zero Trust organization、同名resourceの有無をpreflightで確認した。
+- APACのD1 `tech-inbox`を作成してproduction databaseであることを確認し、`0000_cloudy_karen_page.sql`をremote適用した。
+- Queue `tech-inbox-metadata`とDLQ `tech-inbox-metadata-dlq`をFree retention 24時間で作成した。
+- `tech-inbox-metadata-fetcher`をpublic route、workers.dev、preview URLなしでdeployした。D1、Queue、Secrets bindingを持たないことを維持した。
+- app Workerへremote D1、Queue producer/consumer、DLQ、metadata-fetcher Service Binding、5種類のRate Limiting binding、production originを設定し、生成型を更新してdeployした。
+- Worker-level Access applicationを作成し、appのAll trafficを所有者email 1件への完全一致policyだけで保護した。session durationは7日、preview URLとapp launcher表示は無効にした。
+- `TEAM_DOMAIN`、`POLICY_AUD`、`ALLOWED_EMAIL`をWorker Secretsとして登録した。値はrepository、command引数、文書、Git、logへ保存していない。
+- 未認証rootと記事APIがAccess loginへ302になること、許可された所有者だけがCloudflare login後にproductionへ入れることを確認した。
+- desktop ChromeでURL登録、pendingからready、検索、既読化とundo、title編集、JSON export、削除をproduction smoke testした。
+- iPhone Chrome実機でAccess、縦横layout、keyboard、CRUD dialog、保存、検索、既読化とundo、新規tab、JSON download、未認証遮断を確認した。Android実機はowner判断でスキップし、成功扱いにはしていない。
+- Workers Logsでappとmetadata-fetcherのstatus、例外、CPU timeを確認した。`jose`のJWKS取得を伴うcold requestは14〜21 ms、warm requestは2〜7 ms、fetcherは最大4 msで、すべて`outcome: ok`、Error 1102、`exceededCpu`、例外なしだった。
+- FreeのCPU基準と認証処理の実測差をユーザーへ提示して承認を得た。Free、`jose`、同一origin構成を維持する判定をADR-0004へ記録した。
+- JWT最適化の試行で独自検証を一時deployしたが、Cloudflare tokenのoptional header差により認証失敗を検出して直ちにrollbackした。さらにガイドの`jose`必須・独自JWT回避要件へ照らし、最終版は検証済みの`jose`実装へ戻した。ユーザーが最終版の正常表示を再確認した。
+- 並列mobile E2Eで顕在化したroute遷移直後のtest timing競合を、遷移先headingの表示待ちで安定化した。アプリ本体の挙動変更はない。
+- ownerの最新判断により専用の未読画面とナビゲーションを削除し、`/`を`/articles`へredirectする構成へ簡素化した。未読・既読の状態管理と全記事画面の状態filterは維持した。
+- UI簡素化版を既存のapp Workerへ再deployした。新規resourceは作成せず、deployment versionは`e1c03d86-0314-42c2-9676-4109e0c8c2c1`となった。deploy後も未認証root/APIがAccessへ302となり、Access application 1件、owner email完全一致policy 1件、bypassなしをread-onlyで再確認した。
+- ownerが認証済みproductionで`/`から全記事画面を表示でき、ナビゲーションが「すべて」「設定」だけになったことを確認した。確認端末は未記録であり、旧UIで完了済みのiPhone実機共通チェックとは分けて記録した。
+- 1 MiB HTMLとredirect 3回のproduction境界確認では、2組の安全なpublic endpointがfetcherから`NETWORK_ERROR`となった。境界成功とは記録せず、一時articleを削除後に遅延messageがstaleとしてackされ、通常Queue 0件、remote D1の`phase9-boundary-*` 0件を確認した。決定的なsize・redirect境界はlocal自動testでpassしている。
+- 実機テスト用articleがremote D1に残っていないことをread-only queryで確認し、既存のユーザーデータは保持した。
+- Phase 9ではWorkers Paid、独自domain、その他の有料productを新たに有効化していない。API tokenはBilling Readを持たないため、既存subscriptionの有無はownerがdashboardで確認する。
+
+### 変更ファイル
+
+- Cloudflare設定・生成型: `apps/web/wrangler.jsonc`、`apps/web/worker-configuration.d.ts`
+- Worker型調整: `apps/web/src/worker/app.ts`、`apps/web/src/worker/article-api.test.ts`
+- UI簡素化: `apps/web/src/client/components/AppLayout.tsx`、`apps/web/src/client/components/ArticleComponents.test.tsx`、`apps/web/src/client/pages/ArticlesPage.tsx`とtest、`apps/web/src/client/router.tsx`、旧`HomePage`の削除
+- 運用script: `scripts/verify-cloudflare-preflight.mjs`、`scripts/configure-cloudflare-access.mjs`、`package.json`
+- E2E安定化: `tests/e2e/article-inbox.spec.ts`
+- 文書・判断: `docs/cloudflare-setup.md`、`docs/quality-gates.md`、`docs/manual-device-test.md`、`docs/decisions/0004-workers-free-cpu-gate.md`、`docs/progress.md`
+
+### 採用判断
+
+- production認証は実装ガイドどおり`jose`でAccess JWTのRS256署名、issuer、audience、expiry、任意nbf、subject、所有者email完全一致を再検証する。
+- Workers Freeの10 msは通常処理の基準とし、認証を伴うまれなcold requestだけは25 ms以下、`outcome: ok`、CPU errorなしの場合に許容する。連続超過や通常処理の反復超過は不合格とする。
+- Static Assetsでは`ctx.access`がuser Workerへ渡らないため、現行の同一origin構成ではJWT再検証を置き換えない。
+- Android実機はownerの明示判断でPhase 9から除外し、未実施をpassとは記録しない。
+
+### 実行した主なコマンド
+
+- `pnpm cloudflare:preflight`
+- `pnpm --dir apps/web exec wrangler d1 create tech-inbox`
+- `pnpm --dir apps/web exec wrangler d1 migrations apply tech-inbox --remote`
+- `pnpm --dir apps/web exec wrangler queues create ...`
+- `pnpm --dir apps/web exec wrangler deploy --config ../../workers/metadata-fetcher/wrangler.jsonc`
+- `pnpm --dir apps/web exec wrangler deploy`
+- `pnpm cloudflare:configure-access`
+- `pnpm --dir apps/web exec wrangler tail tech-inbox-app --format json --sampling-rate 0.999`
+- `pnpm check`
+
+### 検証結果
+
+- format、lint、Cloudflare生成型、TypeScript: pass
+- Vitest: 24 files、276 tests pass
+- coverage: statements 89.46%、branches 85.50%、functions 89.45%、lines 90.78%
+- fresh local D1 migration/constraint verification: pass
+- local実HTTP CRUD/input defense/export verification: pass
+- production build、fetcher dry-run、artifact budget: pass
+- Playwright: desktop/mobile合計12 tests pass
+- dependency audit: high 0、critical 0、既知moderate 1
+- production Access: 未認証root/API 302、許可owner login pass
+- production desktop smoke: pass
+- iPhone Chrome実機: pass
+- production logs: Error 1102 0、`exceededCpu` 0、exception 0
+- secret・credential混入: pass
+
+### 未解決事項
+
+- Billing情報は最小権限API tokenの対象外である。Phase 9で課金同意画面やPaid必須表示は出ておらず有料productを新規有効化していないが、既存のWorkers subscription有無はownerがCloudflare dashboardのBilling画面で確認する。
+- metadata DLQに確認時点で6件あった。Phase 9境界test由来とは特定できず、所有データの可能性があるためpurgeせず保持した。Free retention 24時間後の自然失効またはPhase 10の運用手順で扱う。
+- Android Chrome実機確認はowner判断でスキップした。手順は`docs/manual-device-test.md`に維持し、実施していない状態を成功とは扱わない。
 - 既知のmoderate advisory 1件はPhase 1と同じDrizzle Kit配下の開発専用推移依存であり、runtime bundleには含まれない。

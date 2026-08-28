@@ -1,6 +1,6 @@
 # Manual device test
 
-最終更新: 2026-08-27
+最終更新: 2026-08-28
 
 ## 現在の状態
 
@@ -8,8 +8,8 @@
 |---|---|---|
 | Playwright desktop Chrome 1280 × 800 | 成功 | 自動E2E 6シナリオ |
 | Playwright mobile Chrome 320 × 700 | 成功 | 自動E2E 6シナリオ。実機確認の代替ではない |
-| iPhone Google Chrome | 未実施 | Phase 9でAccess保護済みURLを用意した後に実施する |
-| Android Google Chrome | 未実施 | Phase 9でAccess保護済みURLを用意した後に実施する |
+| iPhone Google Chrome | 成功 | 2026-08-27の実機共通チェックに成功。UI簡素化後はowner表示確認とmobile E2Eで補完 |
+| Android Google Chrome | スキップ | 所有者判断でPhase 9では実施しない。成功扱いにはしない |
 
 実機を操作していない状態を「確認済み」と記録しない。OS、Chrome、端末、向き、実施者、日時を結果に残す。個人情報や秘密値をスクリーンショット、issue、commitへ含めない。
 
@@ -28,11 +28,11 @@
 | # | 操作 | 期待結果 | 結果 |
 |---:|---|---|---|
 | 1 | 未認証状態でURLを開く | Cloudflare Access loginへ移動し、アプリやAPIデータを表示しない | 未実施 |
-| 2 | 許可されたemailでloginする | 未読一覧を表示できる | 未実施 |
+| 2 | 許可されたemailでloginする | 全記事一覧を表示でき、`/`も`/articles`へ移動する | 未実施 |
 | 3 | URL入力をfocusしてkeyboardを表示する | 入力欄、保存操作、本文が横にはみ出さず操作できる | 未実施 |
 | 4 | 技術記事URLを貼り付けて保存する | 保存通知とpending表示が出て、最終的にreadyまたは安全なfailed表示になる | 未実施 |
 | 5 | 追加・編集・削除dialogを開閉する | focusがdialog内へ移り、閉じた後は開始位置へ戻る | 未実施 |
-| 6 | 記事を既読化し、undoする | 未読一覧から消え、undoで復元される | 未実施 |
+| 6 | 記事を既読化し、undoする | 全記事一覧の状態表示が変わり、undoで未読へ戻る | 未実施 |
 | 7 | すべて一覧で既読を未読へ戻す | 未読状態へ変わり、filter結果も更新される | 未実施 |
 | 8 | タイトルまたはURLで検索する | 一致する記事だけが表示され、検索解除で戻る | 未実施 |
 | 9 | 元記事を開く | 新しいタブで開き、Tech Inbox側の状態を失わない | 未実施 |
@@ -60,3 +60,34 @@ Chrome version:
 ```
 
 failまたはblockedがあればPhase 9完了扱いにせず、再現条件と影響範囲を記録して修正後に再実施する。
+
+## Phase 9実施結果
+
+### iPhone Google Chrome
+
+- 実施日時（UTC）: 2026-08-27T14:39:34Z
+- 実施者: repository owner
+- 端末: iPhone（機種名未提供）
+- OS: iOS 26.0.1（Workers Logsのuser agentで確認）
+- Chrome: 143.0.7499.151（Workers Logsのuser agentで確認）
+- 接続環境: production、Cloudflare Access保護済みURL
+- 向き: 縦・横
+- 結果: pass
+- 失敗したcheck番号: なし
+- 備考: 所有者から「iPhone全部OK」と報告された。Access login、keyboard中layout、追加・編集・削除dialog、記事保存、検索、既読化とundo、元記事の新規tab、JSON download、縦横layout、未認証時のAccess遮断を確認した。監視したapp Worker requestはすべて`outcome: ok`、例外なし。cold requestは17 ms、その後は2〜7 msだった。実機テスト用記事がremote D1に0件であることを終了後に確認した。
+
+### Android Google Chrome
+
+- 実施日時（UTC）: 未実施
+- 実施者: 未実施
+- 端末・OS・Chrome: 未記録
+- 結果: skipped by owner
+- 備考: repository ownerの明示判断によりPhase 9ではスキップした。Playwrightの320 × 700 mobile Chrome 6シナリオは成功しているが、Android実機成功の代替とは記録しない。
+
+### 2026-08-28 UI更新後の再確認
+
+- 対象deployment: `e1c03d86-0314-42c2-9676-4109e0c8c2c1`
+- local desktop/mobile E2E: pass（合計12 tests）
+- 未認証root/APIのAccess redirect: pass
+- Access applicationとowner email完全一致policy: pass
+- 認証済みowner browser表示: pass。ownerが`/`から全記事画面を表示でき、ナビゲーションが「すべて」「設定」だけであることを確認した。確認端末は未記録のため、iPhone実機でUI更新版を再実施したとは記録しない。

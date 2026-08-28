@@ -3,6 +3,15 @@
   "name": "tech-inbox-app",
   "main": "./src/worker/index.ts",
   "compatibility_date": "2026-08-15",
+  "workers_dev": true,
+  "preview_urls": false,
+  "vars": {
+    "ENVIRONMENT": "production",
+    "APP_ORIGIN": "https://tech-inbox-app.sx7k2p9q.workers.dev"
+  },
+  "secrets": {
+    "required": ["TEAM_DOMAIN", "POLICY_AUD", "ALLOWED_EMAIL"]
+  },
   "assets": {
     "not_found_handling": "single-page-application",
     "run_worker_first": ["/api/*"]
@@ -11,6 +20,7 @@
     {
       "binding": "DB",
       "database_name": "tech-inbox",
+      "database_id": "487a5705-5d37-4d80-8ff9-9a3f1aae97b3",
       "migrations_dir": "../../packages/db/migrations",
       "remote": false
     }

@@ -1,7 +1,7 @@
 import type { Article } from "@tech-inbox/core/article";
 import type { NormalizedUrl } from "@tech-inbox/core/url-normalization";
 import { describe, expect, it, vi } from "vitest";
-import { createApp, type RequestLogEvent } from "./app";
+import { createApp, type AppBindings, type RequestLogEvent } from "./app";
 import type { ArticleRepository } from "./repositories/article-repository";
 
 const origin = "http://localhost";
@@ -44,10 +44,7 @@ function stubRepository(overrides: Partial<ArticleRepository> = {}): ArticleRepo
   };
 }
 
-function localBindings(): CloudflareBindings & {
-  ENVIRONMENT: string;
-  APP_ORIGIN: string;
-} {
+function localBindings(): AppBindings {
   const allow = { limit: async () => ({ success: true }) } as RateLimit;
   return {
     DB: {} as D1Database,

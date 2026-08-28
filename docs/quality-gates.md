@@ -46,7 +46,7 @@ V8 unit coverageから次だけを除外する。
 |---|---|
 | URL登録、duplicate登録 | Playwright状態付きAPI mockと画面通知 |
 | pendingからready、metadata失敗 | 画面polling後のterminal表示 |
-| 既読化、undo、未読へ戻す | 未読一覧と既読filterの更新 |
+| 既読化、undo、未読へ戻す | 全記事一覧の状態表示と未読・既読filterの更新 |
 | 検索、filter | query結果とstatus radio |
 | title編集 | 編集dialogと更新後card |
 | URL編集と競合 | 409 safe errorと元URL保持 |
@@ -69,13 +69,13 @@ Playwrightのmobile viewport成功は実機確認の代替にしない。手順�
 
 これはプラットフォーム上限ぎりぎりまで使う基準ではなく、意図しないbundle増加をPhaseごとに検出する内部budgetである。
 
-2026-08-27のproduction build実測値:
+2026-08-28のproduction build実測値:
 
 | 成果物 | Raw | Gzip |
 |---|---:|---:|
 | app Worker | 409.1 KiB | 89.2 KiB |
 | metadata-fetcher Worker | 571.9 KiB | 86.2 KiB |
-| client JavaScript合計 | 327.8 KiB | 98.4 KiB |
+| client JavaScript合計 | 327.4 KiB | 98.3 KiB |
 | client CSS合計 | 27.1 KiB | 6.1 KiB |
 
 ## Worker CPU review
@@ -87,4 +87,8 @@ Playwrightのmobile viewport成功は実機確認の代替にしない。手順�
 - D1 adapterはN+1 queryを避け、exportも記事とaliasを1回のD1 batchで取得する。
 - production bundle sizeは上記budgetで継続監視する。
 
-localのwall-clock時間はCloudflareのCPU timeと同一ではないため、実測済みのCPU timeとは記録しない。Phase 9の限定deploy許可後、Workers LogsまたはCloudflare dashboardでapp Workerとmetadata-fetcherのCPU timeを確認し、Freeプランの10 ms/invocation基準を超えるrequestがあればPhase 9を完了扱いにしない。特にlist 100件、JSON export、1 MiB HTML、redirect 3回を確認対象にする。
+localのwall-clock時間はCloudflareのCPU timeと同一ではないため、実測済みのCPU timeとは記録しない。Phase 9の限定deploy許可後、Workers LogsまたはCloudflare dashboardでapp Workerとmetadata-fetcherのCPU timeを確認する。
+
+通常処理はFreeプランの10 ms/invocation以下を基準とする。`jose`のJWKS取得とJWT検証を初めて行うコールドリクエストだけは、Cloudflare公式のbuilt-in flexibilityを踏まえ、まれな発生、25 ms以下、`outcome: ok`、Error 1102と`exceededCpu`なしの場合に限り許容する。10 ms超過が3リクエスト以上連続する場合、通常処理で反復する場合、またはCPU起因の失敗が1件でもあればPhase 9を完了扱いにしない。詳細は[ADR-0004](decisions/0004-workers-free-cpu-gate.md)を参照する。
+
+list 100件と101件以上のJSON exportはservice test、1 MiB超過HTMLのstream中断とredirect 3回許可・4回拒否はmetadata-fetcher testで決定的に検証する。productionでは代表的な成功処理と安全な失敗・再試行をWorkers Logsで確認し、第三者endpoint固有のnetwork failureを境界処理の成功とは記録しない。

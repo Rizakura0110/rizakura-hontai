@@ -13,10 +13,6 @@ import { ArticleComposer } from "../components/ArticleComposer";
 import { DeleteArticleDialog, EditArticleDialog } from "../components/ArticleDialogs";
 import { Toast, type ToastState } from "../components/Toast";
 
-type ArticlesPageProps = {
-  readonly view: "unread" | "all";
-};
-
 const sortLabels: ReadonlyArray<{ value: ArticleSort; label: string }> = [
   { value: "saved_desc", label: "保存日の新しい順" },
   { value: "saved_asc", label: "保存日の古い順" },
@@ -40,14 +36,8 @@ function compareArticles(left: ArticleDto, right: ArticleDto, sort: ArticleSort)
   return dateResult === 0 ? left.id.localeCompare(right.id) * direction : dateResult;
 }
 
-function matchesList(
-  article: ArticleDto,
-  view: ArticlesPageProps["view"],
-  status: ArticleListStatus,
-  query: string,
-): boolean {
-  const requiredStatus = view === "unread" ? "unread" : status;
-  if (requiredStatus !== "all" && article.status !== requiredStatus) return false;
+function matchesList(article: ArticleDto, status: ArticleListStatus, query: string): boolean {
+  if (status !== "all" && article.status !== status) return false;
   if (query === "") return true;
 
   const normalizedQuery = query.toLocaleLowerCase("ja-JP");
@@ -77,8 +67,8 @@ function ListSkeleton() {
   );
 }
 
-export function ArticlesPage({ view }: ArticlesPageProps) {
-  const [status, setStatus] = useState<ArticleListStatus>(view === "unread" ? "unread" : "all");
+export function ArticlesPage() {
+  const [status, setStatus] = useState<ArticleListStatus>("all");
   const [sort, setSort] = useState<ArticleSort>("saved_desc");
   const [searchInput, setSearchInput] = useState("");
   const [query, setQuery] = useState("");
@@ -94,12 +84,7 @@ export function ArticlesPage({ view }: ArticlesPageProps) {
   const [toast, setToast] = useState<ToastState | null>(null);
   const toastId = useRef(0);
 
-  const listStatus = view === "unread" ? "unread" : status;
-  const heading = view === "unread" ? "未読の記事" : "すべての記事";
-  const description =
-    view === "unread"
-      ? "あとで読むと決めた技術記事を、ここから片付けていきましょう。"
-      : "保存した記事を検索し、状態や保存日で整理できます。";
+  const listStatus = status;
   const hasPendingMetadata = articles.some((article) => article.metadataStatus === "pending");
 
   const showToast = useCallback((value: Omit<ToastState, "id">) => {
@@ -236,7 +221,7 @@ export function ArticlesPage({ view }: ArticlesPageProps) {
         return true;
       }
 
-      if (matchesList(response.article, view, status, query)) {
+      if (matchesList(response.article, status, query)) {
         setArticles((current) => upsertArticle(current, response.article, sort));
       }
       showToast({ message: "記事を保存しました。", tone: "success" });
@@ -253,7 +238,7 @@ export function ArticlesPage({ view }: ArticlesPageProps) {
     try {
       const updated = await updateArticle(article.id, { status: nextStatus });
       setArticles((current) =>
-        matchesList(updated, view, status, query)
+        matchesList(updated, status, query)
           ? upsertArticle(current, updated, sort)
           : current.filter((item) => item.id !== updated.id),
       );
@@ -267,7 +252,7 @@ export function ArticlesPage({ view }: ArticlesPageProps) {
             try {
               const restored = await updateArticle(article.id, { status: article.status });
               setArticles((current) =>
-                matchesList(restored, view, status, query)
+                matchesList(restored, status, query)
                   ? upsertArticle(current, restored, sort)
                   : current.filter((item) => item.id !== restored.id),
               );
@@ -294,7 +279,7 @@ export function ArticlesPage({ view }: ArticlesPageProps) {
     try {
       const updated = await updateArticle(id, changes);
       setArticles((current) =>
-        matchesList(updated, view, status, query)
+        matchesList(updated, status, query)
           ? upsertArticle(current, updated, sort)
           : current.filter((item) => item.id !== id),
       );
@@ -327,7 +312,7 @@ export function ArticlesPage({ view }: ArticlesPageProps) {
     try {
       const updated = await retryArticleMetadata(article.id);
       setArticles((current) =>
-        matchesList(updated, view, status, query)
+        matchesList(updated, status, query)
           ? upsertArticle(current, updated, sort)
           : current.filter((item) => item.id !== updated.id),
       );
@@ -349,9 +334,11 @@ export function ArticlesPage({ view }: ArticlesPageProps) {
               className="mt-1 text-2xl font-bold tracking-tight text-slate-950 sm:text-3xl"
               id="articles-heading"
             >
-              {heading}
+              すべての記事
             </h1>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">{description}</p>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+              保存した記事を検索し、状態や保存日で整理できます。
+            </p>
           </div>
           <div className="shrink-0 md:hidden">
             <ArticleComposer onCreate={handleCreate} variant="mobile" />
@@ -365,12 +352,12 @@ export function ArticlesPage({ view }: ArticlesPageProps) {
         <div className="mt-6 rounded-xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
           <search>
             <form className="flex min-w-0 gap-2" onSubmit={submitSearch}>
-              <label className="sr-only" htmlFor={`article-search-${view}`}>
+              <label className="sr-only" htmlFor="article-search">
                 記事を検索
               </label>
               <input
                 className="min-h-11 min-w-0 flex-1 rounded-lg border border-slate-300 px-3 text-base outline-none placeholder:text-slate-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 sm:text-sm"
-                id={`article-search-${view}`}
+                id="article-search"
                 maxLength={200}
                 onChange={(event) => setSearchInput(event.currentTarget.value)}
                 placeholder="タイトル、URL、サイト名を検索"
@@ -387,32 +374,28 @@ export function ArticlesPage({ view }: ArticlesPageProps) {
           </search>
 
           <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            {view === "all" ? (
-              <fieldset className="flex flex-wrap gap-1" aria-label="記事の状態">
-                {statusLabels.map((option) => (
-                  <label
-                    className={`inline-flex min-h-11 cursor-pointer items-center rounded-lg px-3 py-2 text-sm font-medium focus-within:outline-2 focus-within:outline-blue-600 ${
-                      status === option.value
-                        ? "bg-blue-50 text-blue-700"
-                        : "text-slate-600 hover:bg-slate-100"
-                    }`}
-                    key={option.value}
-                  >
-                    <input
-                      checked={status === option.value}
-                      className="sr-only"
-                      name="article-status"
-                      onChange={() => setStatus(option.value)}
-                      type="radio"
-                      value={option.value}
-                    />
-                    {option.label}
-                  </label>
-                ))}
-              </fieldset>
-            ) : (
-              <p className="text-sm font-medium text-slate-600">未読のみ表示</p>
-            )}
+            <fieldset className="flex flex-wrap gap-1" aria-label="記事の状態">
+              {statusLabels.map((option) => (
+                <label
+                  className={`inline-flex min-h-11 cursor-pointer items-center rounded-lg px-3 py-2 text-sm font-medium focus-within:outline-2 focus-within:outline-blue-600 ${
+                    status === option.value
+                      ? "bg-blue-50 text-blue-700"
+                      : "text-slate-600 hover:bg-slate-100"
+                  }`}
+                  key={option.value}
+                >
+                  <input
+                    checked={status === option.value}
+                    className="sr-only"
+                    name="article-status"
+                    onChange={() => setStatus(option.value)}
+                    type="radio"
+                    value={option.value}
+                  />
+                  {option.label}
+                </label>
+              ))}
+            </fieldset>
             <label className="flex items-center gap-2 text-sm text-slate-600">
               <span className="shrink-0">並び順</span>
               <select
@@ -469,11 +452,7 @@ export function ArticlesPage({ view }: ArticlesPageProps) {
                 ◎
               </p>
               <p className="mt-3 font-semibold text-slate-800">
-                {query !== ""
-                  ? "検索条件に一致する記事はありません"
-                  : view === "unread"
-                    ? "未読の記事はありません"
-                    : "保存した記事はありません"}
+                {query !== "" ? "検索条件に一致する記事はありません" : "保存した記事はありません"}
               </p>
               <p className="mt-1 text-sm leading-6 text-slate-500">
                 {query !== ""

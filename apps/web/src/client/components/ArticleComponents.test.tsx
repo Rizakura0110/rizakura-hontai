@@ -55,6 +55,7 @@ describe("AppLayout", () => {
     for (const link of screen.getAllByRole("link", { name: "すべて" })) {
       expect(link.getAttribute("aria-current")).toBe("page");
     }
+    expect(screen.queryByRole("link", { name: "未読" })).toBeNull();
   });
 });
 

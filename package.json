@@ -12,6 +12,8 @@
     "db:migrate:local": "pnpm --dir apps/web exec wrangler d1 migrations apply tech-inbox --local",
     "db:verify:local": "node scripts/verify-local-d1.mjs",
     "api:verify:local": "node scripts/verify-phase3-api.mjs",
+    "cloudflare:preflight": "node scripts/verify-cloudflare-preflight.mjs",
+    "cloudflare:configure-access": "node scripts/configure-cloudflare-access.mjs",
     "format": "biome format --write .",
     "format:check": "biome format .",
     "lint": "biome lint .",

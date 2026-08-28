@@ -6,8 +6,7 @@ type AppLayoutProps = {
 };
 
 const navigation = [
-  { to: "/", label: "未読", glyph: "●", end: true },
-  { to: "/articles", label: "すべて", glyph: "▤", end: false },
+  { to: "/articles", label: "すべて", glyph: "▤", end: true },
   { to: "/settings", label: "設定", glyph: "⚙", end: false },
 ] as const;
 
@@ -38,9 +37,9 @@ function NavigationItems({ mobile = false }: { readonly mobile?: boolean }) {
 function Brand() {
   return (
     <NavLink
-      aria-label="Tech Inbox 未読一覧"
+      aria-label="Tech Inbox すべての記事"
       className="flex min-h-11 items-center gap-3 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
-      to="/"
+      to="/articles"
     >
       <span
         aria-hidden="true"

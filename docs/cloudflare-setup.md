@@ -23,6 +23,59 @@
 - Rate Limiting Bindingを含め、リモート設定前に料金ページとCloudflare dashboard表示を再確認する。
 - 課金同意画面または有料プラン必須表示が出た場合は処理を中止し、`docs/decision-needed.md`へ記録する。
 
+## Phase 9 pre-deploy gate
+
+確認日: 2026-08-27
+
+デプロイ直前に公式情報を再確認し、初期版の想定利用量は引き続きFreeプラン内に収まると判断した。
+
+| 製品・機能 | Freeプランの再確認結果 | Phase 9の停止条件 | 公式情報 |
+|---|---|---|---|
+| Workers | 100,000 requests/day、10 ms CPU/invocation、128 MB memory、3 MB Worker size。まれな超過にはbuilt-in flexibilityあり | Paidへの変更、有料利用への同意、Error 1102、`exceededCpu`、または10 ms超過の継続 | [Pricing](https://developers.cloudflare.com/workers/platform/pricing/)、[Limits](https://developers.cloudflare.com/workers/platform/limits/)、[ADR-0004](decisions/0004-workers-free-cpu-gate.md) |
+| D1 | 5 million rows read/day、100,000 rows written/day、合計5 GB。Free上限超過時は追加課金ではなく処理失敗 | Paidへの変更、想定外の既存database、migration対象の不一致 | [Pricing](https://developers.cloudflare.com/d1/platform/pricing/) |
+| Queues | 10,000 operations/day、retention 24時間 | Paidへの変更、retention延長を求める課金表示 | [Pricing](https://developers.cloudflare.com/queues/platform/pricing/)、[Limits](https://developers.cloudflare.com/queues/platform/limits/) |
+| Access | 所有者のemail 1件だけを許可する | Everyone、domain全体、bypass、想定外のidentity providerを必要とする構成 | [Workers向けAccess](https://developers.cloudflare.com/workers/configuration/cloudflare-access/)、[Zero Trust pricing](https://www.cloudflare.com/plans/zero-trust-services/) |
+| Worker Rate Limiting API | 現行のWorkers bindingとして公式サポートされ、Wrangler 4.36.0以上が必要。本repositoryは4.124.0 | dashboardまたはdeploy時に追加料金・Paid必須の表示 | [Rate Limiting](https://developers.cloudflare.com/workers/runtime-apis/bindings/rate-limit/) |
+
+### Remote authorization prerequisites
+
+`wrangler login`は使用しない。Cloudflareの値はrepository内のファイル、command引数、issue、commit、logへ保存せず、実行プロセスへ次の環境変数として渡す。
+
+- `CLOUDFLARE_API_TOKEN`: Phase 9だけに使う短期のcustom API token
+- `CLOUDFLARE_ACCOUNT_ID`: 配置先を一意にする32文字のaccount ID
+- `TECH_INBOX_ALLOWED_EMAIL`: Accessで許可する所有者email 1件
+
+tokenは対象account 1件だけへ限定し、有効期限をPhase 9の作業期間に絞る。必要権限は次のとおりで、Billing、zone DNS、Workers KV、R2等は付与しない。
+
+- Account Settings: Read
+- Workers Scripts: Edit
+- Workers Tail: Read
+- D1: Edit
+- Queues: Edit
+- Access: Apps and Policies: Edit
+- Access: Organizations, Identity Providers, and Groups: Read
+
+リモート操作前にtoken、account、Zero Trust organizationを読み取り専用で検証し、既存の同名D1、Queue、Worker、Access applicationを列挙する。既存リソースがある場合は内容を確認せず上書きしない。Zero Trust organizationが未作成なら、team domainをユーザーが選ぶdashboard onboardingで一旦停止する。
+
+remote migrationの直前には`tech-inbox`とproduction対象であることを表示する。app WorkerはAccess applicationとemail完全一致policyの作成後まで本番データを入れず、保護前のURLを文書へ残さない。課金同意画面またはPaid必須表示が出た場合は、その場でPhase 9を停止する。
+
+## Phase 9 production deployment
+
+実施日: 2026-08-27
+
+- D1 `tech-inbox`をAPACへ作成し、`0000_cloudy_karen_page.sql`をremote production databaseへ適用した。
+- Queue `tech-inbox-metadata`とDLQ `tech-inbox-metadata-dlq`を作成し、Freeのretention 24時間を設定した。
+- `tech-inbox-metadata-fetcher`を`workers_dev: false`、preview URL false、public routeなしでdeployした。D1、Queue、Secrets bindingは持たない。
+- `tech-inbox-app`へD1、Queue、Service Binding、5種類のRate Limiting binding、production originを設定してdeployした。
+- app WorkerのAll trafficをWorker-level Access applicationで保護した。Allow policyは所有者email 1件への完全一致だけで、session durationは7日、preview URLは無効、app launcher表示も無効とした。
+- `TEAM_DOMAIN`、`POLICY_AUD`、`ALLOWED_EMAIL`をWorker Secretsとして登録した。実値はrepository、command引数、logへ保存していない。
+- 未認証のrootと記事APIがともにAccess loginへ302となることを確認した。
+- 許可された所有者がCloudflare loginから入り、一覧表示、URL登録、pendingからready、検索、既読化とundo、title編集、JSON export、削除をdesktop Chromeで確認した。
+- final deploymentはガイド指定の`jose`でAccess JWTを再検証する。最終版の再読み込みと認証付き一覧表示を所有者が確認した。
+- 2026-08-28に未読専用画面を削除したUIを既存app Workerへ再deployした。新規resourceは作成せず、`/`は全記事画面へredirectし、未読・既読filterは維持した。deployment versionは`e1c03d86-0314-42c2-9676-4109e0c8c2c1`である。
+- Workers Logsでappのwarm requestは2〜7 ms、metadata-fetcherは最大4 ms、認証を伴うcold requestは14〜21 msだった。すべて`outcome: ok`で、Error 1102、`exceededCpu`、例外はなかった。判定基準は[ADR-0004](decisions/0004-workers-free-cpu-gate.md)に記録した。
+- Phase 9ではWorkers Paidやその他の有料製品を新たに有効化していない。API tokenにBilling Readを与えていないため、accountに以前から存在するsubscriptionの有無はrepositoryから断定せず、ownerがdashboardのBilling画面で確認する。
+
 ## Phase 1 local configuration
 
 - `apps/web`はCloudflare Vite pluginでReact SPAとHono Workerを同時にbuildする。

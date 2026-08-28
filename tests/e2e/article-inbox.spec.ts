@@ -228,7 +228,8 @@ test("article text is safe, read state can be undone, and layout does not overfl
 }, testInfo) => {
   await page.goto("/");
 
-  await expect(page.getByRole("heading", { name: "未読の記事" })).toBeVisible();
+  await expect(page).toHaveURL(/\/articles$/);
+  await expect(page.getByRole("heading", { name: "すべての記事" })).toBeVisible();
   await expect(page.getByRole("link", { name: unsafeTitle })).toBeVisible();
   await expect(page.locator("article img, article script")).toHaveCount(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
@@ -252,9 +253,11 @@ test("article text is safe, read state can be undone, and layout does not overfl
   const card = page.locator("article").filter({ hasText: unsafeTitle });
   await card.getByRole("button", { name: "既読にする" }).press("Enter");
   await expect(page.getByText("記事を既読にしました。")).toBeVisible();
-  await expect(page.getByRole("link", { name: unsafeTitle })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: unsafeTitle })).toBeVisible();
+  await expect(card.getByRole("button", { name: "未読に戻す" })).toBeVisible();
   await page.getByRole("button", { name: "元に戻す" }).press("Enter");
   await expect(page.getByRole("link", { name: unsafeTitle })).toBeVisible();
+  await expect(card.getByRole("button", { name: "既読にする" })).toBeVisible();
 });
 
 test("add, search, edit, delete, and settings routes work", async ({ page }, testInfo) => {
@@ -265,8 +268,8 @@ test("add, search, edit, delete, and settings routes work", async ({ page }, tes
   await expect(page.getByText("記事を保存しました。")).toBeVisible();
   await expect(page.getByRole("link", { name: newUrl })).toBeVisible();
 
-  await page.getByRole("link", { name: "すべて" }).click();
   await expect(page).toHaveURL(/\/articles$/);
+  await expect(page.getByRole("heading", { name: "すべての記事" })).toBeVisible();
   await page.getByRole("searchbox", { name: "記事を検索" }).fill("playwright");
   await page.getByRole("button", { name: "検索" }).click();
   await expect(page.getByRole("link", { name: newUrl })).toBeVisible();
@@ -333,7 +336,6 @@ test("duplicate registration, read filter, and returning an article to unread wo
   );
 
   await page.getByRole("button", { name: "既読にする" }).click();
-  await page.getByRole("link", { name: "すべて" }).click();
   await page.getByRole("group", { name: "記事の状態" }).getByText("既読", { exact: true }).click();
   await expect(page.getByRole("link", { name: unsafeTitle })).toBeVisible();
 

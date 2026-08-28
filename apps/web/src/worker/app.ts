@@ -30,7 +30,10 @@ import { createD1ArticleRepository } from "./repositories/d1-article-repository"
 import type { ArticleRepository } from "./repositories/article-repository";
 import { SECURITY_HEADERS } from "./security-headers";
 
-export type AppBindings = CloudflareBindings &
+export type AppBindings = Omit<
+  CloudflareBindings,
+  "ENVIRONMENT" | "APP_ORIGIN" | "TEAM_DOMAIN" | "POLICY_AUD" | "ALLOWED_EMAIL"
+> &
   AccessAuthBindings &
   RateLimitBindings & {
     readonly ENVIRONMENT?: string;

@@ -5,7 +5,6 @@ import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ArticlesPage } from "./ArticlesPage";
-import { HomePage } from "./HomePage";
 
 const baseArticle: ArticleDto = {
   id: "article-1",
@@ -42,7 +41,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe("HomePage", () => {
+describe("ArticlesPage core flows", () => {
   it("polls pending metadata after two seconds and stops at a terminal state", async () => {
     vi.useFakeTimers();
     const pendingArticle = {
@@ -58,7 +57,7 @@ describe("HomePage", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     await act(async () => {
-      render(<HomePage />);
+      render(<ArticlesPage />);
       await Promise.resolve();
       await Promise.resolve();
     });
@@ -85,9 +84,9 @@ describe("HomePage", () => {
       ),
     );
 
-    const { container } = render(<HomePage />);
+    const { container } = render(<ArticlesPage />);
 
-    expect(screen.getByRole("heading", { name: "未読の記事" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "すべての記事" })).toBeTruthy();
     expect(await screen.findByRole("link", { name: unsafeTitle })).toBeTruthy();
     expect(container.querySelector("article img")).toBeNull();
     expect(container.querySelector("article script")).toBeNull();
@@ -102,18 +101,18 @@ describe("HomePage", () => {
     );
     vi.stubGlobal("fetch", fetchMock);
     const user = userEvent.setup();
-    render(<HomePage />);
-    await screen.findByText("未読の記事はありません");
+    render(<ArticlesPage />);
+    await screen.findByText("保存した記事はありません");
 
     await user.type(screen.getByRole("searchbox", { name: "記事を検索" }), "React Query");
     await user.click(screen.getByRole("button", { name: "検索" }));
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
     expect(String(fetchMock.mock.calls[1]?.[0])).toContain("q=React+Query");
-    expect(String(fetchMock.mock.calls[1]?.[0])).toContain("status=unread");
+    expect(String(fetchMock.mock.calls[1]?.[0])).toContain("status=all");
   });
 
-  it("removes a read article and restores it through the undo action", async () => {
+  it("keeps a read article visible and restores its state through the undo action", async () => {
     const readArticle: ArticleDto = {
       ...baseArticle,
       status: "read",
@@ -131,15 +130,17 @@ describe("HomePage", () => {
     );
     vi.stubGlobal("fetch", fetchMock);
     const user = userEvent.setup();
-    render(<HomePage />);
+    render(<ArticlesPage />);
     await screen.findByRole("link", { name: baseArticle.title ?? "" });
 
     await user.click(screen.getByRole("button", { name: "既読にする" }));
     expect(await screen.findByText("記事を既読にしました。")).toBeTruthy();
-    expect(screen.queryByRole("link", { name: baseArticle.title ?? "" })).toBeNull();
+    expect(screen.getByRole("link", { name: baseArticle.title ?? "" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "未読に戻す" })).toBeTruthy();
 
     await user.click(screen.getByRole("button", { name: "元に戻す" }));
     expect(await screen.findByRole("link", { name: baseArticle.title ?? "" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "既読にする" })).toBeTruthy();
     expect(screen.getByText("変更を元に戻しました。")).toBeTruthy();
   });
 
@@ -154,8 +155,8 @@ describe("HomePage", () => {
     );
     vi.stubGlobal("fetch", fetchMock);
     const user = userEvent.setup();
-    render(<HomePage />);
-    await screen.findByText("未読の記事はありません");
+    render(<ArticlesPage />);
+    await screen.findByText("保存した記事はありません");
 
     await user.type(screen.getByLabelText("保存する記事のURL"), baseArticle.originalUrl);
     await user.click(screen.getByRole("button", { name: "保存" }));
@@ -193,7 +194,7 @@ describe("HomePage", () => {
     );
     vi.stubGlobal("fetch", fetchMock);
     const user = userEvent.setup();
-    render(<HomePage />);
+    render(<ArticlesPage />);
     await screen.findByText("タイトルを取得できませんでした");
 
     await user.click(screen.getByRole("button", { name: "記事情報を再取得" }));
@@ -241,7 +242,7 @@ describe("ArticlesPage quality flows", () => {
     );
     vi.stubGlobal("fetch", fetchMock);
     const user = userEvent.setup();
-    render(<ArticlesPage view="all" />);
+    render(<ArticlesPage />);
     await screen.findByRole("link", { name: baseArticle.title ?? "" });
 
     await user.click(screen.getByRole("button", { name: "さらに読み込む" }));
@@ -280,7 +281,7 @@ describe("ArticlesPage quality flows", () => {
       .mockResolvedValueOnce(jsonResponse({ articles: [], nextCursor: null }));
     vi.stubGlobal("fetch", fetchMock);
     const user = userEvent.setup();
-    render(<ArticlesPage view="all" />);
+    render(<ArticlesPage />);
 
     expect(await screen.findByText("記事を読み込めませんでした")).toBeTruthy();
     expect(screen.getByText("現在記事を取得できません。")).toBeTruthy();
@@ -306,7 +307,7 @@ describe("ArticlesPage quality flows", () => {
     );
     vi.stubGlobal("fetch", fetchMock);
     const user = userEvent.setup();
-    render(<ArticlesPage view="all" />);
+    render(<ArticlesPage />);
     await screen.findByRole("link", { name: baseArticle.title ?? "" });
 
     let card = screen.getByRole("link", { name: baseArticle.title ?? "" }).closest("article");
