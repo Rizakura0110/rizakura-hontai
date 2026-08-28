@@ -28,7 +28,7 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: "pnpm preview -- --host 127.0.0.1 --port 4173",
+    command: "pnpm --dir apps/web exec vite preview --host 127.0.0.1 --port 4173",
     env: {
       ALLOWED_EMAIL: "ci-owner@example.invalid",
       POLICY_AUD: "ci-only-placeholder",
