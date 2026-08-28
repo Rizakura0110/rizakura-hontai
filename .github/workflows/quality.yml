@@ -26,7 +26,6 @@ jobs:
     timeout-minutes: 25
     env:
       CI: "true"
-      COREPACK_HOME: ${{ github.workspace }}/.tools/corepack
       PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/.cache/ms-playwright
       PNPM_CONFIG_NPMRC_AUTH_FILE: ${{ github.workspace }}/.config/pnpm-auth-empty
       PNPM_HOME: ${{ github.workspace }}/.tools/pnpm
@@ -50,10 +49,17 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p "$COREPACK_HOME" "$PLAYWRIGHT_BROWSERS_PATH" "$PNPM_HOME" "$TMPDIR" "$XDG_CACHE_HOME" "$XDG_CONFIG_HOME" "$XDG_DATA_HOME"
+          mkdir -p "$PLAYWRIGHT_BROWSERS_PATH" "$PNPM_HOME" "$TMPDIR" "$XDG_CACHE_HOME" "$XDG_CONFIG_HOME" "$XDG_DATA_HOME"
           : > "$PNPM_CONFIG_NPMRC_AUTH_FILE"
-          export PATH="$PNPM_HOME:$PATH"
-          corepack enable --install-directory "$PNPM_HOME"
+          pnpm_tarball="$TMPDIR/pnpm-11.22.0.tgz"
+          curl --fail --location --silent --show-error "https://registry.npmjs.org/pnpm/-/pnpm-11.22.0.tgz" --output "$pnpm_tarball"
+          pnpm_integrity="$(openssl dgst -sha512 -binary "$pnpm_tarball" | openssl base64 -A)"
+          if [[ "$pnpm_integrity" != "H/hwxMYTPf2I+yr8Rt0T1H8JyXlLQ4xv20fKmMrzvBY4HuC+k6CRuOOCTPAfiJ9G19niCRD7C+GrD7W6qA3WIQ==" ]]; then
+            echo "pnpm tarball integrity verification failed." >&2
+            exit 1
+          fi
+          tar --extract --gzip --file "$pnpm_tarball" --directory "$PNPM_HOME" --strip-components=1
+          export PATH="$PNPM_HOME/bin:$PATH"
           pnpm --version
           pnpm install --frozen-lockfile
           pnpm exec playwright install --with-deps chromium

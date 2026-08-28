@@ -28,7 +28,8 @@ pnpm audit --audit-level high
 - Cloudflare credential、Worker Secrets、production URLをworkflowへ渡さない
 - Node.jsは`.node-version`、pnpmは`packageManager`で固定する
 - external actionは公式`actions/*`だけを使い、release tagではなく完全なcommit SHAへ固定する
-- pnpm store、Corepack、Playwright browser、XDG data、temporary fileをGitHub workspace配下へ置く
+- 公式npm tarballのSHA-512 integrityをbaselineと照合してpnpmをGitHub workspace配下へ展開する
+- pnpm store、Playwright browser、XDG data、temporary fileをGitHub workspace配下へ置く
 - 同じbranch/refの古いrunはcancelし、jobを25分で停止する
 
 ## Coverage policy
