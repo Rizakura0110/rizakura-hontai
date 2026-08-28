@@ -1,7 +1,15 @@
 import assert from "node:assert/strict";
+import {
+  assertExactAccessApplication,
+  assertExactOwnerPolicy,
+  assertWorkerSubdomainState,
+} from "./cloudflare-preflight-assertions.mjs";
 
 const apiOrigin = "https://api.cloudflare.com";
 const apiPrefix = "/client/v4";
+const applicationName = "tech-inbox-app";
+const appWorkerName = "tech-inbox-app";
+const metadataFetcherName = "tech-inbox-metadata-fetcher";
 
 const token = requiredEnvironmentVariable("CLOUDFLARE_API_TOKEN");
 const accountId = requiredEnvironmentVariable("CLOUDFLARE_ACCOUNT_ID");
@@ -106,7 +114,57 @@ const resourceState = {
   ]),
 };
 
-console.info("Cloudflare Phase 9 read-only preflight passed.");
+const matchingAppWorkers = workers.filter((worker) => worker?.id === appWorkerName);
+assert.equal(matchingAppWorkers.length, 1, `Expected exactly one ${appWorkerName} Worker.`);
+const appWorkerId = matchingAppWorkers[0]?.tag;
+assert.match(appWorkerId ?? "", /^[0-9a-f]{32}$/i, "The app Worker immutable ID is invalid.");
+
+const matchingFetchers = workers.filter((worker) => worker?.id === metadataFetcherName);
+assert.equal(matchingFetchers.length, 1, `Expected exactly one ${metadataFetcherName} Worker.`);
+
+const matchingApplications = accessApplications.filter(
+  (application) => application?.name === applicationName,
+);
+assert.equal(
+  matchingApplications.length,
+  1,
+  `Expected exactly one Access application named ${applicationName}.`,
+);
+const applicationId = matchingApplications[0]?.id;
+assert.ok(
+  typeof applicationId === "string" && applicationId.length > 0,
+  "The Access application ID is missing.",
+);
+
+const [application, policies, appSubdomain, metadataFetcherSubdomain] = await Promise.all([
+  cloudflareGet(`${accountPath}/access/apps/${applicationId}`, "Access application verification"),
+  cloudflareGet(
+    `${accountPath}/access/apps/${applicationId}/policies?per_page=100`,
+    "Access policy verification",
+  ),
+  cloudflareGet(
+    `${accountPath}/workers/scripts/${appWorkerName}/subdomain`,
+    "App Worker subdomain verification",
+  ),
+  cloudflareGet(
+    `${accountPath}/workers/scripts/${metadataFetcherName}/subdomain`,
+    "Metadata fetcher subdomain verification",
+  ),
+]);
+
+assertExactAccessApplication(application, appWorkerId);
+assertExactOwnerPolicy(policies, allowedEmail);
+assertWorkerSubdomainState(appSubdomain, { enabled: true, previews_enabled: false }, "App Worker");
+assertWorkerSubdomainState(
+  metadataFetcherSubdomain,
+  { enabled: false, previews_enabled: false },
+  "Metadata fetcher",
+);
+
+console.info("Cloudflare read-only preflight passed.");
+console.info(
+  "Verified the exact owner policy, seven-day session, hidden launcher, and Worker subdomain exposure.",
+);
 console.info("Credentials, account details, team domain, and allowed email were not printed.");
 console.table(resourceState.databases);
 console.table(resourceState.queues);

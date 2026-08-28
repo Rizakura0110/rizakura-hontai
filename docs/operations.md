@@ -70,10 +70,12 @@ pnpm check
 pnpm cloudflare:preflight
 ```
 
+`pnpm cloudflare:preflight`はCloudflare APIへGETだけを送り、credential値を表示しません。対象accountのD1、Queue、Worker、Access applicationの存在に加え、Accessがapp Workerだけを対象にし、所有者email 1件だけを許可し、7日session、launcher非表示であることを検査します。app Workerは`workers.dev`有効・preview無効、metadata-fetcherは`workers.dev`・previewとも無効であることも検査します。
+
 - `main`と個人remoteが意図した対象であること
 - working treeに無関係な変更がないこと
 - high/critical advisoryが0件であること
-- CloudflareのD1、Queue、Worker、Access applicationが既存resourceとして一致すること
+- CloudflareのD1、Queue、Worker、Access applicationと上記の認証・公開境界が一致すること
 - 課金同意やPaid必須表示がないこと
 - API tokenが対象accountと必要権限に限定されていること
 

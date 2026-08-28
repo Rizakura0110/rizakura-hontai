@@ -882,3 +882,61 @@
 
 - Android Chrome実機はowner判断でスキップした。手順を維持し、成功扱いにはしていない。
 - 既知のmoderate advisory 1件はDrizzle Kit配下の開発専用推移依存でruntime bundleには含まれない。上流更新時に再確認する。
+
+## Phase 11: 本番運用の安定化
+
+### 実施内容
+
+- 既存の`pnpm cloudflare:preflight`を、D1・Queue・Worker・Access applicationの名前確認だけでなく、productionの認証・公開境界を検査する読み取り専用operationへ強化した。
+- Access applicationがapp Worker 1件だけを対象とし、所有者email 1件だけのallow policy、7日session、app launcher非表示であることを検査する。
+- app Workerは`workers.dev`有効・preview URL無効、metadata-fetcherは`workers.dev`・preview URLとも無効であることを検査する。
+- pure assertion moduleへ検証条件を分離し、Access対象、追加policy、別email、Everyone、session、launcher、fetcher公開の回帰testを追加した。
+- Access設定作成scriptも同じassertion moduleを使用し、作成時と日常監査の判定差をなくした。
+- 現行productionへ読み取り専用preflightを実行し、credentialや個人情報を出力せず全条件を確認した。
+
+### 変更ファイル
+
+- `scripts/cloudflare-preflight-assertions.mjs`
+- `scripts/cloudflare-preflight-assertions.test.mjs`
+- `scripts/verify-cloudflare-preflight.mjs`
+- `scripts/configure-cloudflare-access.mjs`
+- `vitest.config.ts`
+- `docs/operations.md`
+- `docs/security.md`
+- `docs/cloudflare-setup.md`
+- `docs/quality-gates.md`
+- `docs/progress.md`
+
+### 採用判断
+
+- 定期監査はCloudflare APIのGETだけを使用し、policy、secret、Worker、database、Queueを変更しない。
+- API token、account ID、所有者emailはprocess environmentから受け取り、成功・失敗時とも値を表示しない。
+- app WorkerはAccessで保護するため`workers.dev`を維持し、previewは無効とする。metadata-fetcherはService Binding専用として両方を無効にする。
+- remote確認は`pnpm check`へ含めず、credentialとnetworkを持つ運用時に明示実行する。判定ロジック自体は通常のVitestへ含める。
+
+### 実行したコマンド
+
+- `pnpm exec vitest run scripts/cloudflare-preflight-assertions.test.mjs`
+- `pnpm cloudflare:preflight`
+- `pnpm check`
+
+### 検証結果
+
+- preflight assertion test: 10 tests pass
+- production read-only preflight: pass
+  - D1、Queue、app Worker、metadata-fetcher、Access application: expected resourceが各1件存在
+  - Access application: app Workerだけを対象、owner email完全一致policy 1件、7日session、launcher非表示
+  - app Worker: `workers.dev`有効、preview URL無効
+  - metadata-fetcher: `workers.dev`・preview URLとも無効
+- format、lint、Cloudflare生成型差分、TypeScript: pass
+- Vitest: 30 files、325 tests pass
+- coverage: statements 86.05%、branches 81.33%、functions 86.13%、lines 87.89%
+- fresh local D1、local実HTTP API、production build、artifact budget: pass
+- Playwright: desktop/mobile合計18 tests pass
+- audit: high 0、critical 0、既知moderate 1
+- remote Cloudflare changes: なし
+
+### 未解決事項
+
+- Android Chrome実機はowner判断でスキップした状態を維持する。
+- 既知のmoderate advisory 1件はDrizzle Kit配下の開発専用推移依存であり、runtime bundleには含まれない。

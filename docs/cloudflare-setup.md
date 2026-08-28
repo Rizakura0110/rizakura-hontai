@@ -166,3 +166,10 @@ remote migrationの直前には`tech-inbox`とproduction対象であることを
 - release、migration、rollback、D1 Time Travel、Queue、DLQ、Workers Logs、定期確認は[Operations](operations.md)に集約した。
 - remote migration、deploy、rollback、restore、Queue pause・purgeは品質ゲートへ含めず、対象と影響を確認した明示的な運用操作としてだけ実行する。
 - Access保護前のURL、production URL、secret実値、個人email allowlistはREADMEや運用文書へ記録しない。
+
+## Phase 11 read-only production verification
+
+- `pnpm cloudflare:preflight`を、resource名の存在確認だけでなくAccess application・policy・Worker subdomain状態まで検査する読み取り専用operationへ拡張した。
+- Access applicationはapp Worker 1件だけを対象とし、所有者email 1件だけのallow policy、7日session、launcher非表示であることを必須にした。
+- app Workerは`workers.dev`有効・preview無効、metadata-fetcherは`workers.dev`・previewとも無効であることをCloudflare APIのGETで確認する。
+- 2026-08-28のproduction実測で全条件にpassした。remote resource、policy、secret、dataは変更していない。

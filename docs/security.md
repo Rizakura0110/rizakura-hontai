@@ -26,6 +26,8 @@ metadata-fetcherをD1・Queue・Secretsから分離し、外部HTML取得側が�
 
 認証middlewareはJWT payloadをdomain serviceへ渡さず、検証済みの`AuthPrincipal`へ変換します。Access policyだけに依存せず、Worker内検証を第二の境界として維持します。
 
+運用時の`pnpm cloudflare:preflight`は読み取り専用APIで、Access applicationの対象Worker、所有者email 1件だけのallow policy、7日session、launcher非表示、app/fetcherの`workers.dev`・preview公開状態を継続検査します。credential値と個人emailは出力しません。
+
 ## API入力と変更操作
 
 - request、query、responseをstrictなZod schemaで検証し、未知fieldを拒否する

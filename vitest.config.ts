@@ -7,6 +7,7 @@ export default defineConfig({
       "apps/**/*.{test,spec}.{ts,tsx}",
       "workers/**/*.{test,spec}.{ts,tsx}",
       "packages/**/*.{test,spec}.{ts,tsx}",
+      "scripts/**/*.{test,spec}.mjs",
     ],
     coverage: {
       provider: "v8",

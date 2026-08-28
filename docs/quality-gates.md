@@ -6,7 +6,7 @@
 
 `pnpm check`はformat、lint、Cloudflare生成型、TypeScript、unit/component/integration test、coverage、fresh local D1、実HTTP API、production build、artifact budget、desktop/mobile Chrome E2E、dependency auditを順に実行する。
 
-2026-08-28のPhase 10最終実行では、Vitest 29 files・315 tests、Playwright desktop/mobile合計18 testsが成功した。
+2026-08-28のPhase 11最終実行では、Vitest 30 files・325 tests、Playwright desktop/mobile合計18 testsが成功した。
 
 個別確認には次を使う。
 
@@ -85,6 +85,19 @@ V8 unit coverageから次だけを除外する。
 タグ統合の実D1・実HTTP gateでは、JSON export version 2の参照整合性と、canonical URL重複統合時のタグ移動を検証する。残存記事のタグ9件と重複記事のタグ3件を統合し、残存記事が10件、移せなかった関連が2件、重複記事だけが削除され、タグ定義はすべて保持されることを必須とする。
 
 Playwrightのmobile viewport成功は実機確認の代替にしない。手順と結果は`docs/manual-device-test.md`へ残す。
+
+## Production configuration gate
+
+`pnpm cloudflare:preflight`は通常の`pnpm check`から分離し、Cloudflare credentialとnetworkを持つ運用時だけ実行する。Cloudflare APIへGETだけを送り、次を検査する。
+
+- D1、Queue、app Worker、metadata-fetcher、Access applicationが期待どおり1件ずつ存在する
+- Access applicationがapp Workerだけを対象にする
+- allow policyが所有者email 1件だけで、追加policy、Everyone、exclude、requireがない
+- sessionが7日、app launcherが非表示である
+- app Workerの`workers.dev`は有効、preview URLは無効である
+- metadata-fetcherの`workers.dev`とpreview URLがともに無効である
+
+判定ロジックはsecretを使わないfixtureでVitestへ含め、credential、account詳細、team domain、所有者emailを出力しない。
 
 ## Artifact size budgets
 
