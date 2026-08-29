@@ -1044,7 +1044,15 @@
 - Playwright: desktop/mobile合計20 tests pass
 - audit: high 0、critical 0、既知moderate 1
 - GitHub Actions run `33252333989`: success（feature commit `0a2c2b8`）
-- remote Cloudflare changes: なし
+- production read-only preflight: pass
+  - 既存D1、Queue、app Worker、metadata-fetcher、Access applicationとowner限定policyを確認
+- app Workerだけをproductionへdeploy（version `21a94e2e-04f1-426a-a782-00201a04a5f0`）
+  - D1 migration、Cloudflare resource作成、metadata-fetcher変更、課金設定変更: なし
+  - 既存のD1、Queue、Service Binding、Rate Limit、production originを維持
+- 未認証production smoke: pass
+  - top page、記事API、新しいimport preview APIはいずれもCloudflare Accessへ302 redirect
+- owner browserで設定URLへの認証とproduction appへの到達を確認
+- backupの選択・preview・復元は実行しておらず、production dataの変更: なし
 
 ### 未解決事項
 
