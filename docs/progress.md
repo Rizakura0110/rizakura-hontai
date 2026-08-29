@@ -1212,6 +1212,7 @@
 - fresh local D1、local実HTTP API、production build、artifact budget: pass
 - Playwright: desktop/mobile合計21 tests pass、desktop専用regression testのmobile実行1件skip
 - audit: high 0、critical 0、既知moderate 1
+- GitHub Actions run `33255159239`: success（fix commit `126507d`）
 - DB schema、API、Worker binding、migration、production resourceの変更: なし
 - production deploy: 未実施
 
