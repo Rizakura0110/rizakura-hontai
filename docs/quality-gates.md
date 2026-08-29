@@ -72,6 +72,7 @@ V8 unit coverageから次だけを除外する。
 | URL編集と競合 | 409 safe errorと元URL保持 |
 | 削除 | 確認dialogと一覧からの削除 |
 | JSON export | 実downloadファイル名、schema、内容 |
+| JSON restore | file検証、preview、明示確認、追加後の記事・タグ表示、再実行時の無変更 |
 | unauthorized API拒否 | mockを通らないWorker APIの403 |
 | タグの全操作 | 作成、複数付与、絞り込み、解除、名前変更、削除後の記事保持 |
 
@@ -99,6 +100,8 @@ V8 unit coverageから次だけを除外する。
 | 320 × 700 layout | Playwright E2Eに加えCodex内ブラウザで横幅超過なしを確認 |
 
 タグ統合の実D1・実HTTP gateでは、JSON export version 2の参照整合性と、canonical URL重複統合時のタグ移動を検証する。残存記事のタグ9件と重複記事のタグ3件を統合し、残存記事が10件、移せなかった関連が2件、重複記事だけが削除され、タグ定義はすべて保持されることを必須とする。
+
+JSON restoreの実D1・実HTTP gateでは、version 2 backupのpreviewと確定結果が一致し、記事・URL alias・タグ・タグ付けが追加されること、既存IDと色の衝突が再割り当てされること、`pending`が再取得可能な`failed`になること、同じbackupの再実行が無変更になることを確認する。repository unit testでは全insertが1回のD1 batchへ渡され、batch失敗を部分retryしないことも確認する。
 
 Playwrightのmobile viewport成功は実機確認の代替にしない。手順と結果は`docs/manual-device-test.md`へ残す。
 

@@ -1,6 +1,6 @@
 # Operations
 
-最終更新: 2026-08-28
+最終更新: 2026-08-29
 
 ## 運用原則
 
@@ -23,6 +23,19 @@
 - 大量の編集・削除
 - D1 Time Travel restore
 - schemaまたはcanonical統合ruleの変更
+
+### JSON backupの復元
+
+設定画面の「JSONバックアップから復元」では、Tech Inboxのschema version 1または2のJSONを最大1 MiBまで読み込めます。「復元内容を確認」で追加・一致・スキップ件数を確認し、確認checkboxを選んでから「安全に復元する」を実行します。
+
+- 既存の記事、URL alias、タグ、タグ付けは更新・削除しない
+- 同じoriginal URLの記事と同じ正規化名のタグは既存recordへ対応付ける
+- 既存recordと異なる記事を指すURL alias、100タグ上限、1記事10タグ上限を超える関連はスキップし、件数を表示する
+- IDまたはタグ色が既存値と衝突する新規recordは、server側で未使用値へ割り当て直す
+- `pending`だった復元記事はQueueへ暗黙に再投入せず、URLを保持した`failed`へ変更する。必要な記事だけカードの再取得を実行する
+- 確定時に最新D1状態から計画を再計算し、すべての追加をD1の単一batchで適用する。予期しないconstraint conflictではbatch全体を失敗させる
+
+復元前にも現在のJSON exportを別名で保存します。preview後に別操作でデータが変わると確定結果の件数が変わり得るため、完了messageと更新後の件数を確認してください。同じbackupを再実行しても一致扱いとなり、重複recordは作成されません。JSONには記事情報が含まれるため、第三者へ送信したり公開場所へ置いたりしません。
 
 ### Queueとmetadata
 

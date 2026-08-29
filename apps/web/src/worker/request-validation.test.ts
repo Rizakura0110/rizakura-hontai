@@ -67,6 +67,15 @@ describe("readJsonBody", () => {
     await expect(readJsonBody(streamed)).rejects.toMatchObject({ code: "PAYLOAD_TOO_LARGE" });
   });
 
+  it("supports a route-specific body limit", async () => {
+    const request = new Request("https://example.org", {
+      method: "POST",
+      body: JSON.stringify({ value: "larger route body" }),
+    });
+
+    await expect(readJsonBody(request, 64)).resolves.toEqual({ value: "larger route body" });
+  });
+
   it("rejects a missing body, malformed JSON, and invalid UTF-8", async () => {
     await expect(readJsonBody(new Request("https://example.org"))).rejects.toMatchObject({
       code: "VALIDATION_ERROR",

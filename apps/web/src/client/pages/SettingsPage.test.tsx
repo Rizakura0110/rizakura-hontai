@@ -1,6 +1,12 @@
 // @vitest-environment jsdom
 
-import type { ArticleDto, ExportResponse, TagDto } from "@tech-inbox/contracts";
+import type {
+  ArticleDto,
+  BackupImportSnapshot,
+  BackupImportSummary,
+  ExportResponse,
+  TagDto,
+} from "@tech-inbox/contracts";
 import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -67,6 +73,40 @@ const exportResponse: ExportResponse = {
   ],
   tags: [reactTag],
   articleTags: [{ articleId: unreadArticle.id, tagId: reactTag.id }],
+};
+
+const importBackup: BackupImportSnapshot = {
+  ...exportResponse,
+  articles: [unreadArticle],
+};
+
+const importSummary: BackupImportSummary = {
+  source: {
+    schemaVersion: 2,
+    exportedAt: exportResponse.exportedAt,
+    articles: 1,
+    articleUrls: 1,
+    tags: 1,
+    articleTags: 1,
+  },
+  changes: {
+    articlesCreated: 1,
+    articlesMatched: 0,
+    articleIdsRemapped: 0,
+    articleUrlsCreated: 1,
+    articleUrlsMatched: 0,
+    articleUrlsSkipped: 0,
+    tagsCreated: 1,
+    tagsMatched: 0,
+    tagsSkipped: 0,
+    tagIdsRemapped: 0,
+    tagColorsReassigned: 0,
+    articleTagsCreated: 1,
+    articleTagsMatched: 0,
+    articleTagsSkipped: 0,
+    pendingArticlesReset: 0,
+  },
+  hasChanges: true,
 };
 
 function jsonResponse(value: unknown, status = 200): Response {
@@ -138,6 +178,63 @@ describe("SettingsPage", () => {
 
     await screen.findByText("JSON schema v2");
     await waitFor(() => expect(exportCalls).toBe(2));
+  });
+
+  it("previews and applies a validated JSON backup after explicit confirmation", async () => {
+    const fetchMock = vi.fn(
+      async (input: string | URL | Request, init?: RequestInit): Promise<Response> => {
+        const path = String(input);
+        if (path === "/api/v1/export") return jsonResponse(exportResponse);
+        if (path === "/api/v1/tags") return jsonResponse({ tags: [reactTag] });
+        if (path === "/api/v1/import/preview") {
+          return jsonResponse({ result: "preview", summary: importSummary });
+        }
+        if (path === "/api/v1/import") {
+          return jsonResponse({ result: "imported", summary: importSummary });
+        }
+        throw new Error(`Unexpected request: ${path} ${init?.method ?? "GET"}`);
+      },
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const user = userEvent.setup();
+    render(<SettingsPage />);
+    await screen.findByText("JSON schema v2");
+
+    const input = screen.getByLabelText("バックアップファイル（1MB以下）");
+    await user.upload(
+      input,
+      new File([JSON.stringify(importBackup)], "tech-inbox-export.json", {
+        type: "application/json",
+      }),
+    );
+    expect(await screen.findByText("選択済み: tech-inbox-export.json")).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "復元内容を確認" }));
+
+    expect(await screen.findByText("復元プレビュー")).toBeTruthy();
+    expect(screen.getByText("追加する記事").closest("div")?.textContent).toContain("1件");
+    const applyButton = screen.getByRole("button", { name: "安全に復元する" });
+    expect((applyButton as HTMLButtonElement).disabled).toBe(true);
+    await user.click(
+      screen.getByRole("checkbox", {
+        name: "既存データを上書きしないマージ内容を確認しました",
+      }),
+    );
+    await user.click(applyButton);
+
+    expect(await screen.findByText("バックアップを安全に復元しました。")).toBeTruthy();
+    const mutationCalls = fetchMock.mock.calls.filter(([, init]) => init?.method === "POST");
+    expect(mutationCalls.map(([path]) => path)).toEqual([
+      "/api/v1/import/preview",
+      "/api/v1/import",
+    ]);
+    for (const [, init] of mutationCalls) {
+      expect(new Headers(init?.headers).get("X-Tech-Inbox-Client")).toBe("web");
+      expect(JSON.parse(String(init?.body))).toEqual({ backup: importBackup });
+    }
+    await waitFor(() => {
+      expect(fetchMock.mock.calls.filter(([path]) => path === "/api/v1/export")).toHaveLength(2);
+      expect(fetchMock.mock.calls.filter(([path]) => path === "/api/v1/tags")).toHaveLength(2);
+    });
   });
 
   it("creates a tag from settings and adds it to the manager", async () => {

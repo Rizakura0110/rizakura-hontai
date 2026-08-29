@@ -693,6 +693,90 @@ try {
   assert.ok(
     duplicateTagIds.every((id) => tagsAfterMergeList.body.tags.some((tag) => tag.id === id)),
   );
+
+  const beforeImport = await requestJson("/api/v1/export");
+  const sourceArticle = beforeImport.body.articles[0];
+  const sourceTag = beforeImport.body.tags[0];
+  const restoredArticleId = sourceArticle.id;
+  const restoredTagSourceId = sourceTag.id;
+  const importBackup = {
+    schemaVersion: 2,
+    exportedAt: "2026-08-29T00:00:00.000Z",
+    articles: [
+      {
+        ...sourceArticle,
+        id: restoredArticleId,
+        originalUrl: "https://backup-restore.example/article",
+        canonicalUrl: null,
+        title: "Restored through D1 batch",
+        status: "unread",
+        metadataStatus: "pending",
+        metadataErrorCode: null,
+        metadataAttemptCount: 0,
+        metadataFetchedAt: null,
+        readAt: null,
+      },
+    ],
+    articleUrls: [
+      {
+        normalizedUrl: "https://backup-restore.example/article",
+        articleId: restoredArticleId,
+        kind: "original",
+        createdAt: "2026-08-29T00:00:00.000Z",
+      },
+    ],
+    tags: [
+      {
+        ...sourceTag,
+        id: restoredTagSourceId,
+        name: "Restored tag",
+      },
+    ],
+    articleTags: [{ articleId: restoredArticleId, tagId: restoredTagSourceId }],
+  };
+  const importRequest = (path) =>
+    requestJson(path, {
+      method: "POST",
+      headers: mutationHeaders,
+      body: JSON.stringify({ backup: importBackup }),
+    });
+  const importPreview = await importRequest("/api/v1/import/preview");
+  assert.equal(importPreview.response.status, 200);
+  assert.equal(importPreview.body.result, "preview");
+  assert.equal(importPreview.body.summary.changes.articlesCreated, 1);
+  assert.equal(importPreview.body.summary.changes.articleIdsRemapped, 1);
+  assert.equal(importPreview.body.summary.changes.tagsCreated, 1);
+  assert.equal(importPreview.body.summary.changes.tagIdsRemapped, 1);
+  assert.equal(importPreview.body.summary.changes.tagColorsReassigned, 1);
+  assert.equal(importPreview.body.summary.changes.pendingArticlesReset, 1);
+
+  const imported = await importRequest("/api/v1/import");
+  assert.equal(imported.response.status, 200);
+  assert.equal(imported.body.result, "imported");
+  assert.deepEqual(imported.body.summary, importPreview.body.summary);
+  const afterImport = await requestJson("/api/v1/export");
+  const restoredArticle = afterImport.body.articles.find(
+    ({ originalUrl }) => originalUrl === "https://backup-restore.example/article",
+  );
+  const restoredTag = afterImport.body.tags.find(({ name }) => name === "Restored tag");
+  assert.notEqual(restoredArticle, undefined);
+  assert.notEqual(restoredTag, undefined);
+  assert.notEqual(restoredArticle.id, restoredArticleId);
+  assert.equal(restoredArticle.metadataStatus, "failed");
+  assert.equal(restoredArticle.metadataErrorCode, "NETWORK_ERROR");
+  assert.notEqual(restoredTag.id, restoredTagSourceId);
+  assert.notEqual(restoredTag.colorHue, sourceTag.colorHue);
+  assert.ok(
+    afterImport.body.articleTags.some(
+      ({ articleId, tagId }) => articleId === restoredArticle.id && tagId === restoredTag.id,
+    ),
+  );
+
+  const repeatedImport = await importRequest("/api/v1/import");
+  assert.equal(repeatedImport.response.status, 200);
+  assert.equal(repeatedImport.body.summary.hasChanges, false);
+  assert.equal(repeatedImport.body.summary.changes.articlesMatched, 1);
+  assert.equal(repeatedImport.body.summary.changes.tagsMatched, 1);
 } catch (error) {
   verificationError = error;
 }

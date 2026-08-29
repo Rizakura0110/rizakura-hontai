@@ -996,3 +996,56 @@
 
 - Android Chrome実機はowner判断でスキップした状態を維持する。
 - 既知のmoderate advisory 1件はDrizzle Kit配下の開発専用推移依存であり、runtime bundleには含まれない。
+
+## Phase 13: JSONバックアップの安全な復元
+
+### 実施内容
+
+- 設定画面へ最大1 MiBのJSON backup選択、local schema確認、server preview、明示確認、復元結果表示を追加した。
+- schema version 1・2について、record上限、参照整合、original URL alias、正規化URL、ID・タグ名・タグ色の一意性を検証するimport contractを追加した。
+- original URLとタグ正規化名で既存recordへ対応付け、既存値を更新・削除しないpure merge planを実装した。新規IDとタグ色の衝突は未使用値へ再割り当てし、URL conflictと上限超過はskip件数へ反映する。
+- previewでは書き込まず、確定時に最新snapshotから再計算する。新規記事、タグ、URL alias、タグ付けはD1の単一batchで追加する。
+- backup内の`pending`記事はQueueへ一括再投入せず、URLを保持した`NETWORK_ERROR`の`failed`へ変換して個別再取得できるようにした。
+- import routeへAccess、Origin、client header、body上限、Rate Limitを適用し、responseとrequest logへbackup本文や記事情報を含めない。
+- 設計判断は[ADR-0008](decisions/0008-safe-json-backup-merge.md)へ記録した。
+
+### 変更ファイル
+
+- `packages/contracts/src/api.ts`
+- `apps/web/src/worker/backup-import.ts`
+- `apps/web/src/worker/backup-service.ts`
+- `apps/web/src/worker/repositories/backup-repository.ts`
+- `apps/web/src/worker/repositories/d1-backup-repository.ts`
+- `apps/web/src/worker/app.ts`
+- `apps/web/src/client/api/backup.ts`
+- `apps/web/src/client/components/BackupImporter.tsx`
+- `apps/web/src/client/pages/SettingsPage.tsx`
+- contract、service、repository、API、component、実HTTP、desktop/mobile E2E test
+- README、operations、security、quality gate、ADR、progress
+
+### 採用判断
+
+- 全面置換や既存recordの更新は行わず、不足分だけを非破壊でマージする。同じbackupを再投入しても重複を作らない。
+- preview planを保存せず、確定時に最新D1から再計算する。並行変更があっても古い判断で既存データを上書きしない。
+- 予期したURL conflictや件数上限はskipとして可視化し、予期しないDB conflictは単一batch全体を失敗させる。
+- production deploy、remote migration、Cloudflare resource変更はPhase 13に含めない。
+
+### 検証結果
+
+- format、lint、Cloudflare生成型差分、TypeScript: pass
+- Vitest: 33 files、338 tests pass
+- coverage: statements 86.62%、branches 81.77%、functions 87.39%、lines 88.30%
+- local実HTTP・一時D1: preview、単一batch復元、ID・色再割り当て、pending reset、再実行no-opをpass
+- production build、metadata-fetcher dry-run、artifact budget: pass
+  - app Worker: raw 449.7 KiB、gzip 96.7 KiB
+  - metadata-fetcher: raw 585.5 KiB、gzip 88.8 KiB
+  - client JavaScript: raw 356.4 KiB、gzip 104.1 KiB
+  - client CSS: raw 28.9 KiB、gzip 6.3 KiB
+- Playwright: desktop/mobile合計20 tests pass
+- audit: high 0、critical 0、既知moderate 1
+- remote Cloudflare changes: なし
+
+### 未解決事項
+
+- Android Chrome実機はowner判断でスキップした状態を維持する。
+- 既知のmoderate advisory 1件はDrizzle Kit配下の開発専用推移依存であり、runtime bundleには含まれない。

@@ -30,7 +30,7 @@ export function parseQuery(searchParams: URLSearchParams): Record<string, string
   return query;
 }
 
-function assertDeclaredBodySize(request: Request): void {
+function assertDeclaredBodySize(request: Request, maxBytes: number): void {
   const contentLength = request.headers.get("content-length");
   if (contentLength === null) {
     return;
@@ -40,13 +40,16 @@ function assertDeclaredBodySize(request: Request): void {
   if (!Number.isSafeInteger(declaredBytes) || declaredBytes < 0) {
     throw validationError("Content-Lengthが無効です。");
   }
-  if (declaredBytes > MAX_REQUEST_BODY_BYTES) {
+  if (declaredBytes > maxBytes) {
     throw new ApiError(413, "PAYLOAD_TOO_LARGE", "request bodyが大きすぎます。");
   }
 }
 
-export async function readJsonBody(request: Request): Promise<unknown> {
-  assertDeclaredBodySize(request);
+export async function readJsonBody(
+  request: Request,
+  maxBytes = MAX_REQUEST_BODY_BYTES,
+): Promise<unknown> {
+  assertDeclaredBodySize(request, maxBytes);
 
   if (request.body === null) {
     throw validationError("JSON bodyが必要です。");
@@ -62,7 +65,7 @@ export async function readJsonBody(request: Request): Promise<unknown> {
       if (done) break;
 
       byteLength += value.byteLength;
-      if (byteLength > MAX_REQUEST_BODY_BYTES) {
+      if (byteLength > maxBytes) {
         await reader.cancel();
         throw new ApiError(413, "PAYLOAD_TOO_LARGE", "request bodyが大きすぎます。");
       }

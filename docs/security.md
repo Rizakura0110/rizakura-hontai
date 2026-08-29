@@ -31,13 +31,13 @@ metadata-fetcherをD1・Queue・Secretsから分離し、外部HTML取得側が�
 ## API入力と変更操作
 
 - request、query、responseをstrictなZod schemaで検証し、未知fieldを拒否する
-- JSON request bodyを16 KiBまでに制限し、宣言値とstream実測値の両方を検査する
+- 通常のJSON request bodyを16 KiB、backup importを1 MiBにenvelope余白を加えた上限までに制限し、宣言値とstream実測値の両方を検査する
 - 変更操作は`Content-Type: application/json`、`Origin`の`APP_ORIGIN`完全一致、`X-Tech-Inbox-Client: web`を必須にする
 - URL、title、tag、pagination cursor等へ長さ・形式・列挙値の上限を設ける
 - D1のUNIQUE、CHECK、foreign key、transactional batchでservice検証を補強する
 - clientへ返すerrorは安全な列挙済みcodeと一般化したmessageに限定し、内部例外を返さない
 
-Rate Limiting bindingはAccess principalのsubjectとemailをSHA-256化した値とroute categoryをkeyにします。生の識別子をbindingへ渡しません。categoryはcreate 30/min、metadata retry 10/min、mutation 60/min、read 120/min、export 5/minです。これは認証や厳密なglobal quotaの代替ではありません。
+Rate Limiting bindingはAccess principalのsubjectとemailをSHA-256化した値とroute categoryをkeyにします。生の識別子をbindingへ渡しません。categoryはcreate 30/min、metadata retry 10/min、mutation 60/min、read 120/min、export 5/minです。import previewはexport、import確定はmutationへ分類します。これは認証や厳密なglobal quotaの代替ではありません。
 
 ## SSRFと外部HTML
 
@@ -74,6 +74,8 @@ Static AssetsとAPIの両方に次を設定します。
 - D1へ記事、URL alias、タグ、記事・タグ関連だけを保存する
 - JSON exportはruntime検証済みの公開DTOだけで構成し、認証情報やWorker設定を含めない
 - export responseは`no-store`とし、Rate Limitを適用する
+- JSON importはschema、件数、参照整合、正規化URL、ID・名前・色の一意性を検証し、既存値を上書きしない。追加はD1の単一batchで確定する
+- import responseとrequest logにはURL、title、backup本文を含めず、件数と安全なerrorだけを返す
 - タグ削除は関連だけを削除し、記事本体を保持する
 - canonical重複統合では残存記事を決定的に選び、タグ上限超過件数を構造化logへ残す
 - migration前にJSON exportまたはD1 Time Travel bookmarkを確認する

@@ -20,7 +20,8 @@ function categoryForRoute(routeName: string): RateLimitCategory | undefined {
     routeName === "tags.create" ||
     routeName === "tags.update" ||
     routeName === "tags.delete" ||
-    routeName === "article_tags.replace"
+    routeName === "article_tags.replace" ||
+    routeName === "import.apply"
   ) {
     return "mutate";
   }
@@ -32,7 +33,7 @@ function categoryForRoute(routeName: string): RateLimitCategory | undefined {
   ) {
     return "read";
   }
-  if (routeName === "export.get") return "export";
+  if (routeName === "export.get" || routeName === "import.preview") return "export";
   return undefined;
 }
 

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   apiErrorResponseSchema,
+  backupImportRequestSchema,
   createArticleRequestSchema,
   createArticleResponseSchema,
   createTagRequestSchema,
@@ -381,6 +382,104 @@ describe("API response contracts", () => {
       apiErrorResponseSchema.safeParse({
         ...safeError,
         error: { ...safeError.error, code: "SQLITE_ERROR" },
+      }).success,
+    ).toBe(false);
+  });
+
+  it("accepts only internally consistent Tech Inbox backups for import", () => {
+    const article = articleDtoFixture();
+    const backup = {
+      backup: {
+        schemaVersion: 2,
+        exportedAt: "2026-08-27T00:00:00.000Z",
+        articles: [article],
+        articleUrls: [
+          {
+            normalizedUrl: "https://example.com/articles/1",
+            articleId: article.id,
+            kind: "original",
+            createdAt: article.createdAt,
+          },
+        ],
+        tags: [
+          {
+            id: "tag-1",
+            name: "React",
+            colorHue: 220,
+            createdAt: article.createdAt,
+            updatedAt: article.updatedAt,
+          },
+        ],
+        articleTags: [{ articleId: article.id, tagId: "tag-1" }],
+      },
+    } as const;
+
+    expect(backupImportRequestSchema.safeParse(backup).success).toBe(true);
+    expect(
+      backupImportRequestSchema.safeParse({
+        backup: {
+          schemaVersion: 1,
+          exportedAt: backup.backup.exportedAt,
+          articles: backup.backup.articles,
+          articleUrls: backup.backup.articleUrls,
+        },
+      }).success,
+    ).toBe(true);
+    expect(
+      backupImportRequestSchema.safeParse({
+        backup: {
+          ...backup.backup,
+          articles: [article, article],
+          articleUrls: [backup.backup.articleUrls[0], backup.backup.articleUrls[0]],
+        },
+      }).success,
+    ).toBe(false);
+    expect(
+      backupImportRequestSchema.safeParse({
+        backup: {
+          ...backup.backup,
+          tags: [
+            backup.backup.tags[0],
+            { ...backup.backup.tags[0], name: "Cloudflare", colorHue: 40 },
+          ],
+        },
+      }).success,
+    ).toBe(false);
+    expect(
+      backupImportRequestSchema.safeParse({
+        backup: {
+          ...backup.backup,
+          tags: [
+            backup.backup.tags[0],
+            { ...backup.backup.tags[0], id: "tag-2", name: "Cloudflare" },
+          ],
+        },
+      }).success,
+    ).toBe(false);
+    expect(
+      backupImportRequestSchema.safeParse({
+        backup: {
+          ...backup.backup,
+          articleUrls: [
+            { ...backup.backup.articleUrls[0], normalizedUrl: "https://example.com/articles/1/" },
+          ],
+        },
+      }).success,
+    ).toBe(false);
+    expect(
+      backupImportRequestSchema.safeParse({
+        backup: { ...backup.backup, articleUrls: [] },
+      }).success,
+    ).toBe(false);
+    expect(
+      backupImportRequestSchema.safeParse({
+        backup: {
+          ...backup.backup,
+          tags: [
+            backup.backup.tags[0],
+            { ...backup.backup.tags[0], id: "tag-2", name: "ＲＥＡＣＴ", colorHue: 40 },
+          ],
+        },
       }).success,
     ).toBe(false);
   });

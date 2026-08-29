@@ -28,6 +28,8 @@ describe("article API rate limiting", () => {
     ["tags.list", "RATE_LIMIT_READ", "read"],
     ["article_tags.list", "RATE_LIMIT_READ", "read"],
     ["export.get", "RATE_LIMIT_EXPORT", "export"],
+    ["import.preview", "RATE_LIMIT_EXPORT", "export"],
+    ["import.apply", "RATE_LIMIT_MUTATE", "mutate"],
   ] as const)("uses a pseudonymous key for %s", async (routeName, bindingName, category) => {
     const limiter = binding(true);
     await enforceApiRateLimit({ [bindingName]: limiter }, principal, routeName);

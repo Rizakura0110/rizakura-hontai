@@ -3,6 +3,9 @@ import {
   type ArticleTagsResponse,
   type ArticleResponse,
   articleIdParamsSchema,
+  type BackupImportPreviewResponse,
+  backupImportRequestSchema,
+  type BackupImportResponse,
   createArticleRequestSchema,
   createTagRequestSchema,
   type CreateArticleResponse,
@@ -15,6 +18,7 @@ import {
   type ListArticlesResponse,
   type ListTagsResponse,
   type MetadataQueueMessage,
+  MAX_BACKUP_IMPORT_BYTES,
   retryMetadataRequestSchema,
   type RetryMetadataResponse,
   replaceArticleTagsRequestSchema,
@@ -30,6 +34,7 @@ import {
   type AccessAuthBindings,
 } from "./access-auth";
 import { ArticleService, type Clock, type IdGenerator } from "./article-service";
+import { BackupService } from "./backup-service";
 import { toArticleDto } from "./article-dto";
 import { ApiError } from "./errors";
 import { createMetadataQueueProducer, type MetadataQueueProducer } from "./metadata-queue";
@@ -38,6 +43,8 @@ import { enforceApiRateLimit, type RateLimitBindings } from "./rate-limit";
 import { createD1ArticleRepository } from "./repositories/d1-article-repository";
 import { createD1TagRepository } from "./repositories/d1-tag-repository";
 import type { ArticleRepository } from "./repositories/article-repository";
+import type { BackupRepository } from "./repositories/backup-repository";
+import { createD1BackupRepository } from "./repositories/d1-backup-repository";
 import type { TagRepository } from "./repositories/tag-repository";
 import { SECURITY_HEADERS } from "./security-headers";
 import { TagService } from "./tag-service";
@@ -78,6 +85,7 @@ export type RequestLogEvent = {
 export type AppDependencies = {
   readonly repositoryFactory: (bindings: AppBindings) => ArticleRepository;
   readonly tagRepositoryFactory: (bindings: AppBindings) => TagRepository;
+  readonly backupRepositoryFactory: (bindings: AppBindings) => BackupRepository;
   readonly clock: Clock;
   readonly idGenerator: IdGenerator;
   readonly metadataQueueFactory: (bindings: AppBindings) => MetadataQueueProducer;
@@ -98,6 +106,8 @@ const MUTATION_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 function isProtectedDataPath(pathname: string): boolean {
   return (
     pathname === "/api/v1/export" ||
+    pathname === "/api/v1/import" ||
+    pathname === "/api/v1/import/preview" ||
     pathname === "/api/v1/tags" ||
     pathname.startsWith("/api/v1/tags/") ||
     pathname === "/api/v1/articles" ||
@@ -108,6 +118,8 @@ function isProtectedDataPath(pathname: string): boolean {
 function safeRouteName(method: string, pathname: string): string {
   if (method === "GET" && pathname === "/api/v1/health") return "health.get";
   if (method === "GET" && pathname === "/api/v1/export") return "export.get";
+  if (method === "POST" && pathname === "/api/v1/import/preview") return "import.preview";
+  if (method === "POST" && pathname === "/api/v1/import") return "import.apply";
   if (pathname === "/api/v1/articles") {
     if (method === "GET") return "articles.list";
     if (method === "POST") return "articles.create";
@@ -242,9 +254,18 @@ function tagService(context: Context<AppEnvironment>, dependencies: AppDependenc
   );
 }
 
+function backupService(context: Context<AppEnvironment>, dependencies: AppDependencies) {
+  return new BackupService(
+    dependencies.backupRepositoryFactory(context.env),
+    dependencies.clock,
+    dependencies.idGenerator,
+  );
+}
+
 const defaultDependencies: AppDependencies = {
   repositoryFactory: (bindings) => createD1ArticleRepository(bindings.DB),
   tagRepositoryFactory: (bindings) => createD1TagRepository(bindings.DB),
+  backupRepositoryFactory: (bindings) => createD1BackupRepository(bindings.DB),
   clock: () => new Date(),
   idGenerator: () => crypto.randomUUID(),
   metadataQueueFactory: (bindings) => createMetadataQueueProducer(bindings.METADATA_QUEUE),
@@ -310,6 +331,28 @@ export function createApp(overrides: Partial<AppDependencies> = {}) {
       `attachment; filename="tech-inbox-export-${utcDate}.json"`,
     );
     return context.json<ExportResponse>(response);
+  });
+
+  app.post("/api/v1/import/preview", async (context) => {
+    context.set("routeName", "import.preview");
+    const request = parseWithSchema(
+      backupImportRequestSchema,
+      await readJsonBody(context.req.raw, MAX_BACKUP_IMPORT_BYTES),
+    );
+    return context.json<BackupImportPreviewResponse>(
+      await backupService(context, dependencies).preview(request),
+    );
+  });
+
+  app.post("/api/v1/import", async (context) => {
+    context.set("routeName", "import.apply");
+    const request = parseWithSchema(
+      backupImportRequestSchema,
+      await readJsonBody(context.req.raw, MAX_BACKUP_IMPORT_BYTES),
+    );
+    return context.json<BackupImportResponse>(
+      await backupService(context, dependencies).apply(request),
+    );
   });
 
   app.get("/api/v1/articles", async (context) => {

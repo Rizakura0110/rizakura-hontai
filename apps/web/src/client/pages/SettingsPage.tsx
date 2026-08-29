@@ -2,6 +2,7 @@ import type { ExportResponse, TagDto } from "@tech-inbox/contracts";
 import { useEffect, useState } from "react";
 import { exportArticles, userFacingError } from "../api/articles";
 import { createTag, deleteTag, listTags, updateTag } from "../api/tags";
+import { BackupImporter } from "../components/BackupImporter";
 import { TagManager } from "../components/TagManager";
 
 function downloadExport(data: ExportResponse): void {
@@ -182,6 +183,12 @@ export function SettingsPage() {
           </>
         ) : null}
       </div>
+      <BackupImporter
+        onImported={() => {
+          setRefreshToken((value) => value + 1);
+          setTagRefreshToken((value) => value + 1);
+        }}
+      />
       <TagManager
         error={tagError}
         loading={tagLoading}

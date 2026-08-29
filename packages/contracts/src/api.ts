@@ -1,5 +1,6 @@
 import { ARTICLE_LIST_STATUSES, ARTICLE_SORTS, ARTICLE_URL_KINDS } from "@tech-inbox/core/article";
-import { MAX_TAGS_PER_ARTICLE } from "@tech-inbox/core/tag";
+import { MAX_TAGS_PER_ARTICLE, normalizeTagName } from "@tech-inbox/core/tag";
+import { normalizeUrl } from "@tech-inbox/core/url-normalization";
 import { z } from "zod";
 import { articleDtoSchema, articleStatusSchema } from "./article";
 import { tagDtoSchema, tagIdSchema, tagNameSchema } from "./tag";
@@ -335,3 +336,168 @@ export const exportResponseSchema = z
 export type ExportResponse = z.output<typeof exportResponseSchema>;
 export type ExportResponseV1 = z.output<typeof exportResponseV1Schema>;
 export type ExportResponseV2 = z.output<typeof exportResponseV2Schema>;
+
+export const MAX_BACKUP_IMPORT_FILE_BYTES = 1_024 * 1_024;
+export const MAX_BACKUP_IMPORT_BYTES = MAX_BACKUP_IMPORT_FILE_BYTES + 1_024;
+
+export const BACKUP_IMPORT_LIMITS = {
+  articles: 1_000,
+  articleUrls: 3_000,
+  articleTags: 10_000,
+} as const;
+
+function hasDuplicates(values: readonly string[]): boolean {
+  return new Set(values).size !== values.length;
+}
+
+export const backupImportSnapshotSchema = exportResponseSchema.superRefine((snapshot, context) => {
+  if (snapshot.articles.length > BACKUP_IMPORT_LIMITS.articles) {
+    context.addIssue({
+      code: "custom",
+      message: `A backup must not exceed ${BACKUP_IMPORT_LIMITS.articles} articles`,
+      path: ["articles"],
+    });
+  }
+  if (snapshot.articleUrls.length > BACKUP_IMPORT_LIMITS.articleUrls) {
+    context.addIssue({
+      code: "custom",
+      message: `A backup must not exceed ${BACKUP_IMPORT_LIMITS.articleUrls} URL aliases`,
+      path: ["articleUrls"],
+    });
+  }
+
+  if (hasDuplicates(snapshot.articles.map(({ id }) => id))) {
+    context.addIssue({
+      code: "custom",
+      message: "Backup article IDs must be unique",
+      path: ["articles"],
+    });
+  }
+  if (hasDuplicates(snapshot.articleUrls.map(({ normalizedUrl }) => normalizedUrl))) {
+    context.addIssue({
+      code: "custom",
+      message: "Backup URL aliases must be unique",
+      path: ["articleUrls"],
+    });
+  }
+
+  const aliasesByArticle = new Map<string, typeof snapshot.articleUrls>();
+  for (const alias of snapshot.articleUrls) {
+    const normalized = normalizeUrl(alias.normalizedUrl);
+    if (!normalized.ok || normalized.value !== alias.normalizedUrl) {
+      context.addIssue({
+        code: "custom",
+        message: "Backup URL aliases must already be normalized",
+        path: ["articleUrls"],
+      });
+    }
+    const aliases = aliasesByArticle.get(alias.articleId) ?? [];
+    aliasesByArticle.set(alias.articleId, [...aliases, alias]);
+  }
+
+  for (const article of snapshot.articles) {
+    const originalUrl = normalizeUrl(article.originalUrl);
+    const aliases = aliasesByArticle.get(article.id) ?? [];
+    const originalAliases = aliases.filter(({ kind }) => kind === "original");
+    if (
+      !originalUrl.ok ||
+      originalAliases.length !== 1 ||
+      originalAliases[0]?.normalizedUrl !== originalUrl.value
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "Each backup article must have one matching original URL alias",
+        path: ["articleUrls"],
+      });
+    }
+  }
+
+  if (snapshot.schemaVersion === 1) return;
+  if (snapshot.articleTags.length > BACKUP_IMPORT_LIMITS.articleTags) {
+    context.addIssue({
+      code: "custom",
+      message: `A backup must not exceed ${BACKUP_IMPORT_LIMITS.articleTags} tag assignments`,
+      path: ["articleTags"],
+    });
+  }
+  if (hasDuplicates(snapshot.tags.map(({ id }) => id))) {
+    context.addIssue({
+      code: "custom",
+      message: "Backup tag IDs must be unique",
+      path: ["tags"],
+    });
+  }
+  if (
+    hasDuplicates(
+      snapshot.tags
+        .map(({ name }) => normalizeTagName(name))
+        .map((tag) => (tag.ok ? tag.normalizedName : "")),
+    )
+  ) {
+    context.addIssue({
+      code: "custom",
+      message: "Backup tag names must be unique",
+      path: ["tags"],
+    });
+  }
+  if (hasDuplicates(snapshot.tags.map(({ colorHue }) => String(colorHue)))) {
+    context.addIssue({
+      code: "custom",
+      message: "Backup tag colors must be unique",
+      path: ["tags"],
+    });
+  }
+});
+
+export type BackupImportSnapshot = z.output<typeof backupImportSnapshotSchema>;
+
+export const backupImportRequestSchema = z.strictObject({
+  backup: backupImportSnapshotSchema,
+});
+
+export type BackupImportRequest = z.output<typeof backupImportRequestSchema>;
+
+export const backupImportSummarySchema = z.strictObject({
+  source: z.strictObject({
+    schemaVersion: z.union([z.literal(1), z.literal(2)]),
+    exportedAt: utcDateTimeSchema,
+    articles: z.number().int().nonnegative(),
+    articleUrls: z.number().int().nonnegative(),
+    tags: z.number().int().nonnegative(),
+    articleTags: z.number().int().nonnegative(),
+  }),
+  changes: z.strictObject({
+    articlesCreated: z.number().int().nonnegative(),
+    articlesMatched: z.number().int().nonnegative(),
+    articleIdsRemapped: z.number().int().nonnegative(),
+    articleUrlsCreated: z.number().int().nonnegative(),
+    articleUrlsMatched: z.number().int().nonnegative(),
+    articleUrlsSkipped: z.number().int().nonnegative(),
+    tagsCreated: z.number().int().nonnegative(),
+    tagsMatched: z.number().int().nonnegative(),
+    tagsSkipped: z.number().int().nonnegative(),
+    tagIdsRemapped: z.number().int().nonnegative(),
+    tagColorsReassigned: z.number().int().nonnegative(),
+    articleTagsCreated: z.number().int().nonnegative(),
+    articleTagsMatched: z.number().int().nonnegative(),
+    articleTagsSkipped: z.number().int().nonnegative(),
+    pendingArticlesReset: z.number().int().nonnegative(),
+  }),
+  hasChanges: z.boolean(),
+});
+
+export type BackupImportSummary = z.output<typeof backupImportSummarySchema>;
+
+export const backupImportPreviewResponseSchema = z.strictObject({
+  result: z.literal("preview"),
+  summary: backupImportSummarySchema,
+});
+
+export type BackupImportPreviewResponse = z.output<typeof backupImportPreviewResponseSchema>;
+
+export const backupImportResponseSchema = z.strictObject({
+  result: z.literal("imported"),
+  summary: backupImportSummarySchema,
+});
+
+export type BackupImportResponse = z.output<typeof backupImportResponseSchema>;

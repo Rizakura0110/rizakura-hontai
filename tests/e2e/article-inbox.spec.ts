@@ -1,5 +1,10 @@
 import { readFile } from "node:fs/promises";
-import type { ArticleDto, TagDto } from "@tech-inbox/contracts";
+import type {
+  ArticleDto,
+  BackupImportSnapshot,
+  BackupImportSummary,
+  TagDto,
+} from "@tech-inbox/contracts";
 import { expect, type Page, test } from "@playwright/test";
 
 type MetadataTransition = "ready" | "failed";
@@ -49,6 +54,68 @@ async function mockArticleApi(page: Page) {
     const assignedIds = new Set(tagIdsByArticleId[articleId] ?? []);
     return tags.filter(({ id }) => assignedIds.has(id));
   };
+
+  await page.route("**/api/v1/import**", async (route) => {
+    const request = route.request();
+    const body = request.postDataJSON() as { backup: BackupImportSnapshot };
+    const sourceTags = body.backup.schemaVersion === 2 ? body.backup.tags : [];
+    const sourceAssignments = body.backup.schemaVersion === 2 ? body.backup.articleTags : [];
+    const newArticles = body.backup.articles.filter(
+      (source) => !articles.some((current) => current.originalUrl === source.originalUrl),
+    );
+    const matchedArticles = body.backup.articles.length - newArticles.length;
+    const newTags = sourceTags.filter(
+      (source) =>
+        !tags.some(
+          (current) =>
+            current.name.toLocaleLowerCase("ja-JP") === source.name.toLocaleLowerCase("ja-JP"),
+        ),
+    );
+    const summary: BackupImportSummary = {
+      source: {
+        schemaVersion: body.backup.schemaVersion,
+        exportedAt: body.backup.exportedAt,
+        articles: body.backup.articles.length,
+        articleUrls: body.backup.articleUrls.length,
+        tags: sourceTags.length,
+        articleTags: sourceAssignments.length,
+      },
+      changes: {
+        articlesCreated: newArticles.length,
+        articlesMatched: matchedArticles,
+        articleIdsRemapped: 0,
+        articleUrlsCreated: newArticles.length,
+        articleUrlsMatched: matchedArticles,
+        articleUrlsSkipped: 0,
+        tagsCreated: newTags.length,
+        tagsMatched: sourceTags.length - newTags.length,
+        tagsSkipped: 0,
+        tagIdsRemapped: 0,
+        tagColorsReassigned: 0,
+        articleTagsCreated: sourceAssignments.length,
+        articleTagsMatched: 0,
+        articleTagsSkipped: 0,
+        pendingArticlesReset: newArticles.filter(
+          ({ metadataStatus }) => metadataStatus === "pending",
+        ).length,
+      },
+      hasChanges: newArticles.length > 0 || newTags.length > 0 || sourceAssignments.length > 0,
+    };
+
+    if (new URL(request.url()).pathname === "/api/v1/import") {
+      articles = [...newArticles, ...articles];
+      tags = [...tags, ...newTags];
+      for (const assignment of sourceAssignments) {
+        tagIdsByArticleId[assignment.articleId] = Array.from(
+          new Set([...(tagIdsByArticleId[assignment.articleId] ?? []), assignment.tagId]),
+        );
+      }
+      await route.fulfill({ json: { result: "imported", summary } });
+      return;
+    }
+
+    await route.fulfill({ json: { result: "preview", summary } });
+  });
 
   await page.route("**/api/v1/export", async (route) => {
     const exportedAt = now;
@@ -481,6 +548,57 @@ test("tags can be created from settings", async ({ page }) => {
 
   await expect(page.getByLabel("Cloudflareの新しい名前")).toBeVisible();
   await expect(createForm.getByRole("textbox", { name: "新しいタグ名" })).toHaveValue("");
+});
+
+test("a JSON backup can be previewed and safely restored from settings", async ({ page }) => {
+  const restoredTag: TagDto = {
+    id: "tag-restored",
+    name: "復元タグ",
+    colorHue: 80,
+    createdAt: now,
+    updatedAt: now,
+  };
+  const restoredArticle = fixture({
+    id: "article-restored",
+    originalUrl: "https://restore.example.org/article",
+    title: "復元された記事",
+  });
+  const backup: BackupImportSnapshot = {
+    schemaVersion: 2,
+    exportedAt: now,
+    articles: [restoredArticle],
+    articleUrls: [
+      {
+        normalizedUrl: restoredArticle.originalUrl,
+        articleId: restoredArticle.id,
+        kind: "original",
+        createdAt: now,
+      },
+    ],
+    tags: [restoredTag],
+    articleTags: [{ articleId: restoredArticle.id, tagId: restoredTag.id }],
+  };
+
+  await page.goto("/settings");
+  await page.getByLabel("バックアップファイル（1MB以下）").setInputFiles({
+    name: "tech-inbox-export.json",
+    mimeType: "application/json",
+    buffer: Buffer.from(JSON.stringify(backup)),
+  });
+  await page.getByRole("button", { name: "復元内容を確認" }).click();
+
+  await expect(page.getByText("復元プレビュー")).toBeVisible();
+  await expect(page.getByText("追加する記事").locator("..").getByText("1件")).toBeVisible();
+  await page
+    .getByRole("checkbox", { name: "既存データを上書きしないマージ内容を確認しました" })
+    .check();
+  await page.getByRole("button", { name: "安全に復元する" }).click();
+  await expect(page.getByText("バックアップを安全に復元しました。")).toBeVisible();
+
+  await page.getByRole("link", { name: "すべて", exact: true }).click();
+  const restoredCard = page.locator("article").filter({ hasText: restoredArticle.title ?? "" });
+  await expect(restoredCard).toBeVisible();
+  await expect(restoredCard.getByText(restoredTag.name, { exact: true })).toBeVisible();
 });
 
 test("tag creation, filtering, assignment, rename, and deletion preserve the article", async ({
