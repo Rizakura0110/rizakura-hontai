@@ -47,6 +47,14 @@ Cloudflare dashboardのQueuesで次を確認します。
 
 Queuesのdashboard metricsではbacklog messages、backlog bytes、message operationを確認できます。DLQ messageは所有データ由来の可能性があるため、由来を確認せずpurgeしません。個別記事のmetadata失敗は画面の再取得を使用し、URLやtitleの手動利用を継続できます。
 
+API tokenとaccount IDをprocess environmentへ設定した運用端末では、[Cloudflare Queues metrics API](https://developers.cloudflare.com/queues/observability/metrics/)とWorkers Analyticsの集計値だけを使う読み取り専用checkを実行できます。
+
+```bash
+pnpm cloudflare:health
+```
+
+このcommandは現在の通常Queue backlogと、直近24時間の新しいDLQ/fail、app Workerとmetadata-fetcherのerror・non-success invocationを失敗条件にします。以前から保持されているDLQ backlogは件数とbytesだけを警告し、message本文のpull、ack、retry、purgeは行いません。出力にはcredential、account詳細、記事情報、所有者情報を含めません。trafficがないWorkerは0件のまま正常とし、実行のたびに過去24時間を評価します。
+
 読み取り専用のresource確認には次を使用できます。
 
 ```bash

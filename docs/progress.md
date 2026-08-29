@@ -1104,3 +1104,72 @@
 
 - Android Chrome実機はowner判断でスキップした状態を維持する。
 - 既知のmoderate advisory 1件はDrizzle Kit配下の開発専用推移依存であり、runtime bundleには含まれない。
+
+## Phase 15: Production運用ヘルスチェック
+
+### 実施内容
+
+- Cloudflare Access、D1、Queue、Worker、Worker subdomainを既存のread-only preflightで再監査した。
+- Queue/DLQのresource接続、現在backlog、retention設定、過去7日のmessage operation集計、2つのWorkerの直近24時間のrequest・error・status集計を確認した。
+- 現在backlogと直近24時間の新しいDLQ/fail、app Worker・metadata-fetcherのerror/non-successを安全に反復確認する`pnpm cloudflare:health`を追加した。
+- health commandはmessage本文、記事情報、credential、account詳細、所有者情報を取得・表示せず、API errorの詳細もそのまま出力しない。
+- 未認証のrootと記事APIがCloudflare Accessへ302 redirectされることと、production D1の記事metadata状態を件数だけで確認した。
+
+### 変更ファイル
+
+- `scripts/cloudflare-health-assertions.mjs`
+- `scripts/cloudflare-health-assertions.test.mjs`
+- `scripts/verify-cloudflare-health.mjs`
+- `package.json`
+- `README.md`
+- `docs/operations.md`
+- `docs/quality-gates.md`
+- `docs/progress.md`
+
+### 採用判断
+
+- 通常Queueの現在backlog、新しいDLQ/fail、Worker error/non-successはhealth checkを失敗させる。trafficがないWorkerは0件の正常状態として扱う。
+- 過去から保持されているDLQ backlogは件数とbytesだけを警告する。本文をpullせず、ack、retry、purgeを自動化しない。
+- 直近24時間の集計は毎回現在時刻から計算し、remote stateを変更する通常の品質ゲートやGitHub Actionsには含めない。
+- Phase 9で記録したDLQ 6件と、その後の1件はAnalytics上のDLQ delivery時刻と合計bytesが現在backlogに一致した。新しいDLQは24時間以内に発生していないため、継続障害ではないと判断した。
+
+### 実行したコマンド
+
+- `pnpm cloudflare:preflight`
+- `pnpm cloudflare:health`
+- `wrangler queues info`によるQueue/DLQ接続確認
+- `wrangler deployments list`によるapp Worker・metadata-fetcher version確認
+- Cloudflare read-only REST/GraphQL APIによるQueue・Worker集計確認
+- production D1へのmetadata status件数だけのread-only `SELECT`
+- 未認証root・記事API smoke
+- `pnpm exec vitest run scripts/cloudflare-health-assertions.test.mjs`
+- `pnpm check`
+- `git diff --check`、ignore確認、tracked contentのcredential pattern scan
+
+### 検証結果
+
+- production preflight: pass
+  - D1、Queue、app Worker、metadata-fetcher、Access applicationとowner限定policyが期待状態
+- Queue接続: app Workerのproducer 1、consumer 1。通常Queue backlog 0件・0 bytes
+- DLQ接続: producer 0、consumer 0。保持backlog 7件・851 bytes
+- Queue/DLQ retention: 86,400秒。確認中のbacklog増加: なし
+- 直近24時間のQueue terminal failure: DLQ 0、fail 0
+- app Worker: 53 requests、53 success、0 errors
+- metadata-fetcher: 3 requests、3 success、0 errors
+- production D1 metadata: ready 1件、pending/failed 0件、`rows_written` 0、`changed_db` false
+- app Worker最新versionはPhase 13 deployの`21a94e2e-04f1-426a-a782-00201a04a5f0`、metadata-fetcherは意図どおり据え置き
+- 未認証root・記事API: Cloudflare Accessへ302 redirect
+- health assertion test: 10 tests pass
+- remote resource、Queue message、production dataの変更: なし
+- format、lint、Cloudflare生成型差分、TypeScript: pass
+- Vitest: 34 files、348 tests pass
+- coverage: statements 86.62%、branches 81.77%、functions 87.39%、lines 88.30%
+- fresh local D1、local実HTTP API、production build、artifact budget: pass
+- Playwright: desktop/mobile合計20 tests pass
+- audit: high 0、critical 0、既知moderate 1
+
+### 未解決事項
+
+- DLQには過去の7件が保持されている。本文を確認していないためpurgeせず、次回health checkで件数増加と直近24時間の新規deliveryを監視する。
+- Android Chrome実機はowner判断でスキップした状態を維持する。
+- 既知のmoderate advisory 1件はDrizzle Kit配下の開発専用推移依存であり、runtime bundleには含まれない。

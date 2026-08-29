@@ -118,6 +118,15 @@ Playwrightのmobile viewport成功は実機確認の代替にしない。手順�
 
 判定ロジックはsecretを使わないfixtureでVitestへ含め、credential、account詳細、team domain、所有者emailを出力しない。
 
+`pnpm cloudflare:health`もcredentialとnetworkを持つ運用時だけ明示実行し、通常の`pnpm check`とGitHub Actionsには含めない。Cloudflareのread-only REST/GraphQL APIから次の集計値だけを確認する。
+
+- 通常Queueの現在backlogが0件である
+- 直近24時間に新しいDLQ deliveryまたはterminal failがない
+- app Workerとmetadata-fetcherのerrorとnon-success invocationが0件である
+- 既存DLQ backlogは件数とbytesだけを警告し、message本文を取得・変更しない
+
+集計・失敗判定はsecretを使わないfixtureでVitestへ含め、API応答エラー時にもcredential、account詳細、message本文を表示しない。
+
 ## Artifact size budgets
 
 `pnpm quality:artifacts`はproduction build後に次のraw上限を検査し、gzip参考値も表示する。

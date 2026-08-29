@@ -106,6 +106,14 @@ Cloudflareへのdeploy、remote migration、resource作成は自動の品質ゲ�
 
 実コマンド、停止条件、rollbackは[Cloudflare setup](docs/cloudflare-setup.md)と[Operations](docs/operations.md)に記載しています。Access保護前のURLは文書化しません。
 
+本番の定期確認では、同じprocess environmentを使って読み取り専用のhealth checkを実行できます。
+
+```bash
+pnpm cloudflare:health
+```
+
+現在のQueue/DLQ backlogと、直近24時間のQueue terminal failure、app Worker、metadata-fetcherのrequest・error・status集計だけを確認します。message本文、記事情報、credential、account詳細、所有者情報は取得・表示しません。通常Queueのbacklog、新しいDLQ/fail、Worker errorまたはnon-success invocationがあれば失敗し、過去から保持されているDLQ backlogは警告だけを表示します。
+
 ## Secrets
 
 productionでは次の値をWorker Secretsとして登録します。実値はファイル、command引数、issue、commit、logへ残しません。
