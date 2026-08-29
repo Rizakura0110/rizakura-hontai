@@ -1174,3 +1174,49 @@
 - DLQには過去の7件が保持されている。本文を確認していないためpurgeせず、次回health checkで件数増加と直近24時間の新規deliveryを監視する。
 - Android Chrome実機はowner判断でスキップした状態を維持する。
 - 既知のmoderate advisory 1件はDrizzle Kit配下の開発専用推移依存であり、runtime bundleには含まれない。
+
+## Phase 16: Desktop sidebarスクロール修正
+
+### 実施内容
+
+- 長い設定画面をスクロールするとdesktop sidebarが途中で切れる問題を修正した。
+- desktop sidebarをviewportへ固定し、main contentにはsidebar幅と同じ左余白を設けた。
+- 低いviewportでもsidebar自身を縦スクロールできるようにした。mobile navigationは変更していない。
+- 長いmain contentを最下部までスクロールしてもsidebarがviewport全高に残るE2E regression testを追加した。
+
+### 変更ファイル
+
+- `apps/web/src/client/components/AppLayout.tsx`
+- `tests/e2e/article-inbox.spec.ts`
+- `docs/progress.md`
+
+### 採用判断
+
+- `sticky`要素は親要素の末端で一緒に流れ、main contentが長い画面ではsidebarの背景と下部説明がviewportから外れるため、desktopだけ`fixed`配置へ変更した。
+- sidebar幅224pxを`w-56`と外側の`md:pl-56`で一致させ、既存のdesktop content幅とmobile layoutを維持した。
+- regression testではテスト専用にmain contentを200vhへ伸ばし、最下部までスクロールした後のsidebar上端0px・下端viewport高を検証する。
+
+### 実行したコマンド
+
+- production build後の対象Playwright test
+- local previewを1318×766で開き、設定画面をスクロールする実表示確認
+- `pnpm check`
+- `git diff --check`、ignore確認、tracked contentのcredential pattern scan
+
+### 検証結果
+
+- 1318×766のlocal previewで、スクロール前後ともsidebarは上端0px・下端766px・高さ766pxを維持
+- format、lint、Cloudflare生成型差分、TypeScript: pass
+- Vitest: 34 files、348 tests pass
+- coverage: statements 86.62%、branches 81.77%、functions 87.39%、lines 88.30%
+- fresh local D1、local実HTTP API、production build、artifact budget: pass
+- Playwright: desktop/mobile合計21 tests pass、desktop専用regression testのmobile実行1件skip
+- audit: high 0、critical 0、既知moderate 1
+- DB schema、API、Worker binding、migration、production resourceの変更: なし
+- production deploy: 未実施
+
+### 未解決事項
+
+- productionへ反映するにはapp Workerのdeployが必要。
+- Android Chrome実機はowner判断でスキップした状態を維持する。
+- 既知のmoderate advisory 1件はDrizzle Kit配下の開発専用推移依存であり、runtime bundleには含まれない。

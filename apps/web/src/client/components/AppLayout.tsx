@@ -59,8 +59,8 @@ function Brand() {
 
 export function AppLayout({ children }: AppLayoutProps) {
   return (
-    <div className="min-h-dvh bg-[#f7f8fa] text-slate-800 md:grid md:grid-cols-[224px_minmax(0,1fr)]">
-      <aside className="hidden border-r border-slate-200 bg-white px-4 py-5 md:sticky md:top-0 md:flex md:h-dvh md:flex-col">
+    <div className="min-h-dvh bg-[#f7f8fa] text-slate-800 md:pl-56">
+      <aside className="hidden border-r border-slate-200 bg-white px-4 py-5 md:fixed md:inset-y-0 md:left-0 md:z-30 md:flex md:w-56 md:flex-col md:overflow-y-auto">
         <Brand />
         <nav aria-label="メインナビゲーション" className="mt-8 flex flex-col gap-1">
           <NavigationItems />

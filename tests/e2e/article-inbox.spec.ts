@@ -446,6 +446,31 @@ test("article text is safe, read state can be undone, and layout does not overfl
   await expect(card.getByRole("button", { name: "既読にする" })).toBeVisible();
 });
 
+test("desktop sidebar stays full-height while long content scrolls", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name === "mobile-chrome-320", "Desktop sidebar only");
+
+  await page.goto("/settings");
+  const sidebar = page.locator("aside");
+  await expect(sidebar).toBeVisible();
+  await page.locator("main").evaluate((element) => {
+    element.setAttribute("style", "min-height: 200vh");
+  });
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
+
+  const geometry = await sidebar.evaluate((element) => {
+    const bounds = element.getBoundingClientRect();
+    return {
+      bottom: Math.round(bounds.bottom),
+      top: Math.round(bounds.top),
+      viewportHeight: window.innerHeight,
+    };
+  });
+  expect(geometry.top).toBe(0);
+  expect(geometry.bottom).toBe(geometry.viewportHeight);
+  await expect(page.getByText("自分のための技術記事受信箱")).toBeVisible();
+});
+
 test("add, search, edit, delete, and settings routes work", async ({ page }, testInfo) => {
   await page.goto("/");
 
