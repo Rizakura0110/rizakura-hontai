@@ -1058,3 +1058,49 @@
 
 - Android Chrome実機はowner判断でスキップした状態を維持する。
 - 既知のmoderate advisory 1件はDrizzle Kit配下の開発専用推移依存であり、runtime bundleには含まれない。
+
+## Phase 14: Production backup復元プレビュー訓練
+
+### 実施内容
+
+- ownerがproduction設定画面から最新のschema version 2 JSON backupを取得し、同じファイルを復元previewへ読み込ませた。
+- previewに表示された追加、一致、競合skip、ID・色再割り当て、pending resetの全件数を確認した。
+- production D1では記事本文を出力せず、記事、URL alias、タグ、タグ付けの件数だけをread-only queryで照合した。
+- 復元確定は実行せず、backup fileもownerの端末外へ共有していない。
+
+### 変更ファイル
+
+- `docs/progress.md`
+
+### 採用判断
+
+- 同じbackupを現在の環境へpreviewすることで、schema version 2の読み込み、本番API、既存recordへの対応付け、冪等なno-op計画をproduction dataへ書き込まず確認する。
+- previewのタグ付け0件は、production D1の`article_tags`も0件であることから欠落ではなく現在状態との一致と判断した。
+- 書き込み経路は自動testで検証済みのため、production訓練だけを目的とした不要な復元確定は行わない。
+
+### 実行したコマンド
+
+- production設定画面でJSON exportと復元preview
+- production D1への件数だけのread-only `SELECT`
+- `pnpm check`
+- `git diff --check`、ignore確認、tracked contentのcredential pattern scan
+
+### 検証結果
+
+- backup: schema version 2、記事1件、URL alias 1件、タグ3件、タグ付け0件
+- preview: 記事1件、URL alias 1件、タグ3件が既存recordと一致
+- preview: 新規追加、競合skip、ID・タグ色再割り当て、pending resetはすべて0件
+- production D1 count: 記事1件、URL alias 1件、タグ3件、タグ付け0件でpreviewと一致
+- production D1 query: `rows_written` 0、`changed_db` false
+- 復元確定とproduction data変更: なし
+- format、lint、Cloudflare生成型差分、TypeScript: pass
+- Vitest: 33 files、338 tests pass
+- coverage: statements 86.62%、branches 81.77%、functions 87.39%、lines 88.30%
+- fresh local D1、local実HTTP API、production build、artifact budget: pass
+- Playwright: desktop/mobile合計20 tests pass
+- audit: high 0、critical 0、既知moderate 1
+
+### 未解決事項
+
+- Android Chrome実機はowner判断でスキップした状態を維持する。
+- 既知のmoderate advisory 1件はDrizzle Kit配下の開発専用推移依存であり、runtime bundleには含まれない。
