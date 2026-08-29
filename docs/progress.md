@@ -1201,6 +1201,10 @@
 - production build後の対象Playwright test
 - local previewを1318×766で開き、設定画面をスクロールする実表示確認
 - `pnpm check`
+- production deploy前後の`pnpm cloudflare:preflight`
+- `pnpm --dir apps/web exec wrangler deploy`
+- deploy後の`pnpm cloudflare:health`
+- 未認証root・記事API smoke
 - `git diff --check`、ignore確認、tracked contentのcredential pattern scan
 
 ### 検証結果
@@ -1213,11 +1217,16 @@
 - Playwright: desktop/mobile合計21 tests pass、desktop専用regression testのmobile実行1件skip
 - audit: high 0、critical 0、既知moderate 1
 - GitHub Actions run `33255159239`: success（fix commit `126507d`）
-- DB schema、API、Worker binding、migration、production resourceの変更: なし
-- production deploy: 未実施
+- production app Worker deployment version: `ce557ef5-671b-4664-a015-3ea786adafff`
+- D1、Queue、Service Binding、5種類のRate Limiting binding、production変数: 維持
+- DB schema、API、migration、新規resource、metadata-fetcherの変更: なし
+- deploy後preflight: owner email完全一致policy、7日session、launcher非表示、appだけの公開境界を維持してpass
+- 未認証root・記事API: Cloudflare Accessへ302 redirect
+- deploy後health: app Worker 33 requests・33 success・0 errors、metadata-fetcher 1 request・1 success・0 errors
+- 通常Queue backlog 0件、直近24時間のDLQ/fail 0件。過去のDLQ 7件・851 bytesは本文を読まず変更なし
+- ownerが認証済みproduction設定画面を最下部までスクロールし、sidebarが切れないことを確認
 
 ### 未解決事項
 
-- productionへ反映するにはapp Workerのdeployが必要。
 - Android Chrome実機はowner判断でスキップした状態を維持する。
 - 既知のmoderate advisory 1件はDrizzle Kit配下の開発専用推移依存であり、runtime bundleには含まれない。
