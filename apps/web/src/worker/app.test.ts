@@ -15,6 +15,8 @@ describe("health API", () => {
     for (const [name, value] of Object.entries(SECURITY_HEADERS)) {
       expect(response.headers.get(name)).toBe(value);
     }
+    expect(response.headers.get("content-security-policy")).toContain("manifest-src 'self'");
+    expect(response.headers.get("content-security-policy")).toContain("worker-src 'none'");
     await expect(response.json()).resolves.toEqual({ status: "ok" });
   });
 

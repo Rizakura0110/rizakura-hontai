@@ -389,6 +389,8 @@ test("static assets and API responses include the security policy", async ({ pag
     const headers = response?.headers() ?? {};
     expect(headers["content-security-policy"]).toContain("default-src 'self'");
     expect(headers["content-security-policy"]).toContain("frame-ancestors 'none'");
+    expect(headers["content-security-policy"]).toContain("manifest-src 'self'");
+    expect(headers["content-security-policy"]).toContain("worker-src 'none'");
     expect(headers["x-frame-options"]).toBe("DENY");
     expect(headers["x-content-type-options"]).toBe("nosniff");
     expect(headers["referrer-policy"]).toBe("no-referrer");
@@ -401,6 +403,44 @@ test("static assets and API responses include the security policy", async ({ pag
 
   const robotsResponse = await page.request.get("/robots.txt");
   expect(await robotsResponse.text()).toContain("Disallow: /");
+
+  const manifestLink = page.locator('link[rel="manifest"]');
+  await expect(manifestLink).toHaveAttribute("href", "/manifest.webmanifest");
+  await expect(manifestLink).toHaveAttribute("crossorigin", "use-credentials");
+  await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveAttribute(
+    "href",
+    "/icons/apple-touch-icon.png",
+  );
+
+  const manifestResponse = await page.request.get("/manifest.webmanifest");
+  expect(manifestResponse.status()).toBe(200);
+  await expect(manifestResponse.json()).resolves.toMatchObject({
+    id: "/",
+    name: "Tech Inbox",
+    short_name: "Tech Inbox",
+    start_url: "/articles",
+    scope: "/",
+    display: "standalone",
+    background_color: "#f7f8fa",
+    theme_color: "#2563eb",
+    icons: [
+      { src: "/icons/icon-192.png", sizes: "192x192", purpose: "any" },
+      { src: "/icons/icon-512.png", sizes: "512x512", purpose: "any" },
+      { src: "/icons/icon-maskable-512.png", sizes: "512x512", purpose: "maskable" },
+    ],
+  });
+
+  for (const iconPath of [
+    "/icons/apple-touch-icon.png",
+    "/icons/icon-192.png",
+    "/icons/icon-512.png",
+    "/icons/icon-maskable-512.png",
+  ]) {
+    const iconResponse = await page.request.get(iconPath);
+    expect(iconResponse.status()).toBe(200);
+    expect(iconResponse.headers()["content-type"]).toContain("image/png");
+    expect((await iconResponse.body()).byteLength).toBeGreaterThan(1_000);
+  }
 
   const unauthorizedResponse = await page.request.get("/api/v1/articles");
   expect(unauthorizedResponse.status()).toBe(401);

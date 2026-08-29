@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <title>Tech Inbox</title>
+  <rect width="512" height="512" fill="#2563eb" />
+  <text
+    x="256"
+    y="282"
+    fill="#ffffff"
+    font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+    font-size="190"
+    font-weight="700"
+    letter-spacing="-12"
+    text-anchor="middle"
+  >TI</text>
+</svg>

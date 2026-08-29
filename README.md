@@ -10,6 +10,7 @@ Tech Inboxは、あとで読む技術記事のURLを個人で保存・整理す�
 - 1記事10件までの複数タグ、タグごとの自動色、タグの追加・名前変更・削除
 - 記事、URL alias、タグ、タグ付けを含むJSON exportと、既存データを上書きしない復元
 - Queue経由の非同期メタデータ取得と安全な再試行
+- iPhoneのホーム画面からstandalone表示で起動できるPWA
 
 ## 技術構成
 
@@ -42,8 +43,15 @@ tech-inbox-metadata-fetcher Worker
 - 開発: macOS arm64、Node.js 24.19.0、pnpm 11.22.0
 - 自動E2E: Desktop Chrome 1280 × 800、Mobile Chrome 320 × 700
 - 実機確認: iPhone Chrome
+- PWAのインストール・standalone表示: iPhone Safari（production反映後に実機確認）
 - Android Chrome: 手順は用意済みですが、所有者判断で実機確認をスキップしています
-- Safari、Firefox、Edgeは正式な動作保証対象外です
+- 通常の機能確認におけるSafari、Firefox、Edgeは正式な動作保証対象外です
+
+## iPhone PWA
+
+productionへログインした状態でiPhone Safariの共有メニューを開き、「ホーム画面に追加」から「Webアプリとして開く」を有効にします。追加後はホーム画面のTech Inboxアイコンから、URL barのないstandalone表示で起動できます。
+
+PWAは現在のapp WorkerとCloudflare Accessをそのまま使用します。Service Workerとoffline cacheは登録しないため、利用時はnetwork接続が必要です。Access sessionの期限が切れた場合は再ログインします。
 
 ## Local setup
 

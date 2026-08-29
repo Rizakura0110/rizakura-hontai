@@ -58,7 +58,7 @@ fetcherは`workers_dev: false`、`preview_urls: false`で公開routeを持たず
 
 Static AssetsとAPIの両方に次を設定します。
 
-- CSP: selfを基本とし、object、frame ancestor、worker、manifestを禁止
+- CSP: selfを基本とし、object、frame ancestor、workerを禁止する。PWA manifestだけは同一originから許可する
 - `X-Frame-Options: DENY`
 - `X-Content-Type-Options: nosniff`
 - `Referrer-Policy: no-referrer`

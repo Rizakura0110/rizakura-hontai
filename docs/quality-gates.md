@@ -1,6 +1,6 @@
 # Quality gates
 
-最終更新: 2026-08-28
+最終更新: 2026-08-29
 
 ## 標準ゲート
 
@@ -75,6 +75,7 @@ V8 unit coverageから次だけを除外する。
 | JSON restore | file検証、preview、明示確認、追加後の記事・タグ表示、再実行時の無変更 |
 | unauthorized API拒否 | mockを通らないWorker APIの403 |
 | タグの全操作 | 作成、複数付与、絞り込み、解除、名前変更、削除後の記事保持 |
+| PWA配信境界 | credential付きmanifest link、standalone設定、192/512/maskable/Apple icon、manifestだけを許可するCSP、Service Worker禁止 |
 
 タグ機能は、UI追加前の基盤フェーズから次の実D1・実HTTP検証を必須にする。
 

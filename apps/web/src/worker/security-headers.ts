@@ -1,6 +1,6 @@
 export const SECURITY_HEADERS = {
   "Content-Security-Policy":
-    "default-src 'self'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; font-src 'self'; worker-src 'none'; manifest-src 'none'; upgrade-insecure-requests",
+    "default-src 'self'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; font-src 'self'; worker-src 'none'; manifest-src 'self'; upgrade-insecure-requests",
   "Cross-Origin-Opener-Policy": "same-origin",
   "Cross-Origin-Resource-Policy": "same-origin",
   "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=(), usb=()",

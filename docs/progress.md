@@ -1230,3 +1230,70 @@
 
 - Android Chrome実機はowner判断でスキップした状態を維持する。
 - 既知のmoderate advisory 1件はDrizzle Kit配下の開発専用推移依存であり、runtime bundleには含まれない。
+
+## Phase 17: iPhone PWA基盤
+
+### 実施内容
+
+- Tech InboxをiPhoneのホーム画面からstandalone表示で起動するWeb App Manifestを追加した。
+- 既存UIと同じ青地・白文字の`TI`ブランドから、Apple touch 180px、標準192px・512px、maskable 512pxのPNG iconを生成した。
+- HTMLへtheme color、application name、Apple standalone metadata、manifest・icon linkを追加した。
+- Cloudflare Access配下でも認証sessionを付けてmanifestを取得するため、manifest linkへ`crossorigin="use-credentials"`を指定した。
+- CSPは同一originのmanifestだけを許可し、Service Workerとoffline cacheを禁止する`worker-src 'none'`は維持した。
+- desktop/mobile E2Eでmanifest内容、全icon配信、HTML metadata、CSP境界を検証した。
+
+### 変更ファイル
+
+- `apps/web/public/manifest.webmanifest`
+- `apps/web/public/icons/icon-source.svg`
+- `apps/web/public/icons/apple-touch-icon.png`
+- `apps/web/public/icons/icon-192.png`
+- `apps/web/public/icons/icon-512.png`
+- `apps/web/public/icons/icon-maskable-512.png`
+- `apps/web/index.html`
+- `apps/web/public/_headers`
+- `apps/web/src/worker/security-headers.ts`
+- `apps/web/src/worker/app.test.ts`
+- `tests/e2e/article-inbox.spec.ts`
+- `README.md`
+- `docs/security.md`
+- `docs/quality-gates.md`
+- `docs/progress.md`
+
+### 採用判断
+
+- App Store費用とnative appの7日ごとの再署名を避け、既存のCloudflare Free構成をそのまま使うPWAを採用した。
+- PWA iconは新しいブランドを作らず、sidebar・mobile headerで使用中の`TI`ロゴを再利用した。
+- 記事情報を端末へ独自cacheせず、更新の即時反映と認証境界を単純に保つため、初期版ではService Workerを登録しない。
+- start URLは既存の全記事画面`/articles`、scopeと安定したapp IDは同一origin全体の`/`とした。
+
+### 実行したコマンド
+
+- macOS Quick Lookと`sips`によるPNG生成・寸法確認
+- icon 512pxの目視確認
+- `vitest run apps/web/src/worker/app.test.ts`
+- production build後の対象Playwright test
+- `pnpm check`
+- `git diff --check`、ignore確認、tracked contentのcredential pattern scan
+
+### 検証結果
+
+- icon: Apple 180×180、標準192×192・512×512、maskable 512×512、すべてPNG
+- manifest: app ID `/`、start URL `/articles`、scope `/`、display `standalone`、標準・maskable iconを検証
+- HTML: credential付きmanifest link、Apple touch icon、theme/application/standalone metadataを検証
+- CSP: `manifest-src 'self'`、`worker-src 'none'`をStatic AssetsとAPIの両方で検証
+- 対象Playwright: desktop/mobile 2 tests pass
+- format、lint、Cloudflare生成型差分、TypeScript: pass
+- Vitest: 34 files、348 tests pass
+- coverage: statements 86.62%、branches 81.77%、functions 87.39%、lines 88.30%
+- fresh local D1、local実HTTP API、production build、artifact budget: pass
+- Playwright: desktop/mobile合計21 tests pass、desktop専用regression testのmobile実行1件skip
+- audit: high 0、critical 0、既知moderate 1
+- dependency、DB schema、API、Worker binding、migration、production resourceの変更: なし
+- production deploy: 未実施
+
+### 未解決事項
+
+- production反映後、ownerがiPhone Safariからホーム画面へ追加し、icon、standalone起動、Access再ログイン、既存機能を実機確認する。
+- Android Chrome実機はowner判断でスキップした状態を維持する。
+- 既知のmoderate advisory 1件はDrizzle Kit配下の開発専用推移依存であり、runtime bundleには含まれない。
