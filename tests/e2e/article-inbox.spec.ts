@@ -4,7 +4,7 @@ import type {
   BackupImportSnapshot,
   BackupImportSummary,
   TagDto,
-} from "@tech-inbox/contracts";
+} from "@rizakura-me/contracts";
 import { expect, type Page, test } from "@playwright/test";
 
 type MetadataTransition = "ready" | "failed";
@@ -380,8 +380,105 @@ test.beforeEach(async ({ page }) => {
   await mockArticleApi(page);
 });
 
+test("portal and Tech Inbox use separate documents and only the article product is installable", async ({
+  page,
+}) => {
+  let dataRequests = 0;
+  page.on("request", (request) => {
+    if (new URL(request.url()).pathname.startsWith("/api/")) dataRequests += 1;
+  });
+  await page.goto("/");
+  await expect(page).toHaveTitle("rizakura-me");
+  await expect(page.getByRole("heading", { name: "今日も、自分のペースで。" })).toBeVisible();
+  await expect(page.getByText("準備中", { exact: true })).toBeVisible();
+  await expect(page.locator('a[href^="/daymark"]')).toHaveCount(0);
+  await expect(page.locator('link[rel="manifest"]')).toHaveCount(0);
+  await expect(page.locator('meta[name="apple-mobile-web-app-capable"]')).toHaveCount(0);
+  expect(dataRequests).toBe(0);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  );
+  await page.evaluate(() => {
+    document.documentElement.dataset.documentMarker = "portal";
+  });
+  await page.getByRole("link", { name: "Tech Inboxを開く" }).click();
+  await expect(page).toHaveURL(/\/tech-inbox\/$/);
+  await expect(page).toHaveTitle("Tech Inbox");
+  await expect(page.getByRole("heading", { name: "すべての記事" })).toBeVisible();
+  expect(
+    await page.evaluate(() => document.documentElement.dataset.documentMarker),
+  ).toBeUndefined();
+  await expect(page.locator('link[rel="manifest"]')).toHaveAttribute(
+    "href",
+    "/manifest.webmanifest",
+  );
+  await page.evaluate(() => {
+    document.documentElement.dataset.documentMarker = "article";
+  });
+  await page.getByRole("link", { name: "← rizakura-meへ" }).click();
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page).toHaveTitle("rizakura-me");
+  expect(
+    await page.evaluate(() => document.documentElement.dataset.documentMarker),
+  ).toBeUndefined();
+  await expect(page.locator('link[rel="manifest"]')).toHaveCount(0);
+});
+
+test("legacy URLs preserve queries and direct article settings receive the article HTML", async ({
+  page,
+}) => {
+  await page.goto("/articles?q=hello%20world&tagId=tag-react");
+  await expect(page).toHaveURL(/\/tech-inbox\/\?q=hello%20world&tagId=tag-react$/);
+  await expect(page.getByRole("heading", { name: "すべての記事" })).toBeVisible();
+  await page.goto("/settings?from=legacy");
+  await expect(page).toHaveURL(/\/tech-inbox\/settings\?from=legacy$/);
+  await expect(page.getByRole("heading", { name: "設定", exact: true })).toBeVisible();
+  await page.reload();
+  await expect(page).toHaveTitle("Tech Inbox");
+  await expect(page.locator('link[rel="manifest"]')).toHaveAttribute(
+    "href",
+    "/manifest.webmanifest",
+  );
+  for (const path of ["/tech-inbox/", "/tech-inbox/settings"]) {
+    const response = await page.request.get(path);
+    expect(response.status()).toBe(200);
+    const html = await response.text();
+    expect(html).toContain("<title>Tech Inbox</title>");
+    expect(html).toContain('href="/manifest.webmanifest"');
+    expect(html).not.toContain("<title>rizakura-me</title>");
+  }
+  const portal = await page.request.get("/");
+  expect(await portal.text()).not.toContain('rel="manifest"');
+});
+
+test("unknown documents, assets and unauthenticated future APIs never receive an HTML fallback", async ({
+  page,
+}) => {
+  for (const path of [
+    "/missing",
+    "/assets/missing.js",
+    "/tech-inbox/missing.css",
+    "/tech-inbox/unknown",
+    "/daymark/",
+  ]) {
+    const response = await page.request.get(path, {
+      headers: { "Sec-Fetch-Mode": "navigate", Accept: "text/html" },
+    });
+    expect(response.status()).toBe(404);
+    expect(await response.text()).not.toContain('<div id="root">');
+  }
+  for (const path of ["/api", "/api/v1/daymark/future", "/api/v2/unknown"]) {
+    const response = await page.request.get(path, {
+      headers: { "Sec-Fetch-Mode": "navigate", Accept: "text/html" },
+    });
+    expect(response.status()).toBe(401);
+    expect(response.headers()["content-type"]).toContain("application/json");
+    await expect(response.json()).resolves.toMatchObject({ error: { code: "UNAUTHORIZED" } });
+  }
+});
+
 test("static assets and API responses include the security policy", async ({ page }) => {
-  const pageResponse = await page.goto("/");
+  const pageResponse = await page.goto("/tech-inbox/");
   const healthResponse = await page.request.get("/api/v1/health");
 
   for (const response of [pageResponse, healthResponse]) {
@@ -418,8 +515,8 @@ test("static assets and API responses include the security policy", async ({ pag
     id: "/",
     name: "Tech Inbox",
     short_name: "Tech Inbox",
-    start_url: "/articles",
-    scope: "/",
+    start_url: "/tech-inbox/",
+    scope: "/tech-inbox/",
     display: "standalone",
     background_color: "#f7f8fa",
     theme_color: "#2563eb",
@@ -452,9 +549,9 @@ test("static assets and API responses include the security policy", async ({ pag
 test("article text is safe, read state can be undone, and layout does not overflow", async ({
   page,
 }, testInfo) => {
-  await page.goto("/");
+  await page.goto("/tech-inbox/");
 
-  await expect(page).toHaveURL(/\/articles$/);
+  await expect(page).toHaveURL(/\/tech-inbox\/$/);
   await expect(page.getByRole("heading", { name: "すべての記事" })).toBeVisible();
   await expect(page.getByRole("link", { name: unsafeTitle })).toBeVisible();
   await expect(page.locator("article img, article script")).toHaveCount(0);
@@ -512,14 +609,14 @@ test("desktop sidebar stays full-height while long content scrolls", async ({ pa
 });
 
 test("add, search, edit, delete, and settings routes work", async ({ page }, testInfo) => {
-  await page.goto("/");
+  await page.goto("/tech-inbox/");
 
   const newUrl = "https://playwright.dev/docs/testing";
   await addArticle(page, testInfo.project.name === "mobile-chrome-320", newUrl);
   await expect(page.getByText("記事を保存しました。")).toBeVisible();
   await expect(page.getByRole("link", { name: newUrl })).toBeVisible();
 
-  await expect(page).toHaveURL(/\/articles$/);
+  await expect(page).toHaveURL(/\/tech-inbox\/$/);
   await expect(page.getByRole("heading", { name: "すべての記事" })).toBeVisible();
   await page.getByRole("searchbox", { name: "記事を検索" }).fill("playwright");
   await page.getByRole("button", { name: "検索" }).click();
@@ -726,7 +823,7 @@ test("tag creation, filtering, assignment, rename, and deletion preserve the art
 test("duplicate registration, read filter, and returning an article to unread work", async ({
   page,
 }, testInfo) => {
-  await page.goto("/");
+  await page.goto("/tech-inbox/");
 
   await addArticle(
     page,
@@ -751,7 +848,7 @@ test("duplicate registration, read filter, and returning an article to unread wo
 test("metadata polling reaches both ready and failed terminal states", async ({
   page,
 }, testInfo) => {
-  await page.goto("/");
+  await page.goto("/tech-inbox/");
   const mobile = testInfo.project.name === "mobile-chrome-320";
 
   const readyUrl = "https://metadata-ready.example.org/article";
@@ -772,7 +869,7 @@ test("metadata polling reaches both ready and failed terminal states", async ({
 test("editing an article URL reports a conflict without losing the original", async ({
   page,
 }, testInfo) => {
-  await page.goto("/");
+  await page.goto("/tech-inbox/");
   const conflictingUrl = "https://conflict.example.org/article";
   await addArticle(page, testInfo.project.name === "mobile-chrome-320", conflictingUrl);
 

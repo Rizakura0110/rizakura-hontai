@@ -53,13 +53,13 @@ importers:
 
   apps/web:
     dependencies:
-      '@tech-inbox/contracts':
+      '@rizakura-me/contracts':
         specifier: workspace:0.0.0
         version: link:../../packages/contracts
       '@tech-inbox/core':
         specifier: workspace:0.0.0
         version: link:../../packages/core
-      '@tech-inbox/db':
+      '@rizakura-me/db':
         specifier: workspace:0.0.0
         version: link:../../packages/db
       drizzle-orm:
@@ -122,7 +122,7 @@ importers:
 
   workers/metadata-fetcher:
     dependencies:
-      '@tech-inbox/contracts':
+      '@rizakura-me/contracts':
         specifier: workspace:0.0.0
         version: link:../../packages/contracts
       '@tech-inbox/core':

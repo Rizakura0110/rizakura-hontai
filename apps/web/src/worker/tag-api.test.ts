@@ -2,7 +2,7 @@ import type { Article } from "@tech-inbox/core/article";
 import type { Tag } from "@tech-inbox/core/tag";
 import { describe, expect, it, vi } from "vitest";
 import { createApp, type AppBindings, type RequestLogEvent } from "./app";
-import { ApiError } from "./errors";
+import { ApiError } from "./platform/errors";
 import type { ArticleRepository } from "./repositories/article-repository";
 import type { TagRepository } from "./repositories/tag-repository";
 
@@ -76,6 +76,7 @@ function localBindings(): AppBindings {
   const allow = { limit: async () => ({ success: true }) } as RateLimit;
   return {
     DB: {} as D1Database,
+    ASSETS: {} as Fetcher,
     METADATA_QUEUE: {} as Queue,
     METADATA_FETCHER: {} as Fetcher,
     RATE_LIMIT_CREATE: allow,

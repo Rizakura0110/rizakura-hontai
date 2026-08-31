@@ -1,4 +1,4 @@
-import type { ApiErrorCode, ApiErrorDetails } from "@tech-inbox/contracts";
+import type { ApiErrorCode, ApiErrorDetails } from "@rizakura-me/contracts/http";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 
 export class ApiError extends Error {

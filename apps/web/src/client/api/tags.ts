@@ -4,8 +4,8 @@ import {
   deleteTagResponseSchema,
   listTagsResponseSchema,
   tagResponseSchema,
-} from "@tech-inbox/contracts";
-import { apiFetch, assertSuccess } from "./http";
+} from "@rizakura-me/contracts";
+import { apiFetch, assertSuccess } from "../platform/http";
 
 type RequestOptions = {
   readonly signal?: AbortSignal;

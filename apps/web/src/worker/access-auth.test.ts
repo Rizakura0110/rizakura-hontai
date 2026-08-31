@@ -1,6 +1,6 @@
 import { createLocalJWKSet, exportJWK, generateKeyPair, SignJWT, type JWTVerifyGetKey } from "jose";
 import { beforeAll, describe, expect, it } from "vitest";
-import { authenticateAccessRequest, type AccessAuthBindings } from "./access-auth";
+import { authenticateAccessRequest, type AccessAuthBindings } from "./platform/access-auth";
 
 const issuer = "https://tech-inbox-test.cloudflareaccess.com";
 const audience = "test-access-audience";

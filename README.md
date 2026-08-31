@@ -1,14 +1,16 @@
-# Tech Inbox
+# rizakura-me
 
-Tech Inboxは、あとで読む技術記事のURLを個人で保存・整理するためのWebアプリです。Cloudflare Accessで所有者1人だけに公開し、URL登録後のメタデータ取得は非同期で行います。取得に失敗してもURLは失わず、タイトルを手動編集できます。
+rizakura-meは、本人限定のツールへの入口と共通基盤です。記事管理のTech Inboxを含み、習慣管理のDaymarkは別repositoryから統合する予定です。Cloudflare Accessと既存のapp Worker・D1を共有します。
 
-## 次期構成: rizakura-me / Daymark
+## 実装と本番の状態
 
-共通基盤と入口のサイトを`rizakura-me`とし、Tech Inboxと習慣管理`Daymark`へ遷移する構成を計画しています。Daymarkのコードは別repositoryで管理し、既存app Worker・D1へ統合します。PWAはTech InboxとDaymarkを個別に提供し、入口専用PWAは作りません。
+Phase 19では共通基盤と入口をローカル実装しました。`/`から`/tech-inbox/`へ進み、記事画面から入口へ戻れます。設定は`/tech-inbox/settings`です。旧`/articles`・`/settings`はqueryを維持して移動します。Daymarkは「準備中」で、習慣の機能・UIはまだ作っていません。
 
-現在の本番提供はTech Inboxのみです。まず共通基盤・入口・repository連携の準備を進め、Daymarkの機能・UIは実装直前に所有者と設計します。repository・Worker・DBの改名やDaymarkの公開はまだ行っていません。[設計書](docs/rizakura-me-design.md)と[Phase 18〜25の計画](docs/rizakura-me-roadmap.md)を参照してください。
+この変更は未デプロイで、本番は従来のTech Inboxのままです。GitHub repository・Worker・DBの改名、新repositoryの作成、package公開はまだ行っていません。Daymarkの機能・UIはPhase 21冒頭に所有者と設計します。[設計書](docs/rizakura-me-design.md)と[Phase 18〜25の計画](docs/rizakura-me-roadmap.md)を参照してください。
 
-## 主な機能
+## Tech Inboxの主な機能
+
+あとで読む技術記事を保存・整理します。URL登録後のメタデータ取得は非同期で行い、取得に失敗してもURLを保持してタイトルを手動編集できます。
 
 - URLの登録、重複防止、canonical URL重複時の安全な統合
 - 未読・既読の切り替え、検索、状態・タグによる絞り込み、並べ替え
@@ -42,6 +44,8 @@ tech-inbox-metadata-fetcher Worker
 
 アプリWorkerがStatic Assets、API、D1、Queueを担当します。metadata-fetcherは公開URL、D1、Queue、Secretsを持たず、Service Binding経由でのみ呼び出されます。
 
+共通の認証・request検証・Rate Limit・安全なlogは`apps/web/src/worker/platform/`、記事APIは`tech-inbox-api.ts`へ分離しています。共通layout・dialog・通知・HTTP clientは`apps/web/src/client/platform/`にあります。内部package名は`rizakura-me`、`@rizakura-me/web`、`@rizakura-me/contracts`、`@rizakura-me/db`で、記事domainの`@tech-inbox/core`と実際のCloudflare resource名は維持しています。
+
 主要バージョンと採用理由は[Dependency baseline](docs/dependency-baseline.md)を参照してください。
 
 ## 対応環境
@@ -58,6 +62,8 @@ tech-inbox-metadata-fetcher Worker
 productionへログインした状態でiPhone Safariの共有メニューを開き、「ホーム画面に追加」から「Webアプリとして開く」を有効にします。追加後はホーム画面のTech Inboxアイコンから、URL barのないstandalone表示で起動できます。
 
 PWAは現在のapp WorkerとCloudflare Accessをそのまま使用します。Service Workerとoffline cacheは登録しないため、利用時はnetwork接続が必要です。Access sessionの期限が切れた場合は再ログインします。
+
+Phase 19の反映後はTech Inbox画面から追加します。入口にはmanifestを付けず、Tech Inboxの既存PWA id `/`を維持して起動先・scopeを`/tech-inbox/`へ分けます。インストール済みPWAの実機移行は本番反映後に確認し、必要な場合だけ追加し直します。Daymark専用PWAは後続フェーズで実装します。
 
 ## Local setup
 

@@ -1,4 +1,4 @@
-import type { ArticleDto } from "@tech-inbox/contracts";
+import type { ArticleDto } from "@rizakura-me/contracts";
 import type { Article } from "@tech-inbox/core/article";
 
 export function toArticleDto(article: Article): ArticleDto {

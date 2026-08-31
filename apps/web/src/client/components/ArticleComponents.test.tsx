@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import type { ArticleDto, TagDto } from "@tech-inbox/contracts";
+import type { ArticleDto, TagDto } from "@rizakura-me/contracts";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -9,7 +9,7 @@ import { AppLayout } from "./AppLayout";
 import { ArticleCard } from "./ArticleCard";
 import { ArticleComposer } from "./ArticleComposer";
 import { DeleteArticleDialog, EditArticleDialog } from "./ArticleDialogs";
-import { Modal } from "./Modal";
+import { Modal } from "../platform/Modal";
 
 const now = "2026-08-27T01:02:03.000Z";
 const article: ArticleDto = {
@@ -50,7 +50,7 @@ afterEach(() => {
 describe("AppLayout", () => {
   it("renders both accessible navigations and marks the current destination", () => {
     render(
-      <MemoryRouter initialEntries={["/articles"]}>
+      <MemoryRouter initialEntries={["/tech-inbox/"]}>
         <AppLayout>
           <p>Page content</p>
         </AppLayout>

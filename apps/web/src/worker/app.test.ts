@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { app } from "./app";
-import { SECURITY_HEADERS } from "./security-headers";
+import { app, createApp, type AppBindings } from "./app";
+import { SECURITY_HEADERS } from "./platform/security-headers";
 
 describe("health API", () => {
   it("returns an uncached JSON health response with a request ID", async () => {
@@ -21,7 +21,12 @@ describe("health API", () => {
   });
 
   it("returns the safe JSON error shape for an unknown API route", async () => {
-    const response = await app.request("http://localhost/api/v1/unknown");
+    const localApp = createApp({ log: () => undefined });
+    // Local fixture omits DB/assets because this unknown route must never use them.
+    const response = await localApp.request("http://localhost/api/v1/unknown", undefined, {
+      ENVIRONMENT: "local",
+      APP_ORIGIN: "http://localhost",
+    } as AppBindings);
     const requestId = response.headers.get("x-request-id");
 
     expect(response.status).toBe(404);

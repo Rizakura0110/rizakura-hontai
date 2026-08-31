@@ -3,10 +3,10 @@ import {
   type BackupImportSnapshot,
   type BackupImportSummary,
   MAX_BACKUP_IMPORT_FILE_BYTES,
-} from "@tech-inbox/contracts";
+} from "@rizakura-me/contracts";
 import { type ChangeEvent, useState } from "react";
 import { applyBackupImport, previewBackupImport } from "../api/backup";
-import { userFacingError } from "../api/http";
+import { userFacingError } from "../platform/http";
 
 type BackupImporterProps = {
   readonly onImported: () => void;

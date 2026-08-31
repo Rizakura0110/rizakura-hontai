@@ -1,4 +1,4 @@
-import type { TagDto } from "@tech-inbox/contracts";
+import type { TagDto } from "@rizakura-me/contracts";
 
 type TagChipProps = {
   readonly tag: TagDto;

@@ -1,4 +1,4 @@
-import type { TagDto } from "@tech-inbox/contracts";
+import type { TagDto } from "@rizakura-me/contracts";
 import type { Tag } from "@tech-inbox/core/tag";
 
 export function toTagDto(tag: Tag): TagDto {

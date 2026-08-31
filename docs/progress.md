@@ -1370,3 +1370,57 @@
 - Daymarkの機能・UIは未設計。Phase 20完了後、Phase 21の業務実装前に所有者と合意する。
 - Daymark repositoryのpublic/privateと配布方式はPhase 20の外部操作前に確定する。Phase 18/19の停止条件ではない。
 - package namespace・publish権限、GitHub改名/新規作成、本番名/URL移行は後続フェーズの明示的な外部操作gateとする。
+
+## Phase 19: rizakura-meの共通基盤と入口
+
+状態: 完了（2026-08-31）。実装・ローカル検証を完了し、productionへの反映は行っていない。
+
+### 実施内容
+
+- rizakura-meの入口を追加し、Tech Inboxへのdocument navigationと記事画面からの戻りlinkを実装した。Daymarkは準備中表示だけで、業務機能・フォーム・DB/APIは作っていない。
+- Tech Inboxを`/tech-inbox/`・`/tech-inbox/settings`へ移し、旧`/articles`・`/settings`からqueryを保持して互換遷移する。
+- 入口と記事のHTML/JS entrypointを分離した。入口は記事APIを取得せず、manifestを持たない。記事の既存PWA id・manifest URL・iconを維持し、start_url/scopeを記事配下へ分けた。
+- ASSETS bindingと既知pathの配信を追加し、全体SPA fallbackを無効化した。未知path、Daymark未提供path、欠落assetへHTMLを返さない。
+- 記事APIを共通認証・request検証・Rate Limit・error/logから分離した。health GET/HEAD以外のAPIは未知pathを含めて既定保護し、未分類handlerにもread/mutate制限を適用する。
+- 共通UI・HTTP client・HTTP契約を分離し、root/web/contracts/dbの内部package名をrizakura-meへ整理した。新旧client headerを互換維持する。
+- 旧機能のtestを維持し、入口往復、URL/HTML/PWA互換、仮の追加APIの保護、import境界のtestを追加した。
+
+### 主な変更ファイル
+
+- `apps/web/index.html`、`apps/web/tech-inbox/index.html`、`vite.config.ts`、`wrangler.jsonc`、`worker-configuration.d.ts`
+- `apps/web/src/client/portal.tsx`、`pages/PortalPage.tsx`、`platform/`、記事layout/routerとimport参照
+- `apps/web/src/worker/app.ts`、`bindings.ts`、`tech-inbox-api.ts`、`platform/`と既存API/testのimport参照
+- `packages/contracts/src/http.ts`、各workspaceのpackage manifest、`pnpm-lock.yaml`
+- `tests/e2e/article-inbox.spec.ts`、`scripts/platform-boundaries.test.mjs`、`vitest.config.ts`
+- README、設計/roadmap、Security、Operations、Cloudflare setup、Quality gates、manual device test、dependency baseline、ADR-0010
+
+### 採用判断
+
+- 既存Cloudflare/Vite構成、D1・Access・origin・Queueの対象は維持し、新しいhosting・DB・Worker・外部依存は追加しない。
+- 入口と記事は別HTMLとし、client側だけのmanifest付け替えは行わない。記事の既知画面だけをWorker経由で配信し、欠落assetへfallbackしない。
+- package名変更は内部workspace参照だけ。第三者package version・integrity・7日policyを変更しない。
+- 習慣機能の設計・実装を先行しない。公開範囲や配布先、repository作成・改名はPhase 20へ残す。
+
+### 実行したコマンド
+
+- 既存source・guide・設計書とCloudflare/Viteの公式仕様確認
+- `pnpm install --frozen-lockfile`、`pnpm cf:typegen`
+- `pnpm format`、`pnpm lint`、`pnpm typecheck`、`pnpm test`、`pnpm build`、`pnpm e2e`
+- `pnpm check`
+
+### 検証結果
+
+- 最終の`pnpm check`が成功。format、lint、生成型整合、TypeScript、test、coverage、local D1・実HTTP、build、artifact budget、E2E、auditを通過した
+- 39 files・407 unit/component/integration tests、27 desktop/mobile E2E testsがpass。desktop専用sidebar testのmobile実行1件は従来どおりskip
+- coverageはstatements 86.98%、branches 82.79%、functions 87.21%、lines 88.59%で既存thresholdを満たした
+- artifact budgetはapp Worker 451.7 KiB raw / 97.1 KiB gzip、metadata-fetcher 585.6 / 88.8、client JS合計359.6 / 106.0、CSS 30.2 / 6.5で上限内
+- dependency auditはhigh 0・critical 0。既知の開発時推移依存のmoderate 1件は継続し、runtime依存の追加やpolicy緩和はない
+- 全phase差分をreviewし、`git diff --cached --check`、変更documentのlocal link 40件、生成物・cache・秘密fileのignoreとtracked contentのcredential pattern scanを確認した。対象外ファイル・検出された秘密値の混入はない
+- TypeScriptのASSETS test fixture不足を修正した。import境界testは固定TypeScript 7の非対応compiler APIを使わず、static ESM検査へ修正してpassした
+- buildの本番Secrets不足warningには本番credentialを補充せず、E2Eはtest専用設定で実行した
+
+### 未解決事項
+
+- 本番反映、実際のAccess・CPU、既存iPhone PWAのmetadata更新・起動先移行は未確認。local testを本番/実機成功とは記録しない
+- GitHub repository改名・Daymark repository作成・package公開、Cloudflare resource名変更、remote migrationは未実施
+- 次はPhase 20の別repository・配布連携準備。習慣機能・UI設計はPhase 21冒頭に所有者と行う

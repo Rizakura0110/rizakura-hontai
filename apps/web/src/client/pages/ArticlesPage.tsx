@@ -1,4 +1,4 @@
-import type { ArticleDto, ArticleListStatus, ArticleSort, TagDto } from "@tech-inbox/contracts";
+import type { ArticleDto, ArticleListStatus, ArticleSort, TagDto } from "@rizakura-me/contracts";
 import { type FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import {
   createArticle,
@@ -13,7 +13,7 @@ import { ArticleCard } from "../components/ArticleCard";
 import { ArticleComposer } from "../components/ArticleComposer";
 import { DeleteArticleDialog, EditArticleDialog } from "../components/ArticleDialogs";
 import { TagDialog } from "../components/TagDialog";
-import { Toast, type ToastState } from "../components/Toast";
+import { Toast, type ToastState } from "../platform/Toast";
 
 const sortLabels: ReadonlyArray<{ value: ArticleSort; label: string }> = [
   { value: "saved_desc", label: "保存日の新しい順" },

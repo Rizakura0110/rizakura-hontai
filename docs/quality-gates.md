@@ -1,6 +1,6 @@
 # Quality gates
 
-最終更新: 2026-08-29
+最終更新: 2026-08-31
 
 ## 標準ゲート
 
@@ -53,7 +53,7 @@ V8 unit coverageから次だけを除外する。
 - `apps/web/src/worker/repositories/d1-article-repository.ts`: fake DBではなく、`pnpm api:verify:local`でfreshな実D1と実HTTPを検証する。
 - `apps/web/src/worker/d1-article-repository.integration-fixture.ts`: 上記adapterをlocal Workerから実行するtest専用entrypointとして、`pnpm api:verify:local`で検証する。
 - app Workerとmetadata-fetcherの`index.ts`: runtime composition entrypointとして、生成型、typecheck、production dry-run build、統合テストで検証する。
-- client `main.tsx`: browser boot entrypointとしてproduction buildとPlaywrightで検証する。
+- client `main.tsx`・`portal.tsx`: browser boot entrypointとしてproduction buildとPlaywrightで検証する。
 
 除外は未検証を意味しない。対応する統合ゲートを`pnpm check`から外さない。
 
@@ -73,9 +73,14 @@ V8 unit coverageから次だけを除外する。
 | 削除 | 確認dialogと一覧からの削除 |
 | JSON export | 実downloadファイル名、schema、内容 |
 | JSON restore | file検証、preview、明示確認、追加後の記事・タグ表示、再実行時の無変更 |
-| unauthorized API拒否 | mockを通らないWorker APIの403 |
+| unauthorized API拒否 | mockを通らないWorker APIの401。設定欠落時の403はWorker testで確認 |
 | タグの全操作 | 作成、複数付与、絞り込み、解除、名前変更、削除後の記事保持 |
 | PWA配信境界 | credential付きmanifest link、standalone設定、192/512/maskable/Apple icon、manifestだけを許可するCSP、Service Worker禁止 |
+| rizakura-me入口 | 入口では記事APIを取得しない、Daymark準備中、記事とのdocument navigation往復、320px幅 |
+| URLとHTML互換 | 旧記事・設定pathのquery維持、直接設定URLのHTML、入口にmanifestなし、記事の既存idと専用scope |
+| fallback境界 | 未知document・欠落assetは404、将来のAPIも未認証で401・JSON |
+
+共通API単体testでは、製品のpath登録なしで追加handlerがJWT・Origin・JSON・client header・Rate Limitを通ることを確認する。新旧client header、HEADを含む旧記事のRate Limit分類、安全なerror/logも維持する。`scripts/platform-boundaries.test.mjs`で共通client/server moduleのstatic ESM importが業務実装を参照せず、HTTP契約が記事domainに依存しないことを確認する。
 
 タグ機能は、UI追加前の基盤フェーズから次の実D1・実HTTP検証を必須にする。
 

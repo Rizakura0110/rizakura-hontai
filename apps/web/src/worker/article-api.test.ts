@@ -53,6 +53,7 @@ function localBindings(): AppBindings {
   const allow = { limit: async () => ({ success: true }) } as RateLimit;
   return {
     DB: {} as D1Database,
+    ASSETS: {} as Fetcher,
     METADATA_QUEUE: {} as Queue,
     METADATA_FETCHER: {} as Fetcher,
     RATE_LIMIT_CREATE: allow,
@@ -259,7 +260,7 @@ describe("article API", () => {
 
     expect(response.status).toBe(200);
     expect(authenticateAccess).toHaveBeenCalledWith(expect.any(Request), bindings);
-    expect(enforceRateLimit).toHaveBeenCalledWith(bindings, principal, "articles.list");
+    expect(enforceRateLimit).toHaveBeenCalledWith(bindings, principal, "read");
   });
 
   it("rejects an invalid mutation Origin before touching the repository", async () => {

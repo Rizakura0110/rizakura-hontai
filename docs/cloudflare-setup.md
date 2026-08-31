@@ -1,5 +1,16 @@
 # Cloudflare setup
 
+## Phase 19 local configuration（production未反映）
+
+- app Worker名、D1名・ID、Access・origin、Queue/Service/Rate Limitのremote設定は維持する。
+- Viteのclient buildに入口`index.html`と記事`tech-inbox/index.html`を指定する。
+- Static Assetsは`not_found_handling: "none"`へ変更する。`ASSETS` bindingで既存assetを取得し、記事の既知pathだけに専用HTMLを返す。
+- `run_worker_first`には`/api`、`/api/*`、旧記事・設定path、`/tech-inbox`、`/tech-inbox/*`を指定する。rootと存在する共有assetは通常のStatic Assets配信を維持する。
+- 新しいresourceを作らず、古いpath・manifestを互換維持する。生成Binding型は再生成する。
+- これはlocal buildとpreview用の設定更新であり、以下の過去deployment記録を書き換えるものではない。
+
+配信方法は[Cloudflare Vite Static Assets](https://developers.cloudflare.com/workers/vite-plugin/reference/static-assets/)と[Vite Multi-Page App](https://vite.dev/guide/build#multi-page-app)の公式仕様を確認した。
+
 ## Phase 0 cost baseline
 
 確認日: 2026-08-26

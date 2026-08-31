@@ -10,32 +10,7 @@ export type RateLimitBindings = {
   readonly RATE_LIMIT_EXPORT?: RateLimit;
 };
 
-type RateLimitCategory = "create" | "retry" | "mutate" | "read" | "export";
-
-function categoryForRoute(routeName: string): RateLimitCategory | undefined {
-  if (routeName === "articles.create") return "create";
-  if (routeName === "articles.retry_metadata") return "retry";
-  if (routeName === "articles.update" || routeName === "articles.delete") return "mutate";
-  if (
-    routeName === "tags.create" ||
-    routeName === "tags.update" ||
-    routeName === "tags.delete" ||
-    routeName === "article_tags.replace" ||
-    routeName === "import.apply"
-  ) {
-    return "mutate";
-  }
-  if (
-    routeName === "articles.list" ||
-    routeName === "articles.get" ||
-    routeName === "tags.list" ||
-    routeName === "article_tags.list"
-  ) {
-    return "read";
-  }
-  if (routeName === "export.get" || routeName === "import.preview") return "export";
-  return undefined;
-}
+export type RateLimitCategory = "create" | "retry" | "mutate" | "read" | "export";
 
 function bindingForCategory(
   bindings: RateLimitBindings,
@@ -59,11 +34,8 @@ async function hashPrincipal(principal: AuthPrincipal): Promise<string> {
 export async function enforceApiRateLimit(
   bindings: RateLimitBindings,
   principal: AuthPrincipal,
-  routeName: string,
+  category: RateLimitCategory,
 ): Promise<void> {
-  const category = categoryForRoute(routeName);
-  if (category === undefined) return;
-
   const binding = bindingForCategory(bindings, category);
   if (binding === undefined) {
     if (bindings.ENVIRONMENT === "local") return;

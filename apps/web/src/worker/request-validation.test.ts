@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { ApiError } from "./errors";
+import { ApiError } from "./platform/errors";
 import {
   MAX_REQUEST_BODY_BYTES,
   parseQuery,
   parseWithSchema,
   readJsonBody,
-} from "./request-validation";
+} from "./platform/request-validation";
 
 describe("parseWithSchema", () => {
   it("returns parsed data and maps schema failures to validation errors", () => {

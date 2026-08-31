@@ -1,4 +1,4 @@
-import { CONTRACT_LIMITS, type FetchedMetadata } from "@tech-inbox/contracts";
+import { CONTRACT_LIMITS, type FetchedMetadata } from "@rizakura-me/contracts";
 
 export type RawMetadata = {
   title: string;

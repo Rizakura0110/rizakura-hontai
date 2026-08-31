@@ -14,6 +14,8 @@
 
 実機を操作していない状態を「確認済み」と記録しない。OS、Chrome、端末、向き、実施者、日時を結果に残す。個人情報や秘密値をスクリーンショット、issue、commitへ含めない。
 
+Phase 19の入口・URL整理はまだproduction未反映です。上記の既存iPhone成功を新構成の移行成功とは扱いません。反映後は入口→Tech Inbox→入口の往復と、既存PWAが旧`/articles`から新`/tech-inbox/`へ起動できることを確認します。metadataが更新されない場合だけ追加し直しを検討し、Daymark用PWAは実装後に別途確認します。
+
 ## 実施前提
 
 1. Phase 9のデプロイとCloudflare Access設定が完了している。

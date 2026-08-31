@@ -3,7 +3,7 @@ import type {
   BackupImportSnapshot,
   BackupImportSummary,
   TagDto,
-} from "@tech-inbox/contracts";
+} from "@rizakura-me/contracts";
 import type { Article, ArticleUrlAlias } from "@tech-inbox/core/article";
 import {
   allocateTagColorHue,

@@ -6,9 +6,9 @@ import type {
   ReplaceArticleTagsRequest,
   TagResponse,
   UpdateTagRequest,
-} from "@tech-inbox/contracts";
+} from "@rizakura-me/contracts";
 import { allocateTagColorHue, MAX_TAGS, normalizeTagName } from "@tech-inbox/core/tag";
-import { ApiError, validationError } from "./errors";
+import { ApiError, validationError } from "./platform/errors";
 import type { Clock, IdGenerator } from "./article-service";
 import type { TagRepository } from "./repositories/tag-repository";
 import { toTagDto } from "./tag-dto";

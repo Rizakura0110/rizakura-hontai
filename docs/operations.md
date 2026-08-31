@@ -1,6 +1,17 @@
 # Operations
 
-最終更新: 2026-08-29
+最終更新: 2026-08-31
+
+## Phase 19の未反映変更
+
+共通基盤・入口の名前はrizakura-meへ整理しましたが、productionのresource名とURLは変更していません。現在の作業directoryも`/Users/ryo/dev/webclip`のままです。以下のdeploy・D1コマンドに残る`tech-inbox-app`・`tech-inbox`は実際の対象名であり、一括置換しません。
+
+- 本フェーズにDB schema変更・migrationはありません。Daymark repositoryと習慣機能も未作成です。
+- deploy後は`/`が入口、`/tech-inbox/`が記事、`/tech-inbox/settings`が設定になります。旧記事・設定URLはqueryを維持して同一origin内へ移動します。
+- 入口・記事のHTMLはそれぞれbuildします。全pathを入口HTMLへ戻すSPA fallbackを復活させないでください。
+- app Workerの`ASSETS`は既存のStatic Assetsへアクセスするbindingで、新しいDBやWorkerの作成ではありません。
+- Accessのhost全体保護、旧PWAからの記事起動、manifest更新、記事画面から入口への往復は承認後の本番反映時に確認します。iPhone実機移行はまだ未検証です。
+- 新旧client headerを互換対応しています。rollback時は既知のapp Worker versionへ戻し、古いHTMLが残る場合は再読み込みします。旧manifest/URLは削除しません。
 
 ## 運用原則
 

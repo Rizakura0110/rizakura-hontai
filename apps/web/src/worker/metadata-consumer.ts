@@ -4,7 +4,7 @@ import {
   type MetadataQueueMessage,
   metadataFetchResponseSchema,
   metadataQueueMessageSchema,
-} from "@tech-inbox/contracts";
+} from "@rizakura-me/contracts";
 import { isRetryableMetadataErrorCode, type MetadataErrorCode } from "@tech-inbox/core/metadata";
 import type { Article } from "@tech-inbox/core/article";
 import { normalizeUrl } from "@tech-inbox/core/url-normalization";

@@ -1,6 +1,6 @@
-import type { ArticleDto } from "@tech-inbox/contracts";
+import type { ArticleDto } from "@rizakura-me/contracts";
 import { type FormEvent, useEffect, useState } from "react";
-import { Modal } from "./Modal";
+import { Modal } from "../platform/Modal";
 
 type EditDialogProps = {
   readonly article: ArticleDto | null;

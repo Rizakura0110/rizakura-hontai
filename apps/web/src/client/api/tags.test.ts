@@ -1,4 +1,4 @@
-import type { TagDto } from "@tech-inbox/contracts";
+import type { TagDto } from "@rizakura-me/contracts";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createTag, deleteTag, listTags, replaceArticleTags, updateTag } from "./tags";
 
@@ -58,7 +58,7 @@ describe("tag API client", () => {
     for (const [, init] of mutationCalls) {
       const headers = new Headers(init?.headers);
       expect(headers.get("Content-Type")).toBe("application/json");
-      expect(headers.get("X-Tech-Inbox-Client")).toBe("web");
+      expect(headers.get("X-Rizakura-Me-Client")).toBe("web");
       expect(init?.credentials).toBe("same-origin");
     }
   });

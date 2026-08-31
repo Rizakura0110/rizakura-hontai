@@ -9,7 +9,7 @@ Phase 17までのTech Inboxは完了済み。以下は所有者と合意した�
 | Phase | 状態 | 内容 | 完了条件 |
 |---|---|---|---|
 | 18 | 完了 | 共通基盤・命名・連携境界の設計 | 入口＋2つのPWA、2 repository、1 app Worker/DB、互換移行と後続の確認gateを記録する。習慣機能/UIは確定しない |
-| 19 | 未着手 | 共通基盤の整理とrizakura-meの入口 | 既存記事を保ちながら認証・共通UI・製品別routingを分離。入口からTech Inboxへ進め、旧URLも動作する |
+| 19 | 完了（未デプロイ） | 共通基盤の整理とrizakura-meの入口 | 既存記事を保ちながら認証・共通UI・製品別routingを分離。入口からTech Inboxへ進め、旧URLも動作する |
 | 20 | 未着手 | Daymark repositoryとpackage連携の準備 | 公開範囲・配布方式を確認し、非機密の接続確認用stubを固定versionで取り込む。業務DB/API・機能UIは作らない |
 | 21 | 未着手・冒頭に設計合意gate | 習慣の機能/UI設計、その後にデータ・API | 所有者と機能・UIを合意してからDB/APIを実装し、localで検証する。既存記事への影響がない |
 | 22 | 未着手 | 合意した習慣画面と独立PWA | Phase 21で合意した機能UI、入口との往復、Daymark専用manifestが動作する |

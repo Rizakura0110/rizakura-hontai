@@ -8,10 +8,10 @@ import {
   exportResponseSchema,
   listArticlesResponseSchema,
   retryMetadataResponseSchema,
-} from "@tech-inbox/contracts";
-import { apiFetch, assertSuccess } from "./http";
+} from "@rizakura-me/contracts";
+import { apiFetch, assertSuccess } from "../platform/http";
 
-export { ApiClientError, userFacingError } from "./http";
+export { ApiClientError, userFacingError } from "../platform/http";
 
 type ListArticleOptions = {
   readonly status: ArticleListStatus;

@@ -1,5 +1,5 @@
 import type { Tag } from "@tech-inbox/core/tag";
-import type { TagRow } from "@tech-inbox/db";
+import type { TagRow } from "@rizakura-me/db";
 
 export function mapTagRow(row: TagRow): Tag {
   return {

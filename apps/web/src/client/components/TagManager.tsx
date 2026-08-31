@@ -1,6 +1,6 @@
-import { CONTRACT_LIMITS, type CreateTagResponse, type TagDto } from "@tech-inbox/contracts";
+import { CONTRACT_LIMITS, type CreateTagResponse, type TagDto } from "@rizakura-me/contracts";
 import { type FormEvent, useEffect, useState } from "react";
-import { Modal } from "./Modal";
+import { Modal } from "../platform/Modal";
 import { TagChip } from "./TagChip";
 
 type TagManagerProps = {

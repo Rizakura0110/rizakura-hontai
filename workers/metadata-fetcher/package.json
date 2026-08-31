@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "@tech-inbox/contracts": "workspace:0.0.0",
+    "@rizakura-me/contracts": "workspace:0.0.0",
     "@tech-inbox/core": "workspace:0.0.0"
   }
 }

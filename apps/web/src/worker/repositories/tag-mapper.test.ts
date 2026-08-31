@@ -1,4 +1,4 @@
-import type { TagRow } from "@tech-inbox/db";
+import type { TagRow } from "@rizakura-me/db";
 import { describe, expect, it } from "vitest";
 import { mapTagRow } from "./tag-mapper";
 

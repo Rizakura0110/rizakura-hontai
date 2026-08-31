@@ -1,4 +1,4 @@
-import type { ExportResponse, TagDto } from "@tech-inbox/contracts";
+import type { ExportResponse, TagDto } from "@rizakura-me/contracts";
 import { useEffect, useState } from "react";
 import { exportArticles, userFacingError } from "../api/articles";
 import { createTag, deleteTag, listTags, updateTag } from "../api/tags";

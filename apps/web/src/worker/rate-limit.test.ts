@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
-import type { AuthPrincipal } from "./access-auth";
-import type { ApiError } from "./errors";
-import { enforceApiRateLimit, type RateLimitBindings } from "./rate-limit";
+import type { AuthPrincipal } from "./platform/access-auth";
+import type { ApiError } from "./platform/errors";
+import { enforceApiRateLimit, type RateLimitBindings } from "./platform/rate-limit";
 
 const principal: AuthPrincipal = {
   subject: "private-access-subject",
@@ -13,26 +13,16 @@ function binding(success: boolean) {
   return { limit: vi.fn(async () => ({ success })) } as unknown as RateLimit;
 }
 
-describe("article API rate limiting", () => {
+describe("shared API rate limiting", () => {
   it.each([
-    ["articles.create", "RATE_LIMIT_CREATE", "create"],
-    ["articles.retry_metadata", "RATE_LIMIT_RETRY", "retry"],
-    ["articles.update", "RATE_LIMIT_MUTATE", "mutate"],
-    ["articles.delete", "RATE_LIMIT_MUTATE", "mutate"],
-    ["articles.list", "RATE_LIMIT_READ", "read"],
-    ["articles.get", "RATE_LIMIT_READ", "read"],
-    ["tags.create", "RATE_LIMIT_MUTATE", "mutate"],
-    ["tags.update", "RATE_LIMIT_MUTATE", "mutate"],
-    ["tags.delete", "RATE_LIMIT_MUTATE", "mutate"],
-    ["article_tags.replace", "RATE_LIMIT_MUTATE", "mutate"],
-    ["tags.list", "RATE_LIMIT_READ", "read"],
-    ["article_tags.list", "RATE_LIMIT_READ", "read"],
-    ["export.get", "RATE_LIMIT_EXPORT", "export"],
-    ["import.preview", "RATE_LIMIT_EXPORT", "export"],
-    ["import.apply", "RATE_LIMIT_MUTATE", "mutate"],
-  ] as const)("uses a pseudonymous key for %s", async (routeName, bindingName, category) => {
+    ["create", "RATE_LIMIT_CREATE"],
+    ["retry", "RATE_LIMIT_RETRY"],
+    ["mutate", "RATE_LIMIT_MUTATE"],
+    ["read", "RATE_LIMIT_READ"],
+    ["export", "RATE_LIMIT_EXPORT"],
+  ] as const)("uses a pseudonymous key for %s", async (category, bindingName) => {
     const limiter = binding(true);
-    await enforceApiRateLimit({ [bindingName]: limiter }, principal, routeName);
+    await enforceApiRateLimit({ [bindingName]: limiter }, principal, category);
 
     expect(limiter.limit).toHaveBeenCalledOnce();
     const key = vi.mocked(limiter.limit).mock.calls[0]?.[0].key;
@@ -43,7 +33,7 @@ describe("article API rate limiting", () => {
 
   it("returns a safe 429 when the binding rejects the request", async () => {
     await expect(
-      enforceApiRateLimit({ RATE_LIMIT_CREATE: binding(false) }, principal, "articles.create"),
+      enforceApiRateLimit({ RATE_LIMIT_CREATE: binding(false) }, principal, "create"),
     ).rejects.toMatchObject({
       status: 429,
       code: "RATE_LIMITED",
@@ -52,19 +42,16 @@ describe("article API rate limiting", () => {
 
   it("fails closed when a non-local deployment is missing its binding", async () => {
     await expect(
-      enforceApiRateLimit({ ENVIRONMENT: "production" }, principal, "articles.list"),
+      enforceApiRateLimit({ ENVIRONMENT: "production" }, principal, "read"),
     ).rejects.toMatchObject({
       status: 503,
       code: "SERVICE_UNAVAILABLE",
     } satisfies Partial<ApiError>);
   });
 
-  it("allows binding-free local development and ignores unrelated routes", async () => {
+  it("allows binding-free local development", async () => {
     await expect(
-      enforceApiRateLimit({ ENVIRONMENT: "local" }, principal, "articles.list"),
-    ).resolves.toBeUndefined();
-    await expect(
-      enforceApiRateLimit({} satisfies RateLimitBindings, principal, "api.not_found"),
+      enforceApiRateLimit({ ENVIRONMENT: "local" } satisfies RateLimitBindings, principal, "read"),
     ).resolves.toBeUndefined();
   });
 });

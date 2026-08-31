@@ -1,9 +1,12 @@
 {
-  "name": "@tech-inbox/contracts",
+  "name": "@rizakura-me/contracts",
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "exports": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./http": "./src/http.ts"
+  },
   "dependencies": {
     "@tech-inbox/core": "workspace:0.0.0",
     "zod": "4.4.3"

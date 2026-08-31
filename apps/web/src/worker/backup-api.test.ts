@@ -1,4 +1,4 @@
-import type { BackupImportSnapshot } from "@tech-inbox/contracts";
+import type { BackupImportSnapshot } from "@rizakura-me/contracts";
 import type { Article } from "@tech-inbox/core/article";
 import type { NormalizedUrl } from "@tech-inbox/core/url-normalization";
 import { describe, expect, it, vi } from "vitest";
@@ -48,6 +48,7 @@ function localBindings(): AppBindings {
   const allow = { limit: async () => ({ success: true }) } as RateLimit;
   return {
     DB: {} as D1Database,
+    ASSETS: {} as Fetcher,
     METADATA_QUEUE: {} as Queue,
     METADATA_FETCHER: {} as Fetcher,
     RATE_LIMIT_CREATE: allow,

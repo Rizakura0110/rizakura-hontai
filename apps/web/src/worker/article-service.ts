@@ -5,7 +5,7 @@ import type {
   ListArticlesQuery,
   ListArticlesResponse,
   UpdateArticleRequest,
-} from "@tech-inbox/contracts";
+} from "@rizakura-me/contracts";
 import {
   decodeArticleCursor,
   encodeArticleCursor,
@@ -14,7 +14,7 @@ import {
 import type { Article, ArticleChanges } from "@tech-inbox/core/article";
 import { normalizeUrl } from "@tech-inbox/core/url-normalization";
 import { toArticleDto } from "./article-dto";
-import { ApiError, validationError } from "./errors";
+import { ApiError, validationError } from "./platform/errors";
 import type { MetadataQueueProducer } from "./metadata-queue";
 import type { ArticleRepository } from "./repositories/article-repository";
 import { toTagDto } from "./tag-dto";

@@ -13,8 +13,18 @@
     "required": ["TEAM_DOMAIN", "POLICY_AUD", "ALLOWED_EMAIL"]
   },
   "assets": {
-    "not_found_handling": "single-page-application",
-    "run_worker_first": ["/api/*"]
+    "binding": "ASSETS",
+    "not_found_handling": "none",
+    "run_worker_first": [
+      "/api",
+      "/api/*",
+      "/articles",
+      "/articles/",
+      "/settings",
+      "/settings/",
+      "/tech-inbox",
+      "/tech-inbox/*"
+    ]
   },
   "d1_databases": [
     {

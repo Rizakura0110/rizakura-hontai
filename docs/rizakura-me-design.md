@@ -1,7 +1,7 @@
 # rizakura-me: 共通基盤とDaymarkの設計
 
 最終更新: 2026-08-31
-状態: Phase 18の共通基盤設計。Daymarkの機能・UIは実装直前に所有者と設計する。公開範囲・配布方式はPhase 20の外部操作前に確定する。本書は実装・公開済みを意味しない。
+状態: Phase 18の共通基盤設計を基にPhase 19の入口・共通APIをローカル実装。production反映は未実施。Daymarkの機能・UIは実装直前に所有者と設計する。公開範囲・配布方式はPhase 20の外部操作前に確定する。本書の後続計画は実装・公開済みを意味しない。
 
 最新の所有者指示を本設計の前提とする。旧実装ガイドの「記事専用」「PWAを実装しない」という初期scopeからの変更を記録する。手順と完了条件は[フェーズ計画](rizakura-me-roadmap.md)、判断の要約は[ADR-0009](decisions/0009-rizakura-me-product-boundaries.md)を参照する。
 
@@ -93,7 +93,7 @@ manifest linkの`crossorigin="use-credentials"`を維持する。Service Worker�
 
 ## 4. 認証・DB・運用境界
 
-- 現在は`app.ts`で保護対象pathを列挙している。Phase 19でprivate API groupを既定保護とし、新handlerがJWT・Origin・Rate Limitを通らずDBへ到達しない構造にする。health等の例外は明示的かつ非機密に限定する。
+- Phase 18時点の`app.ts`は保護対象pathを列挙していた。Phase 19で`platform/api.ts`の共通APIを既定保護とし、新handlerがJWT・Origin・Rate Limitを通らず処理へ到達しない構造をローカル実装した。例外は正確なhealth endpointのGET/HEADだけとする。
 - 既存header `X-Tech-Inbox-Client`は互換入力として維持し、新しい共通名`X-Rizakura-Me-Client`を導入する場合も値・Origin・JSON検証は弱めない。単に製品名が変わったことを理由に古いclientを破壊しない。
 - D1を直接利用するproduction Workerは既存app Workerのみとする。metadata-fetcherにDB・Secretsを追加しない。
 - Tech Inboxの既存table名は変更しない。Daymark用tableは`daymark_`prefixを付け、製品間のforeign key・SQL joinを初期版では作らない。

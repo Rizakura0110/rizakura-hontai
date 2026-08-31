@@ -1,4 +1,4 @@
-import type { MetadataQueueMessage } from "@tech-inbox/contracts";
+import type { MetadataQueueMessage } from "@rizakura-me/contracts";
 
 export const MAX_METADATA_ATTEMPTS = 3;
 export const METADATA_RETRY_DELAYS_SECONDS = [5, 15] as const;

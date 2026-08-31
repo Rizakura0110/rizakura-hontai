@@ -1,6 +1,8 @@
 # Security
 
-最終更新: 2026-08-28
+最終更新: 2026-08-31
+
+Phase 19の共通基盤整理を含むsourceの方針です。この変更のproduction反映は未実施であり、既存のAccess設定を変更した記録ではありません。
 
 ## 保護対象と境界
 
@@ -23,6 +25,7 @@ metadata-fetcherをD1・Queue・Secretsから分離し、外部HTML取得側が�
 - `TEAM_DOMAIN`はHTTPSの`*.cloudflareaccess.com` originだけを許可する
 - productionで設定やJWTが欠ける場合はrepositoryへ到達する前にfail closedする
 - local迂回は`ENVIRONMENT=local`、HTTP loopback、`APP_ORIGIN`完全一致の組み合わせだけに限定する
+- `/api`以下は製品ごとのpath列挙なしに共通保護を通す。例外は正確な`/api/v1/health`へのGET/HEADだけで、未知path・将来の製品APIも未認証では拒否する
 
 認証middlewareはJWT payloadをdomain serviceへ渡さず、検証済みの`AuthPrincipal`へ変換します。Access policyだけに依存せず、Worker内検証を第二の境界として維持します。
 
@@ -32,12 +35,14 @@ metadata-fetcherをD1・Queue・Secretsから分離し、外部HTML取得側が�
 
 - request、query、responseをstrictなZod schemaで検証し、未知fieldを拒否する
 - 通常のJSON request bodyを16 KiB、backup importを1 MiBにenvelope余白を加えた上限までに制限し、宣言値とstream実測値の両方を検査する
-- 変更操作は`Content-Type: application/json`、`Origin`の`APP_ORIGIN`完全一致、`X-Tech-Inbox-Client: web`を必須にする
+- 変更操作は`Content-Type: application/json`、`Origin`の`APP_ORIGIN`完全一致、`X-Rizakura-Me-Client: web`を必須にする。互換入力として旧`X-Tech-Inbox-Client: web`だけのclientも許可するが、両headerの値が競合・不正なら拒否する。移行中の新clientはrollback互換のため両方を送る
 - URL、title、tag、pagination cursor等へ長さ・形式・列挙値の上限を設ける
 - D1のUNIQUE、CHECK、foreign key、transactional batchでservice検証を補強する
 - clientへ返すerrorは安全な列挙済みcodeと一般化したmessageに限定し、内部例外を返さない
 
 Rate Limiting bindingはAccess principalのsubjectとemailをSHA-256化した値とroute categoryをkeyにします。生の識別子をbindingへ渡しません。categoryはcreate 30/min、metadata retry 10/min、mutation 60/min、read 120/min、export 5/minです。import previewはexport、import確定はmutationへ分類します。これは認証や厳密なglobal quotaの代替ではありません。
+
+製品固有の分類がないAPIも、変更系はmutation、それ以外はreadへ既定分類します。HEADは対応するGETと同じ分類とし、export制限を回避させません。共通基盤は記事のhandler、DB adapter、業務UIをimportせず、static ESM importの境界testで維持します。
 
 ## SSRFと外部HTML
 
@@ -68,6 +73,8 @@ Static AssetsとAPIの両方に次を設定します。
 - `X-Robots-Tag`と`robots.txt`によるindex拒否
 
 外部由来のtitle、site名、概要はReactのtextとして表示し、HTMLを注入しません。元記事linkは新しいtabで開き、openerを渡しません。
+
+入口と記事は別のHTML entrypointを配信し、入口では記事APIを取得しません。既知の記事pathだけを記事HTMLへ対応付け、欠落asset・未知path・APIへHTML fallbackを返しません。HTMLのCache-Controlを設定し、旧manifestとPWA idは維持します。製品間の移動は同一originのdocument navigationです。画面・static assetsへのAccess保護は従来どおりhost全体のapplicationで行い、同一originを製品間の強い隔離とはみなしません。
 
 ## Data、export、backup
 

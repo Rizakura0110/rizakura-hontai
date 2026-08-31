@@ -1,4 +1,4 @@
-import type { FetchedMetadata, MetadataQueueMessage } from "@tech-inbox/contracts";
+import type { FetchedMetadata, MetadataQueueMessage } from "@rizakura-me/contracts";
 import type { Article } from "@tech-inbox/core/article";
 import { describe, expect, it, vi } from "vitest";
 import {

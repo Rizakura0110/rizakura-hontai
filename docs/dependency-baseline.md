@@ -98,6 +98,8 @@ Phase 1の初回installで報告されたbuild scriptを確認し、次だけを
 
 ## Lockfileと監査結果
 
+- 2026-08-31のPhase 19では内部workspace名だけを`rizakura-me`、`@rizakura-me/web`、`@rizakura-me/contracts`、`@rizakura-me/db`へ整理した。`@tech-inbox/core`とmetadata-fetcherは記事専用として維持する。lockfileはworkspace参照名だけの変更で、第三者packageのversion・integrity・供給網設定を変更せず、`pnpm install --frozen-lockfile`で395 entriesのpolicy検証と再リンクを確認した。
+
 - Phase 1で`pnpm-lock.yaml`を生成し、`pnpm install --frozen-lockfile`の再現実行に成功した。
 - 2026-08-28のPhase 10最終監査でも`pnpm audit --audit-level high`は成功し、高0件・重大0件だった。direct dependencyとlockfileの変更はない。
 - 中程度が1件ある。`drizzle-kit 0.31.10`の開発時だけ使われる推移依存`@esbuild-kit/esm-loader > @esbuild-kit/core-utils > esbuild 0.18.20`が[GHSA-67mh-4wv8-2f99](https://github.com/advisories/GHSA-67mh-4wv8-2f99)に該当する。これはesbuild開発サーバーのアクセス制御に関する問題で、本アプリのruntime bundleには含まれない。修正版はesbuild 0.24.3以上だが、上流が`~0.18.20`を要求しているため、互換範囲を越える強制overrideは行わない。

@@ -1,4 +1,4 @@
-import { articles, articleTags, tags } from "@tech-inbox/db";
+import { articles, articleTags, tags } from "@rizakura-me/db";
 import { asc, eq, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 import type {

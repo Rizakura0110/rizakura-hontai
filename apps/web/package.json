@@ -1,5 +1,5 @@
 {
-  "name": "@tech-inbox/web",
+  "name": "@rizakura-me/web",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -11,9 +11,9 @@
     "cf:typecheck": "wrangler types --env-interface CloudflareBindings --check"
   },
   "dependencies": {
-    "@tech-inbox/contracts": "workspace:0.0.0",
+    "@rizakura-me/contracts": "workspace:0.0.0",
     "@tech-inbox/core": "workspace:0.0.0",
-    "@tech-inbox/db": "workspace:0.0.0",
+    "@rizakura-me/db": "workspace:0.0.0",
     "drizzle-orm": "0.45.2",
     "hono": "4.13.3",
     "jose": "6.2.9",

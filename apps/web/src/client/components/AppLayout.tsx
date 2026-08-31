@@ -1,13 +1,14 @@
 import type { ReactNode } from "react";
 import { NavLink } from "react-router";
+import { ProductLayout } from "../platform/ProductLayout";
 
 type AppLayoutProps = {
   readonly children: ReactNode;
 };
 
 const navigation = [
-  { to: "/articles", label: "すべて", glyph: "▤", end: true },
-  { to: "/settings", label: "設定", glyph: "⚙", end: false },
+  { to: "/tech-inbox/", label: "すべて", glyph: "▤", end: true },
+  { to: "/tech-inbox/settings", label: "設定", glyph: "⚙", end: false },
 ] as const;
 
 function NavigationItems({ mobile = false }: { readonly mobile?: boolean }) {
@@ -39,7 +40,7 @@ function Brand() {
     <NavLink
       aria-label="Tech Inbox すべての記事"
       className="flex min-h-11 items-center gap-3 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
-      to="/articles"
+      to="/tech-inbox/"
     >
       <span
         aria-hidden="true"
@@ -59,30 +60,13 @@ function Brand() {
 
 export function AppLayout({ children }: AppLayoutProps) {
   return (
-    <div className="min-h-dvh bg-[#f7f8fa] text-slate-800 md:pl-56">
-      <aside className="hidden border-r border-slate-200 bg-white px-4 py-5 md:fixed md:inset-y-0 md:left-0 md:z-30 md:flex md:w-56 md:flex-col md:overflow-y-auto">
-        <Brand />
-        <nav aria-label="メインナビゲーション" className="mt-8 flex flex-col gap-1">
-          <NavigationItems />
-        </nav>
-        <p className="mt-auto px-3 text-xs leading-5 text-slate-400">自分のための技術記事受信箱</p>
-      </aside>
-
-      <div className="min-w-0">
-        <header className="sticky top-0 z-20 flex h-16 items-center border-b border-slate-200/90 bg-white/95 px-4 backdrop-blur md:hidden">
-          <Brand />
-        </header>
-        <main className="mx-auto min-w-0 max-w-5xl px-4 pb-28 pt-6 sm:px-6 md:pb-12 md:pt-10 lg:px-10">
-          {children}
-        </main>
-      </div>
-
-      <nav
-        aria-label="モバイルナビゲーション"
-        className="safe-bottom fixed inset-x-0 bottom-0 z-30 flex border-t border-slate-200 bg-white/95 px-2 pt-1.5 backdrop-blur md:hidden"
-      >
-        <NavigationItems mobile />
-      </nav>
-    </div>
+    <ProductLayout
+      brand={<Brand />}
+      navigation={<NavigationItems />}
+      mobileNavigation={<NavigationItems mobile />}
+      description="自分のための技術記事受信箱"
+    >
+      {children}
+    </ProductLayout>
   );
 }
