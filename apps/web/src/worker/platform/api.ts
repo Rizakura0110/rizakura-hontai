@@ -1,4 +1,4 @@
-import type { ApiErrorResponse, HealthResponse } from "@rizakura-me/contracts/http";
+import type { ApiErrorResponse, HealthResponse } from "@rizakura-hontai/contracts/http";
 import { Hono, type Context } from "hono";
 import {
   authenticateAccessRequest,
@@ -85,14 +85,13 @@ function enforceMutationRequest(request: Request, bindings: PlatformBindings): v
   if (bindings.APP_ORIGIN === undefined || request.headers.get("Origin") !== bindings.APP_ORIGIN) {
     throw new ApiError(403, "FORBIDDEN", "許可されていないOriginです。");
   }
-  const client = request.headers.get("X-Rizakura-Me-Client");
-  const legacyClient = request.headers.get("X-Tech-Inbox-Client");
+  const clients = [
+    request.headers.get("X-Rizakura-Hontai-Client"),
+    request.headers.get("X-Rizakura-Me-Client"),
+    request.headers.get("X-Tech-Inbox-Client"),
+  ];
   // Keep old installed clients working, but reject conflicting/invalid header values.
-  if (
-    (client !== "web" && legacyClient !== "web") ||
-    (client !== null && client !== "web") ||
-    (legacyClient !== null && legacyClient !== "web")
-  ) {
+  if (!clients.includes("web") || clients.some((client) => client !== null && client !== "web")) {
     throw new ApiError(403, "FORBIDDEN", "必要なclient headerがありません。");
   }
 }

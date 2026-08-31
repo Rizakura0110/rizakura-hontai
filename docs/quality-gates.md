@@ -76,7 +76,7 @@ V8 unit coverageから次だけを除外する。
 | unauthorized API拒否 | mockを通らないWorker APIの401。設定欠落時の403はWorker testで確認 |
 | タグの全操作 | 作成、複数付与、絞り込み、解除、名前変更、削除後の記事保持 |
 | PWA配信境界 | credential付きmanifest link、standalone設定、192/512/maskable/Apple icon、manifestだけを許可するCSP、Service Worker禁止 |
-| rizakura-me入口 | 入口では記事APIを取得しない、Daymark準備中、記事とのdocument navigation往復、320px幅 |
+| rizakura-hontai入口 | 入口では記事APIを取得しない、Daymark準備中、記事とのdocument navigation往復、320px幅 |
 | URLとHTML互換 | 旧記事・設定pathのquery維持、直接設定URLのHTML、入口にmanifestなし、記事の既存idと専用scope |
 | fallback境界 | 未知document・欠落assetは404、将来のAPIも未認証で401・JSON |
 

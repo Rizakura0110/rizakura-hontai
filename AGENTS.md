@@ -17,9 +17,10 @@
 - Preserve the pinned dependency and supply-chain rules in `pnpm-workspace.yaml` and `docs/dependency-baseline.md`.
 - Do not commit `.dev.vars`, tokens, personal email allowlists, Cloudflare credentials, or other secrets.
 
-## rizakura-me and Daymark planning boundaries
+## rizakura-hontai and Daymark planning boundaries
 
-- For Phase 18 onward, use `docs/rizakura-me-design.md` and `docs/rizakura-me-roadmap.md` alongside the latest user instructions.
+- Name the shared foundation and portal `rizakura-hontai`. Keep Tech Inbox and Daymark as product names. The pre-existing `Rizakura0110/rizakura-me` repository is unrelated and must not be modified as part of this migration.
+- For Phase 18 onward, use `docs/rizakura-hontai-design.md` and `docs/rizakura-hontai-roadmap.md` alongside the latest user instructions.
 - Prepare the shared foundation, portal, and repository integration first. Daymark feature behavior and UI must be designed with the owner immediately before feature implementation at the start of Phase 21.
 - Through Phase 20, use only non-sensitive connectivity stubs for Daymark integration. Do not pre-build habit forms, domain API contracts, business tables, migrations, or achievement/aggregation rules from earlier draft ideas.
 - Resolve Daymark repository visibility and package distribution before the external operations in Phase 20; unanswered visibility questions do not block Phase 18/19 foundation work.

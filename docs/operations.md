@@ -2,9 +2,11 @@
 
 最終更新: 2026-08-31
 
-## Phase 19の未反映変更
+## Phase 19以降の未反映変更
 
-共通基盤・入口の名前はrizakura-meへ整理しましたが、productionのresource名とURLは変更していません。現在の作業directoryも`/Users/ryo/dev/webclip`のままです。以下のdeploy・D1コマンドに残る`tech-inbox-app`・`tech-inbox`は実際の対象名であり、一括置換しません。
+共通基盤・入口の名前はrizakura-hontaiへ整理しましたが、productionのresource名とURLは変更していません。現在の作業directoryも`/Users/ryo/dev/webclip`のままです。以下のdeploy・D1コマンドに残る`tech-inbox-app`・`tech-inbox`は実際の対象名であり、一括置換しません。
+
+GitHubは旧`Rizakura0110/webclip`を`Rizakura0110/rizakura-hontai`へ改名済みです。別repositoryの`Rizakura0110/rizakura-me`は変更していません。GitHubの命名変更はCloudflareへのdeployを伴いません。基盤codeの`@rizakura-hontai/*`は内部workspace名で、npm scopeを作成・公開した記録ではありません。
 
 - 本フェーズにDB schema変更・migrationはありません。Daymark repositoryと習慣機能も未作成です。
 - deploy後は`/`が入口、`/tech-inbox/`が記事、`/tech-inbox/settings`が設定になります。旧記事・設定URLはqueryを維持して同一origin内へ移動します。

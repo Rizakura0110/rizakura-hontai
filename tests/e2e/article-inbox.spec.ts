@@ -4,7 +4,7 @@ import type {
   BackupImportSnapshot,
   BackupImportSummary,
   TagDto,
-} from "@rizakura-me/contracts";
+} from "@rizakura-hontai/contracts";
 import { expect, type Page, test } from "@playwright/test";
 
 type MetadataTransition = "ready" | "failed";
@@ -388,7 +388,7 @@ test("portal and Tech Inbox use separate documents and only the article product 
     if (new URL(request.url()).pathname.startsWith("/api/")) dataRequests += 1;
   });
   await page.goto("/");
-  await expect(page).toHaveTitle("rizakura-me");
+  await expect(page).toHaveTitle("rizakura-hontai");
   await expect(page.getByRole("heading", { name: "今日も、自分のペースで。" })).toBeVisible();
   await expect(page.getByText("準備中", { exact: true })).toBeVisible();
   await expect(page.locator('a[href^="/daymark"]')).toHaveCount(0);
@@ -415,9 +415,9 @@ test("portal and Tech Inbox use separate documents and only the article product 
   await page.evaluate(() => {
     document.documentElement.dataset.documentMarker = "article";
   });
-  await page.getByRole("link", { name: "← rizakura-meへ" }).click();
+  await page.getByRole("link", { name: "← rizakura-hontaiへ" }).click();
   await expect(page).toHaveURL(/\/$/);
-  await expect(page).toHaveTitle("rizakura-me");
+  await expect(page).toHaveTitle("rizakura-hontai");
   expect(
     await page.evaluate(() => document.documentElement.dataset.documentMarker),
   ).toBeUndefined();
@@ -445,7 +445,7 @@ test("legacy URLs preserve queries and direct article settings receive the artic
     const html = await response.text();
     expect(html).toContain("<title>Tech Inbox</title>");
     expect(html).toContain('href="/manifest.webmanifest"');
-    expect(html).not.toContain("<title>rizakura-me</title>");
+    expect(html).not.toContain("<title>rizakura-hontai</title>");
   }
   const portal = await page.request.get("/");
   expect(await portal.text()).not.toContain('rel="manifest"');

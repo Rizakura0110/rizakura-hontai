@@ -14,7 +14,7 @@ function PortalLink() {
       className="inline-flex min-h-11 items-center rounded-lg text-xs text-slate-600 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
       href="/"
     >
-      ← rizakura-meへ
+      ← rizakura-hontaiへ
     </a>
   );
 }

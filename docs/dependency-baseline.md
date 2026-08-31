@@ -98,6 +98,8 @@ Phase 1の初回installで報告されたbuild scriptを確認し、次だけを
 
 ## Lockfileと監査結果
 
+- 2026-08-31のPhase 20命名移行では所有者指示により、基盤の内部workspaceを`rizakura-hontai`、`@rizakura-hontai/web`、`@rizakura-hontai/contracts`、`@rizakura-hontai/db`へ変更した。第三者version・integrity・供給網設定は変更せず、`pnpm install --frozen-lockfile`で395 entriesのpolicy検証と再リンクを確認した。これはnpm packageの公開ではない。
+
 - 2026-08-31のPhase 19では内部workspace名だけを`rizakura-me`、`@rizakura-me/web`、`@rizakura-me/contracts`、`@rizakura-me/db`へ整理した。`@tech-inbox/core`とmetadata-fetcherは記事専用として維持する。lockfileはworkspace参照名だけの変更で、第三者packageのversion・integrity・供給網設定を変更せず、`pnpm install --frozen-lockfile`で395 entriesのpolicy検証と再リンクを確認した。
 
 - Phase 1で`pnpm-lock.yaml`を生成し、`pnpm install --frozen-lockfile`の再現実行に成功した。

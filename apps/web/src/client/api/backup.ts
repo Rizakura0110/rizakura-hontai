@@ -2,7 +2,7 @@ import {
   backupImportPreviewResponseSchema,
   backupImportResponseSchema,
   type BackupImportSnapshot,
-} from "@rizakura-me/contracts";
+} from "@rizakura-hontai/contracts";
 import { apiFetch, assertSuccess } from "../platform/http";
 
 type RequestOptions = {

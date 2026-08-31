@@ -1,4 +1,9 @@
-import type { ArticleDto, ArticleListStatus, ArticleSort, TagDto } from "@rizakura-me/contracts";
+import type {
+  ArticleDto,
+  ArticleListStatus,
+  ArticleSort,
+  TagDto,
+} from "@rizakura-hontai/contracts";
 import { type FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import {
   createArticle,

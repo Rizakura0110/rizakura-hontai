@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import type { ArticleDto, TagDto } from "@rizakura-me/contracts";
+import type { ArticleDto, TagDto } from "@rizakura-hontai/contracts";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -212,6 +212,31 @@ describe("ArticleComposer", () => {
 });
 
 describe("Modal and article dialogs", () => {
+  it.each([true, false])(
+    "delayed autofocus respects an input selected inside the dialog (%s)",
+    (selectOtherInput) => {
+      let focusFrame: FrameRequestCallback | undefined;
+      vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {
+        focusFrame = callback;
+        return 1;
+      });
+      render(
+        <Modal onClose={vi.fn()} open title="Focus test">
+          <input data-autofocus aria-label="Initial input" />
+          <input aria-label="Other input" />
+        </Modal>,
+      );
+      const initial = screen.getByLabelText("Initial input");
+      const other = screen.getByLabelText("Other input");
+      expect(document.activeElement).toBe(initial);
+      if (selectOtherInput) other.focus();
+      else initial.blur();
+      expect(focusFrame).toBeTypeOf("function");
+      focusFrame?.(0);
+      expect(document.activeElement).toBe(selectOtherInput ? other : initial);
+    },
+  );
+
   it("handles native cancellation and restores focus on close", async () => {
     const onClose = vi.fn();
     const { rerender } = render(

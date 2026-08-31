@@ -35,7 +35,7 @@ metadata-fetcherをD1・Queue・Secretsから分離し、外部HTML取得側が�
 
 - request、query、responseをstrictなZod schemaで検証し、未知fieldを拒否する
 - 通常のJSON request bodyを16 KiB、backup importを1 MiBにenvelope余白を加えた上限までに制限し、宣言値とstream実測値の両方を検査する
-- 変更操作は`Content-Type: application/json`、`Origin`の`APP_ORIGIN`完全一致、`X-Rizakura-Me-Client: web`を必須にする。互換入力として旧`X-Tech-Inbox-Client: web`だけのclientも許可するが、両headerの値が競合・不正なら拒否する。移行中の新clientはrollback互換のため両方を送る
+- 変更操作は`Content-Type: application/json`、`Origin`の`APP_ORIGIN`完全一致、`X-Rizakura-Hontai-Client: web`を要求する。旧`X-Rizakura-Me-Client: web`・`X-Tech-Inbox-Client: web`だけのclientも互換入力として許可するが、指定したいずれかのheaderが不正・空・競合値なら拒否する。新clientはrollback互換のため現行headerと`X-Tech-Inbox-Client`を送る
 - URL、title、tag、pagination cursor等へ長さ・形式・列挙値の上限を設ける
 - D1のUNIQUE、CHECK、foreign key、transactional batchでservice検証を補強する
 - clientへ返すerrorは安全な列挙済みcodeと一般化したmessageに限定し、内部例外を返さない

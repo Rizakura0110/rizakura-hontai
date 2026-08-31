@@ -9,7 +9,7 @@ import type {
 } from "@tech-inbox/core/article";
 import { MAX_TAGS_PER_ARTICLE, type Tag } from "@tech-inbox/core/tag";
 import type { NormalizedUrl } from "@tech-inbox/core/url-normalization";
-import { articles, articleTags, articleUrls, type ArticleRow, tags } from "@rizakura-me/db";
+import { articles, articleTags, articleUrls, type ArticleRow, tags } from "@rizakura-hontai/db";
 import { and, asc, desc, eq, gt, inArray, isNull, lt, or, type SQL, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 import type {

@@ -1,4 +1,4 @@
-import type { ArticleDto, ExportResponse } from "@rizakura-me/contracts";
+import type { ArticleDto, ExportResponse } from "@rizakura-hontai/contracts";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   ApiClientError,
@@ -124,7 +124,7 @@ describe("article API client", () => {
       const headers = new Headers(init?.headers);
       expect(headers.get("Accept")).toBe("application/json");
       expect(headers.get("Content-Type")).toBe("application/json");
-      expect(headers.get("X-Rizakura-Me-Client")).toBe("web");
+      expect(headers.get("X-Rizakura-Hontai-Client")).toBe("web");
       expect(headers.get("X-Tech-Inbox-Client")).toBe("web");
       expect(init?.credentials).toBe("same-origin");
     }

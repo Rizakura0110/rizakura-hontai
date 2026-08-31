@@ -5,7 +5,7 @@ import type {
   ListArticlesQuery,
   ListArticlesResponse,
   UpdateArticleRequest,
-} from "@rizakura-me/contracts";
+} from "@rizakura-hontai/contracts";
 import {
   decodeArticleCursor,
   encodeArticleCursor,

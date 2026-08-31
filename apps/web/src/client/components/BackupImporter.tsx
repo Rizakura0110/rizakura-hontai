@@ -3,7 +3,7 @@ import {
   type BackupImportSnapshot,
   type BackupImportSummary,
   MAX_BACKUP_IMPORT_FILE_BYTES,
-} from "@rizakura-me/contracts";
+} from "@rizakura-hontai/contracts";
 import { type ChangeEvent, useState } from "react";
 import { applyBackupImport, previewBackupImport } from "../api/backup";
 import { userFacingError } from "../platform/http";

@@ -1,4 +1,4 @@
-import { apiErrorResponseSchema } from "@rizakura-me/contracts/http";
+import { apiErrorResponseSchema } from "@rizakura-hontai/contracts/http";
 
 export class ApiClientError extends Error {
   readonly code: string;
@@ -53,7 +53,7 @@ export async function apiFetch(
 
   if (init.body !== undefined && init.body !== null) {
     headers.set("Content-Type", "application/json");
-    headers.set("X-Rizakura-Me-Client", "web");
+    headers.set("X-Rizakura-Hontai-Client", "web");
     // Keep a new tab usable if the server is rolled back during the naming migration.
     headers.set("X-Tech-Inbox-Client", "web");
   }

@@ -2,7 +2,7 @@ import {
   metadataFetchRequestSchema,
   metadataFetchResponseSchema,
   type MetadataFetchResponse,
-} from "@rizakura-me/contracts";
+} from "@rizakura-hontai/contracts";
 import { fetchMetadata } from "./fetch-metadata";
 
 function jsonResponse(body: MetadataFetchResponse, status = 200): Response {

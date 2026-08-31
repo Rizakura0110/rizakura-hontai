@@ -23,7 +23,7 @@ import {
   type TagResponse,
   updateArticleRequestSchema,
   updateTagRequestSchema,
-} from "@rizakura-me/contracts";
+} from "@rizakura-hontai/contracts";
 import { Hono, type Context } from "hono";
 import type { AppBindings } from "./bindings";
 import type { ApiEnvironment, ApiRoutePolicy } from "./platform/api";

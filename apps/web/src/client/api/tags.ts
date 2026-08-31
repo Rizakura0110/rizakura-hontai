@@ -4,7 +4,7 @@ import {
   deleteTagResponseSchema,
   listTagsResponseSchema,
   tagResponseSchema,
-} from "@rizakura-me/contracts";
+} from "@rizakura-hontai/contracts";
 import { apiFetch, assertSuccess } from "../platform/http";
 
 type RequestOptions = {

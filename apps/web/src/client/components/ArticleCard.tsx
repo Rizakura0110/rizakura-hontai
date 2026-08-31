@@ -1,4 +1,4 @@
-import type { ArticleDto, TagDto } from "@rizakura-me/contracts";
+import type { ArticleDto, TagDto } from "@rizakura-hontai/contracts";
 import { TagChip } from "./TagChip";
 
 type ArticleCardProps = {

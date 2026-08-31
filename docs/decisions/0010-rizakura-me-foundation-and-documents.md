@@ -6,6 +6,8 @@
 
 ## Context
 
+名称は当時の決定を記録する。現行名rizakura-hontaiへの変更は[ADR-0011](0011-rizakura-hontai-naming.md)を参照する。
+
 Phase 18の設計に従い、既存Tech Inboxを維持して共通入口を追加する。習慣機能/UIは実装直前まで設計しない。従来の単一HTMLと記事pathの認証列挙では、入口のPWA metadataや将来のAPI保護を製品追加ごとに修正する必要があった。
 
 ## Decision
@@ -30,7 +32,7 @@ Phase 18の設計に従い、既存Tech Inboxを維持して共通入口を追�
 
 ## References
 
-- [共通基盤設計](../rizakura-me-design.md)
+- [共通基盤設計](../rizakura-hontai-design.md)
 - [Cloudflare Vite Static Assets](https://developers.cloudflare.com/workers/vite-plugin/reference/static-assets/)
 - [Static Assets binding](https://developers.cloudflare.com/workers/static-assets/binding/)
 - [Vite Multi-Page App](https://vite.dev/guide/build#multi-page-app)

@@ -9,7 +9,7 @@ const externalImports = new Set([
   "hono",
   "hono/utils/http-status",
   "jose",
-  "@rizakura-me/contracts/http",
+  "@rizakura-hontai/contracts/http",
 ]);
 
 function staticImports(source) {

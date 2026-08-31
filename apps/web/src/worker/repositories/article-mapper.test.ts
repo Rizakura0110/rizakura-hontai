@@ -1,4 +1,4 @@
-import type { ArticleRow } from "@rizakura-me/db";
+import type { ArticleRow } from "@rizakura-hontai/db";
 import { describe, expect, it } from "vitest";
 import { ArticleDataIntegrityError, mapArticleRow } from "./article-mapper";
 

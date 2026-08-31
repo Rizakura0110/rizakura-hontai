@@ -1,4 +1,4 @@
-import type { MetadataQueueMessage } from "@rizakura-me/contracts";
+import type { MetadataQueueMessage } from "@rizakura-hontai/contracts";
 import type { AccessAuthBindings } from "./platform/access-auth";
 import type { RateLimitBindings } from "./platform/rate-limit";
 

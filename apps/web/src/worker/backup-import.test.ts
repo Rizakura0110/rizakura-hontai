@@ -1,4 +1,4 @@
-import type { BackupImportSnapshot } from "@rizakura-me/contracts";
+import type { BackupImportSnapshot } from "@rizakura-hontai/contracts";
 import type { Article, ArticleUrlAlias } from "@tech-inbox/core/article";
 import type { Tag } from "@tech-inbox/core/tag";
 import type { NormalizedUrl } from "@tech-inbox/core/url-normalization";

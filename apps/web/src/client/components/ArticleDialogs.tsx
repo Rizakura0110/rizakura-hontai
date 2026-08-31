@@ -1,4 +1,4 @@
-import type { ArticleDto } from "@rizakura-me/contracts";
+import type { ArticleDto } from "@rizakura-hontai/contracts";
 import { type FormEvent, useEffect, useState } from "react";
 import { Modal } from "../platform/Modal";
 

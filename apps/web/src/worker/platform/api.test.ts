@@ -24,7 +24,7 @@ const bindings: PlatformBindings = {
 const mutationHeaders = {
   "Content-Type": "application/json",
   Origin: origin,
-  "X-Rizakura-Me-Client": "web",
+  "X-Rizakura-Hontai-Client": "web",
 };
 
 function fixture(overrides: Partial<ApiDependencies> = {}) {
@@ -114,8 +114,15 @@ describe("default-protected shared API", () => {
     [{ ...mutationHeaders, Origin: "" }, 403],
     [{ ...mutationHeaders, "Content-Type": "text/plain" }, 415],
     [{ "Content-Type": "application/json", Origin: origin }, 403],
-    [{ ...mutationHeaders, "X-Rizakura-Me-Client": "other", "X-Tech-Inbox-Client": "web" }, 403],
+    [
+      { ...mutationHeaders, "X-Rizakura-Hontai-Client": "other", "X-Tech-Inbox-Client": "web" },
+      403,
+    ],
     [{ ...mutationHeaders, "X-Tech-Inbox-Client": "other" }, 403],
+    [{ ...mutationHeaders, "X-Rizakura-Me-Client": "other" }, 403],
+    [{ ...mutationHeaders, "X-Rizakura-Me-Client": "" }, 403],
+    [{ ...mutationHeaders, "X-Rizakura-Me-Client": "web, web" }, 403],
+    [{ ...mutationHeaders, "X-Rizakura-Hontai-Client": "", "X-Rizakura-Me-Client": "web" }, 403],
   ] as const)("rejects invalid mutation headers before a handler (%j)", async (headers, status) => {
     const { app, handler } = fixture();
     const response = await app.request(
@@ -126,24 +133,27 @@ describe("default-protected shared API", () => {
     expect(response.status).toBe(status);
     expect(handler).not.toHaveBeenCalled();
   });
-  it("keeps the old Tech Inbox mutation header compatible", async () => {
-    const { app, handler } = fixture();
-    const response = await app.request(
-      `${origin}/api/v1/probe`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Origin: origin,
-          "X-Tech-Inbox-Client": "web",
+  it.each(["X-Tech-Inbox-Client", "X-Rizakura-Me-Client"])(
+    "keeps %s compatible",
+    async (header) => {
+      const { app, handler } = fixture();
+      const response = await app.request(
+        `${origin}/api/v1/probe`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Origin: origin,
+            [header]: "web",
+          },
+          body: "{}",
         },
-        body: "{}",
-      },
-      bindings,
-    );
-    expect(response.status).toBe(200);
-    expect(handler).toHaveBeenCalledOnce();
-  });
+        bindings,
+      );
+      expect(response.status).toBe(200);
+      expect(handler).toHaveBeenCalledOnce();
+    },
+  );
   it("stops a rate-limited new handler", async () => {
     const { app, handler } = fixture({
       enforceRateLimit: async () => {

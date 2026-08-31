@@ -1,16 +1,18 @@
-# rizakura-me / Daymark フェーズ計画
+# rizakura-hontai / Daymark フェーズ計画
 
 最終更新: 2026-08-31
 
-Phase 17までのTech Inboxは完了済み。以下は所有者と合意した次期計画であり、未実装の機能を本番提供済みとは扱わない。詳細は[設計書](rizakura-me-design.md)、実行結果は[Progress](progress.md)へ記録する。
+Phase 17までのTech Inboxは完了済み。以下は所有者と合意した次期計画であり、未実装の機能を本番提供済みとは扱わない。詳細は[設計書](rizakura-hontai-design.md)、実行結果は[Progress](progress.md)へ記録する。
+
+2026-08-31に基盤名をrizakura-meからrizakura-hontaiへ変更した。以下は現行名で表記し、過去の実行記録・ADRには当時の名前を残す。既存の別repository `Rizakura0110/rizakura-me`は移行対象ではない。
 
 ## 一覧
 
 | Phase | 状態 | 内容 | 完了条件 |
 |---|---|---|---|
 | 18 | 完了 | 共通基盤・命名・連携境界の設計 | 入口＋2つのPWA、2 repository、1 app Worker/DB、互換移行と後続の確認gateを記録する。習慣機能/UIは確定しない |
-| 19 | 完了（未デプロイ） | 共通基盤の整理とrizakura-meの入口 | 既存記事を保ちながら認証・共通UI・製品別routingを分離。入口からTech Inboxへ進め、旧URLも動作する |
-| 20 | 未着手 | Daymark repositoryとpackage連携の準備 | 公開範囲・配布方式を確認し、非機密の接続確認用stubを固定versionで取り込む。業務DB/API・機能UIは作らない |
+| 19 | 完了（未デプロイ） | 共通基盤の整理とrizakura-hontaiの入口 | 既存記事を保ちながら認証・共通UI・製品別routingを分離。入口からTech Inboxへ進め、旧URLも動作する |
+| 20 | 進行中（命名移行、npm認証待ち） | Daymark repositoryとpackage連携の準備 | 公開範囲・配布方式を確認し、非機密の接続確認用stubを固定versionで取り込む。業務DB/API・機能UIは作らない |
 | 21 | 未着手・冒頭に設計合意gate | 習慣の機能/UI設計、その後にデータ・API | 所有者と機能・UIを合意してからDB/APIを実装し、localで検証する。既存記事への影響がない |
 | 22 | 未着手 | 合意した習慣画面と独立PWA | Phase 21で合意した機能UI、入口との往復、Daymark専用manifestが動作する |
 | 23 | 未着手 | 製品別backup・復元 | 記事v1/v2を維持し、Daymarkを参照整合・競合表示付きで復元できる。他製品を変更しない |
@@ -37,13 +39,14 @@ Phase 17までのTech Inboxは完了済み。以下は所有者と合意した�
 ## Phase 19: 共通基盤と入口
 
 - APIの共通保護・error・log・request validationを製品のroute実装から分ける。Daymarkがまだなくても、仮のprivate routeで認証漏れがないことをtestする。
-- `/`を本人限定のrizakura-me入口にする。Tech Inboxの画面を`/tech-inbox/`配下に整理し、`/articles`と`/settings`の互換動線を残す。
+- `/`を本人限定のrizakura-hontai入口にする。Tech Inboxの画面を`/tech-inbox/`配下に整理し、`/articles`と`/settings`の互換動線を残す。
 - 入口にmanifestを付けず、記事画面には従来のTech Inbox identityを持つmanifestを返す。旧installed PWAの実機移行確認はproduction反映時に行う。
 - Daymark未提供中は準備中と明示し、壊れたリンクや架空の利用可能状態を表示しない。
-- 共通コード・表示名をrizakura-meへ変更し、記事専用名は維持。GitHub repository改名はPhase 20の外部操作前に対象を確認し、ローカルdirectory移動やCloudflare名変更と一括実行しない。
+- 共通コード・表示名をrizakura-hontaiへ変更し、記事専用名は維持。GitHub repository改名はPhase 20の外部操作前に対象を確認し、ローカルdirectory移動やCloudflare名変更と一括実行しない。
 
 ## Phase 20: 別repositoryと取り込み
 
+- public repository `Rizakura0110/daymark`とnpm public配布は所有者承認済み。基盤名の追加指示を受け、GitHubの旧webclipをrizakura-hontaiへ改名した。npmは未ログインで、namespace・公開権限と連携準備は残作業。
 - owner、repository名`daymark`、公開範囲、clone先、package namespace・配布先、権限を解決してから作成する。
 - 本番secret不要の独立test環境とCIを用意し、現行toolchain・供給網policyへ揃える。
 - browser/server/contracts/schemaのentrypoint境界と固定version取り込みを非機密の接続確認用stubで証明する。業務contractやtableは未作成とし、HTTP越しの独立production serviceにはしない。
@@ -68,8 +71,8 @@ Phase 17までのTech Inboxは完了済み。以下は所有者と合意した�
 
 ## 所有者に必要な確認
 
-- Phase 20の外部操作前: Daymarkのpublic/private、package配布先・namespace、必要時の認証と公開許可。
-- Phase 20の外部操作前: GitHub repository改名・新規作成の対象確認。作業directoryを移す場合は別途許可。
+- Phase 20の残作業: npm公開用ログインとpackage namespace・権限の確認。Daymarkのpublic作成・npm public配布は承認済みで、繰り返し確認しない。
+- 基盤GitHubの改名先はrizakura-hontaiで確定・改名済み。ローカル作業directoryは移動しない。新repositoryの対象・衝突は作成直前に確認する。
 - Phase 20完了後・Phase 21の業務実装前: 習慣管理の機能・UIを一緒に設計し、合意する。
 - Phase 25: 本番DB更新・deploy・必要な名称移行の承認と、iPhoneの2 PWA実機確認。
 

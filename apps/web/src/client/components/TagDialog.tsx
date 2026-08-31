@@ -1,4 +1,4 @@
-import { CONTRACT_LIMITS, type ArticleDto, type TagDto } from "@rizakura-me/contracts";
+import { CONTRACT_LIMITS, type ArticleDto, type TagDto } from "@rizakura-hontai/contracts";
 import { type FormEvent, useMemo, useState } from "react";
 import { Modal } from "../platform/Modal";
 import { TagChip } from "./TagChip";

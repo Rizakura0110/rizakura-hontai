@@ -5,6 +5,8 @@
 
 ## Context
 
+名称は当時の決定を記録する。2026-08-31の追加指示による現行名rizakura-hontaiへの変更は[ADR-0011](0011-rizakura-hontai-naming.md)を参照する。
+
 所有者はTech Inboxに加えて日々の習慣・数値目標を管理したい。基盤をrizakura-meへ改名し、入口から記事・習慣へ遷移させる。習慣管理は最低限別repositoryとする一方、DB・認証・運用の重複を抑えたい。PWAは全体で1つにせず、Tech InboxとDaymarkを個別に追加・起動する。
 
 現在のAccess verifierは独立fileだが、APIの保護path・Rate Limit分類・backup・共通layoutには記事専用の前提がある。PWAは`id: /`、`scope: /`、`start_url: /articles`で既に本番利用されている。また、dependencyは完全固定・公開後7日・Git URL/直接tarball禁止である。
@@ -37,4 +39,4 @@
 - registryを使う自作packageにも現行7日gateが適用され、公開当日の即時取り込みは前提にできない。
 - 基盤と接続準備を先に進められる一方、機能・UIの合意前に習慣DB/APIやフォームを実装しない。基盤準備の完了と製品仕様の承認を分ける。
 
-実施手順・未決事項は[設計書](../rizakura-me-design.md)と[フェーズ計画](../rizakura-me-roadmap.md)に記録する。
+実施手順・未決事項は[設計書](../rizakura-hontai-design.md)と[フェーズ計画](../rizakura-hontai-roadmap.md)に記録する。

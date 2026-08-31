@@ -6,7 +6,7 @@ import type {
   BackupImportSummary,
   ExportResponse,
   TagDto,
-} from "@rizakura-me/contracts";
+} from "@rizakura-hontai/contracts";
 import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -228,7 +228,7 @@ describe("SettingsPage", () => {
       "/api/v1/import",
     ]);
     for (const [, init] of mutationCalls) {
-      expect(new Headers(init?.headers).get("X-Rizakura-Me-Client")).toBe("web");
+      expect(new Headers(init?.headers).get("X-Rizakura-Hontai-Client")).toBe("web");
       expect(JSON.parse(String(init?.body))).toEqual({ backup: importBackup });
     }
     await waitFor(() => {

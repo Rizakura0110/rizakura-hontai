@@ -1,5 +1,5 @@
 import type { Article } from "@tech-inbox/core/article";
-import type { ArticleRow } from "@rizakura-me/db";
+import type { ArticleRow } from "@rizakura-hontai/db";
 
 export class ArticleDataIntegrityError extends Error {
   constructor() {

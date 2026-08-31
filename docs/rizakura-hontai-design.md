@@ -1,23 +1,25 @@
-# rizakura-me: 共通基盤とDaymarkの設計
+# rizakura-hontai: 共通基盤とDaymarkの設計
 
 最終更新: 2026-08-31
-状態: Phase 18の共通基盤設計を基にPhase 19の入口・共通APIをローカル実装。production反映は未実施。Daymarkの機能・UIは実装直前に所有者と設計する。公開範囲・配布方式はPhase 20の外部操作前に確定する。本書の後続計画は実装・公開済みを意味しない。
+状態: Phase 19の入口・共通APIをローカル実装済み。Phase 20の命名移行で基盤名をrizakura-hontaiへ変更し、GitHubのwebclipも同名へ改名した。production反映は未実施。Daymarkの機能・UIは実装直前に所有者と設計する。本書の後続計画は実装・公開済みを意味しない。
 
-最新の所有者指示を本設計の前提とする。旧実装ガイドの「記事専用」「PWAを実装しない」という初期scopeからの変更を記録する。手順と完了条件は[フェーズ計画](rizakura-me-roadmap.md)、判断の要約は[ADR-0009](decisions/0009-rizakura-me-product-boundaries.md)を参照する。
+2026-08-31の所有者指示で、当初の基盤名rizakura-meをrizakura-hontaiへ変更した。既存の`Rizakura0110/rizakura-me`は別repositoryとしてそのまま残し、今回の基盤には使わない。Phase 18/19の実行記録とADRは当時の名称を保持する。
+
+最新の所有者指示を本設計の前提とする。旧実装ガイドの「記事専用」「PWAを実装しない」という初期scopeからの変更を記録する。手順と完了条件は[フェーズ計画](rizakura-hontai-roadmap.md)、判断の要約は[ADR-0009](decisions/0009-rizakura-me-product-boundaries.md)を参照する。
 
 ## 1. 合意した構成
 
 | 対象 | 名称・役割 |
 |---|---|
-| 共通基盤・入口のサイト | `rizakura-me`。本人限定のトップページから各機能へ移動する |
-| 基盤と記事を管理するrepository | 現在の`webclip`を将来`rizakura-me`へ改名する。履歴を維持する |
+| 共通基盤・入口のサイト | `rizakura-hontai`。本人限定のトップページから各機能へ移動する |
+| 基盤と記事を管理するrepository | `Rizakura0110/rizakura-hontai`。旧`webclip`から履歴・repository IDを維持して改名済み |
 | 記事管理 | `Tech Inbox`。記事、タグ、URL、metadata、記事backupを担当する |
 | 習慣管理 | `Daymark`。画面、API処理、domain、schema定義、testを別repository `daymark`で管理する |
-| PWA | Tech InboxとDaymarkを別々に追加・起動する。rizakura-me専用PWAは作らない |
+| PWA | Tech InboxとDaymarkを別々に追加・起動する。rizakura-hontai専用PWAは作らない |
 | production | 同一origin、公開app Worker 1つ、既存D1 1つ。記事用metadata-fetcherは引き続き非公開Workerとして分離する |
 
 ```text
-Browser → Cloudflare Access → rizakura-me（入口）
+Browser → Cloudflare Access → rizakura-hontai（入口）
                                ├─ Tech Inbox（記事画面・専用PWA）
                                └─ Daymark（習慣画面・専用PWA）
 
@@ -53,7 +55,7 @@ repository、PWA、deployment、databaseの単位は独立して考える。Daym
 - [既存の供給網ルール](dependency-baseline.md)を維持する。registryから取り込む自作packageにも既存の公開後7日ルールが適用されるため、即日取り込みを前提にしない。例外設定を勝手に追加しない。
 - Phase 20では、clean checkoutから取得・build・統合testを再現する最小moduleで連携を先に検証する。公開直後は検証用source testを進めても、本番候補の取り込みgateを迂回しない。
 
-配布先はPhase 20のrepository作成・package公開前に、公開範囲の回答を得て確定する。Phase 18/19の基盤作業はこの回答待ちにしない。publicの場合は無料のnpm public packageを第一候補とする。privateの場合はnpmの有料private packageを採用せず、GitHub Packagesの無料枠と超過停止設定、認証の扱いを確認してから再判断する。npmのnamespace所有権やpublish権限も外部操作前に確認する。[npm public](https://docs.npmjs.com/about-public-packages/)、[npm private](https://docs.npmjs.com/about-private-packages/)、[GitHub Packages billing](https://docs.github.com/en/billing/concepts/product-billing/github-packages)
+2026-08-31に所有者が`Rizakura0110/daymark`のpublic作成とnpm public packageでの配布を承認した。npmの公開用ログイン・namespace所有権・publish権限はまだ未確認で、これらを解決するまで公開しない。`@rizakura-hontai/*`は現在privateな内部workspace名であり、同名npm scopeの所有を意味しない。公開物に秘密情報や実データを含めず、有料private packageへ切り替えない。[npm public](https://docs.npmjs.com/about-public-packages/)
 
 Phase 20までに扱うDaymark moduleは、読み込み・認証・build境界を検証する非機密の接続確認用stubに限定する。仮の習慣フォーム、記録用API DTO、業務table、migration、集計処理を先に作らない。接続確認用stubを習慣機能の仕様やUI承認とみなさない。
 
@@ -63,7 +65,7 @@ Phase 20までに扱うDaymark moduleは、読み込み・認証・build境界�
 
 | URL path | 提供内容 | manifest |
 |---|---|---|
-| `/` | rizakura-meの入口。記事・習慣の2つの導線 | 専用manifestなし |
+| `/` | rizakura-hontaiの入口。記事・習慣の2つの導線 | 専用manifestなし |
 | `/tech-inbox/` | Tech Inboxの全記事画面 | Tech Inbox専用 |
 | `/tech-inbox/settings` | 記事のタグ管理・backup等 | Tech Inbox専用 |
 | `/daymark/` | Daymarkの製品入口。内部画面・navigationは実装直前に設計 | Daymark専用 |
@@ -94,7 +96,7 @@ manifest linkの`crossorigin="use-credentials"`を維持する。Service Worker�
 ## 4. 認証・DB・運用境界
 
 - Phase 18時点の`app.ts`は保護対象pathを列挙していた。Phase 19で`platform/api.ts`の共通APIを既定保護とし、新handlerがJWT・Origin・Rate Limitを通らず処理へ到達しない構造をローカル実装した。例外は正確なhealth endpointのGET/HEADだけとする。
-- 既存header `X-Tech-Inbox-Client`は互換入力として維持し、新しい共通名`X-Rizakura-Me-Client`を導入する場合も値・Origin・JSON検証は弱めない。単に製品名が変わったことを理由に古いclientを破壊しない。
+- 現行headerは`X-Rizakura-Hontai-Client`とし、旧`X-Rizakura-Me-Client`・`X-Tech-Inbox-Client`を互換入力として維持する。いずれかが`web`で、指定した全headerが`web`であることを要求する。値・Origin・JSON検証は弱めない。新clientはserver rollback用に`X-Tech-Inbox-Client`も送る。
 - D1を直接利用するproduction Workerは既存app Workerのみとする。metadata-fetcherにDB・Secretsを追加しない。
 - Tech Inboxの既存table名は変更しない。Daymark用tableは`daymark_`prefixを付け、製品間のforeign key・SQL joinを初期版では作らない。
 - Daymarkがschema定義を提供し、基盤repositoryだけが全schemaからmigrationを生成・review・commitする。migration履歴・snapshotを両repositoryで独立生成しない。
@@ -124,15 +126,15 @@ manifest linkの`crossorigin="use-credentials"`を維持する。Service Worker�
 - 現在の記事import上限1 MiB・記事件数上限を習慣へそのまま流用しない。Phase 23で長期記録を使って容量・batch数・CPUを検証し、必要なら期間分割を提供する。書き出し成功したデータが無説明で復元不能になる仕様や、黙った切り捨ては禁止する。
 - 初期版では両製品を一括上書きする復元を作らない。data migration前には両製品のbackupまたはDB全体の復元手段を確保する。
 
-## 7. rizakura-meへの命名移行
+## 7. rizakura-hontaiへの命名移行
 
 | 対象 | 目標と扱い |
 |---|---|
-| 入口・共通layout・共通説明 | `rizakura-me`へ変更する。Tech Inboxの画面名・PWA名は維持する |
-| repository名 | `webclip`から`rizakura-me`へ変更予定。対象・衝突・remote・CIを確認し、履歴を維持する |
-| root package・共通module | 基盤部分を`rizakura-me`へ統一。記事専用の`tech-inbox`識別子は維持する |
+| 入口・共通layout・共通説明 | `rizakura-hontai`へ変更する。Tech Inboxの画面名・PWA名は維持する |
+| repository名 | `webclip`から`rizakura-hontai`へ改名済み。履歴を維持し、remoteを新URLへ更新する。既存の別repository `rizakura-me`には触れない |
+| root package・共通module | 基盤部分を`rizakura-hontai`へ統一。記事専用の`tech-inbox`識別子は維持する |
 | 共通API client header等 | 互換期間を設ける。旧clientを一括で切り捨てない |
-| Worker・Access application・D1 | 基盤名を`rizakura-me`へ揃える移行対象。ただしPhase 18/19でremote名やIDを変更しない |
+| Worker・Access application・D1 | 基盤名を`rizakura-hontai`へ揃える移行対象。ただしPhase 18/19でremote名やIDを変更しない |
 | 記事用Queue・DLQ・metadata-fetcher | 記事専用なので`tech-inbox`名を維持する |
 | ローカル作業directory | 現在の`/Users/ryo/dev/webclip`を維持。repository表示名とfilesystemの移動を混同しない |
 | 過去の進捗・deployment記録 | 当時の名前・versionを残す。過去の事実を新名称で上書きしない |
@@ -143,9 +145,9 @@ D1の物理名変更は安全なin-place変更が可能かを実行時に確認�
 
 ## 8. 未実施の外部操作・所有者確認
 
-1. Phase 20のrepository作成・package公開前に、Daymarkのpublic/privateと配布先を確定する。未回答をPhase 18/19の停止理由にしない。
-2. package namespace・publish権限の確認、公開物の範囲への合意。repositoryがpublicでも新たなregistry公開を自動承認とは扱わない。
-3. Phase 20でGitHub上のrepository改名・新規作成を行う前の対象・衝突・権限確認。
+1. Daymarkのpublic repositoryとnpm public配布は承認済み。npmログイン・package namespace・publish権限を確認する。GitHub公開だけでregistryの所有権や認証を得たとは扱わない。
+2. Daymarkのrepository・package作成と公開物review、固定version取り込み、7日gate通過は残作業。習慣機能/UIは作らない。
+3. 基盤GitHubの改名は完了。Daymark新規作成前には対象・衝突・権限を再確認する。
 4. Phase 25でのproduction DB更新・deploy・リソース名/URL移行の承認。
 
 外部操作とは別に、Phase 21の業務実装前には所有者との機能・UI設計合意を必須とする。準備完了や基盤作業への許可を、未設計の習慣機能への承認へ読み替えない。

@@ -2,7 +2,7 @@ import type {
   BackupImportPreviewResponse,
   BackupImportRequest,
   BackupImportResponse,
-} from "@rizakura-me/contracts";
+} from "@rizakura-hontai/contracts";
 import { buildBackupImportPlan } from "./backup-import";
 import type { Clock, IdGenerator } from "./article-service";
 import type { BackupRepository } from "./repositories/backup-repository";

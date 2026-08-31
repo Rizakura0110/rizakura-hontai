@@ -1,5 +1,7 @@
 # Progress
 
+現在の基盤名は`rizakura-hontai`。2026-08-31のPhase 20命名移行で変更し、過去の記録にある`rizakura-me`は当時の名前として保持する。現行の[フェーズ計画](rizakura-hontai-roadmap.md)・[設計書](rizakura-hontai-design.md)を参照する。
+
 ## Phase 0: 作業境界確認、環境監査、依存バージョン決定
 
 ### 実施内容
@@ -1424,3 +1426,35 @@
 - 本番反映、実際のAccess・CPU、既存iPhone PWAのmetadata更新・起動先移行は未確認。local testを本番/実機成功とは記録しない
 - GitHub repository改名・Daymark repository作成・package公開、Cloudflare resource名変更、remote migrationは未実施
 - 次はPhase 20の別repository・配布連携準備。習慣機能・UI設計はPhase 21冒頭に所有者と行う
+
+## Phase 20: 別repositoryとpackage連携の準備
+
+状態: 進行中（2026-08-31）。基盤名の変更は実装・検証済み。npm認証・Daymark作成・配布連携は未完了で、Phase 20全体を完了とはしない。
+
+### 命名移行
+
+- 所有者は当初の基盤名rizakura-meをrizakura-hontaiへ変更するよう指示した。記事製品Tech Inboxと習慣製品Daymarkは改名しない。
+- GitHubの`Rizakura0110/rizakura-me`は2025年作成の別repository（ID 1058698925）と確認し、一切変更していない。
+- 新名称の重複がないことと管理権限を確認し、`Rizakura0110/webclip`を`Rizakura0110/rizakura-hontai`へ改名した。repository ID 1347410907、main branch、public設定を維持し、local originを新URLへ更新した。
+- 入口・共通layout・内部package/import・HTTP client header・設計/roadmap・作業規約を新名称へ更新した。過去のADRと進捗は当時の名前を保持する。
+- 旧X-Rizakura-Me-ClientとX-Tech-Inbox-Clientを互換入力として維持し、不正・空・複数値が混じるrequestは拒否する。新clientはX-Rizakura-Hontai-Clientと従来のTech Inbox headerを送る。
+- ローカルdirectory、Cloudflare Worker・D1・Access・Queue・本番URL、記事PWA identity、業務DB/API契約は変更していない。本番deployは実行していない。
+- 検証中に既存Modalの遅延autofocusがURL入力からタイトルへfocusを奪う競合を発見した。失敗traceのPATCH本文がURL変更ではなくtitle変更になっていることと、再現用component testの失敗を確認した。dialog内で選択済みのinputからはfocusを奪わず、focusが外れた場合だけ補完する最小修正と2件の回帰testを追加した。競合エラーを確認する既存E2Eの期待値・timeoutは緩めていない。
+
+### 検証
+
+- `pnpm install --frozen-lockfile`: 395 entriesの供給網policy検証とworkspace再リンクが成功。第三者依存・7日policyの変更なし。
+- 修正後の`pnpm check`が成功。format・lint・生成型整合・TypeScript・local D1/実HTTP・build・artifact budget・E2E・auditを通過した。
+- 39 files・414 unit/component/integration tests、27 desktop/mobile E2E testsがpass。desktop専用sidebar testのmobile実行1件は従来どおりskip。
+- focus修正後、失敗していたmobileのURL競合E2Eを追加で10回繰り返し、全10回passした。
+- coverageはstatements 86.99%、branches 82.94%、functions 87.23%、lines 88.58%で既存threshold内。
+- artifactはapp Worker 451.7 KiB raw / 97.1 KiB gzip、fetcher 585.6 / 88.8、client JS 359.7 / 106.0、CSS 30.2 / 6.5で上限内。
+- auditはhigh 0・critical 0。既知の開発時推移依存moderate 1件は継続。本番Secrets不足のbuild warningにはcredentialを補充せず、E2Eは専用fixtureを使用した。
+- 全差分をreviewし、documentのlocal link 53件、ignore・tracked contentのcredential pattern scanを確認した。移動した設計書のADR link 1件を修正して再検証した。生成物や秘密fileはcommit対象に含まない。
+
+### 残作業
+
+- Daymarkのpublic repositoryとnpm public配布は所有者承認済み。今回の名称変更によって再承認待ちへ戻さない。
+- npmは`whoami`がENEEDAUTHを返した。公開前に所有者のログイン、package namespace・権限を確認する。内部のprivate workspace名はnpm scope所有の証明ではない。
+- Daymark独立repository、非機密の接続用stub、CI、配布物検証、固定version取り込みと公開後7日gateは未実施。
+- 習慣の業務機能・UIは未設計・未実装。Phase 20完了後のPhase 21冒頭に所有者と設計する。

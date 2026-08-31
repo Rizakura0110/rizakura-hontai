@@ -3,7 +3,9 @@ export function PortalPage() {
     <div className="min-h-dvh bg-[#f7f8fa] text-slate-800">
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-5 py-5 sm:px-8">
-          <span className="text-lg font-semibold tracking-tight text-slate-900">rizakura-me</span>
+          <span className="text-lg font-semibold tracking-tight text-slate-900">
+            rizakura-hontai
+          </span>
           <span className="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-600">
             自分だけのスペース
           </span>

@@ -1,4 +1,4 @@
-import type { FetchedMetadata } from "@rizakura-me/contracts";
+import type { FetchedMetadata } from "@rizakura-hontai/contracts";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   fetchMetadata,

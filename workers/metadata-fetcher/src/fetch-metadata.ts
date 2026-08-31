@@ -1,4 +1,4 @@
-import type { MetadataFetchResponse } from "@rizakura-me/contracts";
+import type { MetadataFetchResponse } from "@rizakura-hontai/contracts";
 import type { MetadataErrorCode } from "@tech-inbox/core/metadata";
 import { parseHtmlMetadata } from "./html-metadata";
 import { validateFetchUrl } from "./url-policy";

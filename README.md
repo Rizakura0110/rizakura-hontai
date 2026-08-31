@@ -1,12 +1,12 @@
-# rizakura-me
+# rizakura-hontai
 
-rizakura-meは、本人限定のツールへの入口と共通基盤です。記事管理のTech Inboxを含み、習慣管理のDaymarkは別repositoryから統合する予定です。Cloudflare Accessと既存のapp Worker・D1を共有します。
+rizakura-hontaiは、本人限定のツールへの入口と共通基盤です。記事管理のTech Inboxを含み、習慣管理のDaymarkは別repositoryから統合する予定です。Cloudflare Accessと既存のapp Worker・D1を共有します。
 
 ## 実装と本番の状態
 
 Phase 19では共通基盤と入口をローカル実装しました。`/`から`/tech-inbox/`へ進み、記事画面から入口へ戻れます。設定は`/tech-inbox/settings`です。旧`/articles`・`/settings`はqueryを維持して移動します。Daymarkは「準備中」で、習慣の機能・UIはまだ作っていません。
 
-この変更は未デプロイで、本番は従来のTech Inboxのままです。GitHub repository・Worker・DBの改名、新repositoryの作成、package公開はまだ行っていません。Daymarkの機能・UIはPhase 21冒頭に所有者と設計します。[設計書](docs/rizakura-me-design.md)と[Phase 18〜25の計画](docs/rizakura-me-roadmap.md)を参照してください。
+この変更は未デプロイで、本番は従来のTech Inboxのままです。基盤名をrizakura-hontaiへ変更し、GitHub repositoryは旧webclipから[Rizakura0110/rizakura-hontai](https://github.com/Rizakura0110/rizakura-hontai)へ改名済みです。既存の別repository `rizakura-me`には触れていません。Worker・DB名・本番URL、ローカルdirectoryは維持し、Daymark repositoryの作成・npm公開はまだ行っていません。Daymarkの機能・UIはPhase 21冒頭に所有者と設計します。[設計書](docs/rizakura-hontai-design.md)と[Phase 18〜25の計画](docs/rizakura-hontai-roadmap.md)を参照してください。
 
 ## Tech Inboxの主な機能
 
@@ -44,7 +44,7 @@ tech-inbox-metadata-fetcher Worker
 
 アプリWorkerがStatic Assets、API、D1、Queueを担当します。metadata-fetcherは公開URL、D1、Queue、Secretsを持たず、Service Binding経由でのみ呼び出されます。
 
-共通の認証・request検証・Rate Limit・安全なlogは`apps/web/src/worker/platform/`、記事APIは`tech-inbox-api.ts`へ分離しています。共通layout・dialog・通知・HTTP clientは`apps/web/src/client/platform/`にあります。内部package名は`rizakura-me`、`@rizakura-me/web`、`@rizakura-me/contracts`、`@rizakura-me/db`で、記事domainの`@tech-inbox/core`と実際のCloudflare resource名は維持しています。
+共通の認証・request検証・Rate Limit・安全なlogは`apps/web/src/worker/platform/`、記事APIは`tech-inbox-api.ts`へ分離しています。共通layout・dialog・通知・HTTP clientは`apps/web/src/client/platform/`にあります。内部package名は`rizakura-hontai`、`@rizakura-hontai/web`、`@rizakura-hontai/contracts`、`@rizakura-hontai/db`で、記事domainの`@tech-inbox/core`と実際のCloudflare resource名は維持しています。
 
 主要バージョンと採用理由は[Dependency baseline](docs/dependency-baseline.md)を参照してください。
 
@@ -187,8 +187,8 @@ Playwright browserを`PLAYWRIGHT_BROWSERS_PATH`で指定したrepository内cache
 
 ## Documentation
 
-- [rizakura-me / Daymark design](docs/rizakura-me-design.md)
-- [rizakura-me phase roadmap](docs/rizakura-me-roadmap.md)
+- [rizakura-hontai / Daymark design](docs/rizakura-hontai-design.md)
+- [rizakura-hontai phase roadmap](docs/rizakura-hontai-roadmap.md)
 - [Security](docs/security.md)
 - [Operations](docs/operations.md)
 - [Cloudflare setup](docs/cloudflare-setup.md)

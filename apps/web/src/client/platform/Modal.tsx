@@ -31,7 +31,8 @@ export function Modal({ open, title, description, children, onClose }: ModalProp
       }
       focusTarget?.focus({ preventScroll: true });
       const focusFrame = window.requestAnimationFrame(() => {
-        focusTarget?.focus({ preventScroll: true });
+        // Restore missing initial focus without stealing a user's newly selected input.
+        if (!dialog.contains(document.activeElement)) focusTarget?.focus({ preventScroll: true });
       });
       return () => {
         window.cancelAnimationFrame(focusFrame);

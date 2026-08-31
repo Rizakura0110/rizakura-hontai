@@ -5,7 +5,7 @@ import { PortalPage } from "./PortalPage";
 
 afterEach(cleanup);
 
-describe("rizakura-me portal", () => {
+describe("rizakura-hontai portal", () => {
   it("links to Tech Inbox without presenting Daymark as available", () => {
     render(<PortalPage />);
     expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("今日も、自分のペースで。");

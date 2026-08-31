@@ -8,7 +8,7 @@ import {
   exportResponseSchema,
   listArticlesResponseSchema,
   retryMetadataResponseSchema,
-} from "@rizakura-me/contracts";
+} from "@rizakura-hontai/contracts";
 import { apiFetch, assertSuccess } from "../platform/http";
 
 export { ApiClientError, userFacingError } from "../platform/http";

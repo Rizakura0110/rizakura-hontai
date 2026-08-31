@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import type { ArticleDto, TagDto } from "@rizakura-me/contracts";
+import type { ArticleDto, TagDto } from "@rizakura-hontai/contracts";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -210,7 +210,7 @@ describe("ArticlesPage core flows", () => {
     );
     const postCall = fetchMock.mock.calls.find((call) => call[1]?.method === "POST");
     const headers = new Headers(postCall?.[1]?.headers);
-    expect(headers.get("X-Rizakura-Me-Client")).toBe("web");
+    expect(headers.get("X-Rizakura-Hontai-Client")).toBe("web");
     expect(headers.get("Content-Type")).toBe("application/json");
   });
 
