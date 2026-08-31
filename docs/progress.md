@@ -1312,3 +1312,61 @@
 - Access session期限切れ後の再ログインとSafariでの全CRUD操作は今回の実機確認には含めない。
 - Android Chrome実機はowner判断でスキップした状態を維持する。
 - 既知のmoderate advisory 1件はDrizzle Kit配下の開発専用推移依存であり、runtime bundleには含まれない。
+
+## Phase 18: rizakura-meの共通基盤・命名・連携境界の設計
+
+状態: 完了（2026-08-31）。所有者の追加指示により、習慣の機能・UI設計は実装直前へ移し、本フェーズを共通基盤の設計へ限定した。公開範囲・配布方式はPhase 20の外部操作前に確定する。
+
+### 実施内容
+
+- 共通基盤・入口をrizakura-me、記事をTech Inbox、習慣をDaymarkとする設計とPhase 18〜25の計画を文書化した。
+- 基盤＋記事は既存repository、Daymarkは別repository、productionは同一app Worker・D1で統合する境界を整理した。
+- 入口専用PWAは作らず、Tech Inbox・DaymarkそれぞれにHTML entrypoint、manifest、icon、scopeを用意する方針を記録した。
+- 既存Tech InboxのPWA id `/`を維持し、旧`/articles`・`/settings`・manifestを互換対応する移行方針を記録した。
+- 共通API認証、単一migration履歴、製品別backup、命名移行時の外部操作の承認境界を整理した。
+- 初回draftの習慣入力・目標・数値精度・日付・集計・table構成を確定扱いから外した。Phase 20完了後、Phase 21の業務実装前に所有者と機能・UIを設計するgateを設けた。
+- Phase 20までのDaymark連携は非機密の接続確認用stubに限定し、習慣用フォーム・業務API・tableを先行実装しないことを`AGENTS.md`にも記録した。
+- 既存のdependency policyとregistry公開・認証・費用を確認した。public/privateの未回答を基盤作業の停止理由にせず、Phase 20の外部操作前に配布方式と合わせて確定する。
+
+### 変更ファイル
+
+- `AGENTS.md`
+- `README.md`
+- `docs/rizakura-me-design.md`
+- `docs/rizakura-me-roadmap.md`
+- `docs/decisions/0009-rizakura-me-product-boundaries.md`
+- `docs/progress.md`
+
+### 採用判断
+
+- 本フェーズは設計文書のみ。名称置換、画面・API・DB実装、package追加、GitHub repository改名/作成、registry公開、Cloudflare変更は実施しない。
+- Git URL・直接tarball依存を使わず、現行の完全固定・7日gateを維持する。自作packageの即日取り込みのために例外設定を追加しない。
+- public/privateと具体的な配布方式の確定はPhase 20へ移す。作成・公開の許可を推測せず、Phase 18/19では外部設定を変更しない。
+- 最新指示によりPhase 18の完了条件から習慣機能/UI・配布先の確定を外した。既存の品質ゲートは維持し、failed checkを免除していない。
+
+### 実行したコマンド
+
+- 既存guide、source、manifest、router、Wrangler、dependency/quality/operations文書の読み取り
+- npm、GitHub Packages、pnpm、Web App Manifest、Cloudflareの公式仕様確認
+- `pnpm check`
+- 文書更新後の`pnpm format:check`、Markdown relative link検査、whitespace・秘密情報pattern・ignore確認
+
+### 検証結果
+
+- format、lint、Cloudflare生成型差分、TypeScript: pass
+- Vitest: 34 files、348 tests pass
+- coverage: statements 86.62%、branches 81.77%、functions 87.39%、lines 88.30%
+- fresh local D1、local実HTTP API、production build、artifact budget: pass
+- Playwright: desktop/mobile合計21 tests pass、desktop専用testのmobile実行1件skip
+- audit: high 0、critical 0、既知moderate 1
+- build時のproduction secrets不足warningはcredentialを用意していないlocal検証によるもの。秘密情報を補充せず、E2Eは従来のtest専用設定でpassした
+- 最新のscope変更後も`pnpm check`を再実行し、全品質ゲートがpassした
+- 文書更新後のformat、Markdown relative link 27件、whitespace、追跡対象の秘密情報pattern scan、生成物・cache・secret fileのignore確認: pass
+- runtime code、dependency、lockfile、production、GitHub repository設定、package registryの変更: なし
+- 新しい入口・Daymark・独立PWAの実装/実機検証: 未実施
+
+### 未解決事項
+
+- Daymarkの機能・UIは未設計。Phase 20完了後、Phase 21の業務実装前に所有者と合意する。
+- Daymark repositoryのpublic/privateと配布方式はPhase 20の外部操作前に確定する。Phase 18/19の停止条件ではない。
+- package namespace・publish権限、GitHub改名/新規作成、本番名/URL移行は後続フェーズの明示的な外部操作gateとする。

@@ -2,6 +2,12 @@
 
 Tech Inboxは、あとで読む技術記事のURLを個人で保存・整理するためのWebアプリです。Cloudflare Accessで所有者1人だけに公開し、URL登録後のメタデータ取得は非同期で行います。取得に失敗してもURLは失わず、タイトルを手動編集できます。
 
+## 次期構成: rizakura-me / Daymark
+
+共通基盤と入口のサイトを`rizakura-me`とし、Tech Inboxと習慣管理`Daymark`へ遷移する構成を計画しています。Daymarkのコードは別repositoryで管理し、既存app Worker・D1へ統合します。PWAはTech InboxとDaymarkを個別に提供し、入口専用PWAは作りません。
+
+現在の本番提供はTech Inboxのみです。まず共通基盤・入口・repository連携の準備を進め、Daymarkの機能・UIは実装直前に所有者と設計します。repository・Worker・DBの改名やDaymarkの公開はまだ行っていません。[設計書](docs/rizakura-me-design.md)と[Phase 18〜25の計画](docs/rizakura-me-roadmap.md)を参照してください。
+
 ## 主な機能
 
 - URLの登録、重複防止、canonical URL重複時の安全な統合
@@ -175,6 +181,8 @@ Playwright browserを`PLAYWRIGHT_BROWSERS_PATH`で指定したrepository内cache
 
 ## Documentation
 
+- [rizakura-me / Daymark design](docs/rizakura-me-design.md)
+- [rizakura-me phase roadmap](docs/rizakura-me-roadmap.md)
 - [Security](docs/security.md)
 - [Operations](docs/operations.md)
 - [Cloudflare setup](docs/cloudflare-setup.md)
