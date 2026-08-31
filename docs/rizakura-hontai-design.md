@@ -1,7 +1,7 @@
 # rizakura-hontai: 共通基盤とDaymarkの設計
 
 最終更新: 2026-08-31
-状態: Phase 19の入口・共通APIをローカル実装済み。Phase 20の命名移行で基盤名をrizakura-hontaiへ変更し、GitHubのwebclipも同名へ改名した。production反映は未実施。Daymarkの機能・UIは実装直前に所有者と設計する。本書の後続計画は実装・公開済みを意味しない。
+状態: Phase 20完了。基盤名をrizakura-hontaiへ変更し、GitHubのwebclipを同名へ改名した。Daymarkのpublic repositoryとcommit固定のGit submodule、非機密の接続用stub、独立・統合CIを実装済み。production反映は未実施。Daymarkの機能・UIはPhase 21冒頭に所有者と設計する。本書の後続計画は実装・公開済みを意味しない。
 
 2026-08-31の所有者指示で、当初の基盤名rizakura-meをrizakura-hontaiへ変更した。既存の`Rizakura0110/rizakura-me`は別repositoryとしてそのまま残し、今回の基盤には使わない。Phase 18/19の実行記録とADRは当時の名称を保持する。
 
@@ -25,7 +25,7 @@ Browser → Cloudflare Access → rizakura-hontai（入口）
 
 基盤repository → 各機能をbuild時に統合 → app Worker → 共通D1
                        ↑                               ├─ 記事用table
-               Daymarkの固定commit SHA                    └─ Daymark用table
+               Daymarkの固定commit SHA                 └─ Daymark用table
 ```
 
 repository、PWA、deployment、databaseの単位は独立して考える。Daymark repositoryへのpushだけではproductionを更新しない。基盤側で取り込みcommitを更新し、組み合わせを検証してからdeployする。3つ目の基盤専用repository、別の習慣用production Worker、独自domain購入は今回のscope外。
@@ -143,12 +143,11 @@ Worker名はworkers.devのhostnameに関係するため、変更にはAccess対�
 
 D1の物理名変更は安全なin-place変更が可能かを実行時に確認する。単にWranglerの名前を変更したり、旧DBを削除して同名の新DBを作ったりしない。名前だけのために2つ目のDBを常用する方針にはしない。productionの名称移行はPhase 25の独立した承認gateとし、保留したlegacy識別子があれば明記する。
 
-## 8. 未実施の外部操作・所有者確認
+## 8. 外部操作・所有者確認
 
-1. Daymarkのpublic repository作成とcommit固定のGit submodule連携は承認済み。npm公開・ログインは行わない。
-2. Phase 20ではrepository公開物review、独立CIと基盤統合gate、clean checkoutを検証する。習慣機能/UIは作らない。
-3. 基盤GitHubの改名は完了。Daymark新規作成前には対象・衝突・権限を再確認する。
-4. Phase 25でのproduction DB更新・deploy・リソース名/URL移行の承認。
+1. Daymarkのpublic repository作成、commit固定のGit submodule連携、repository公開物review、独立CIと基盤のclean checkout統合gateは完了した。npm公開・ログインは行わない。
+2. Phase 21冒頭で所有者と習慣の機能・UIを設計する。設計合意まで業務実装を開始しない。
+3. Phase 25でproduction DB更新・deploy・リソース名/URL移行の承認を得る。
 
 外部操作とは別に、Phase 21の業務実装前には所有者との機能・UI設計合意を必須とする。準備完了や基盤作業への許可を、未設計の習慣機能への承認へ読み替えない。
 

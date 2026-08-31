@@ -1,6 +1,6 @@
 # rizakura-hontai
 
-rizakura-hontaiは、本人限定のツールへの入口と共通基盤です。記事管理のTech Inboxを含み、習慣管理のDaymarkは別repositoryから統合する予定です。Cloudflare Accessと既存のapp Worker・D1を共有します。
+rizakura-hontaiは、本人限定のツールへの入口と共通基盤です。記事管理のTech Inboxを含み、習慣管理のDaymarkは別repositoryから接続用stubを統合済みです。習慣機能は未実装で、Cloudflare Accessと既存のapp Worker・D1を共有する構成です。
 
 ## 実装と本番の状態
 
@@ -104,6 +104,8 @@ git add modules/daymark
 ```
 
 `git -C modules/daymark status`で別repositoryの変更を確認できます。基盤へ記録するのはDaymarkのsourceコピーではなくcommit SHAです。Daymarkだけのpushでは基盤・本番は変わりません。build/deploy中に`--remote`で最新版を取り込まず、reviewしたcommitだけを使います。Cloudflareへの反映は別途承認後に行います。
+
+新cloneのsubmoduleは通常detached HEADなので、編集前に作業branchを確認します。基盤のpull後は、未commit変更がないことを確認して`git submodule update --init -- modules/daymark`で記録されたcommitへ揃えます。未保存の変更を強制的に破棄する操作はしません。
 
 ## Test and quality gates
 

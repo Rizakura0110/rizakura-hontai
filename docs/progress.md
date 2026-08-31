@@ -1429,7 +1429,7 @@
 
 ## Phase 20: 別repositoryとpackage連携の準備
 
-状態: 進行中（2026-08-31）。命名移行に続き、Daymarkのpublic repository・Git submodule連携を実装し、local全品質gateを通過した。基盤CIのclean checkout検証後に完了とする。npm公開は最新の所有者指示で取り下げた。
+状態: 完了（2026-08-31）。命名移行に続き、Daymarkのpublic repository・Git submodule連携を実装した。local全品質gateと基盤CIのclean checkout検証が成功。npm公開は最新の所有者指示で取り下げた。
 
 ### 命名移行
 
@@ -1477,8 +1477,12 @@
 - audit: high 0、critical 0、既知の開発用推移依存moderate 1。第三者依存のversion・integrityと既存migrationに変更なし。
 - Daymarkを先にcommit/pushしてから基盤の参照を更新した。公開物review、秘密情報pattern scan、生成物ignore確認を実施した。
 
-### 残作業・変更していないもの
+### Clean checkoutと完了確認
 
-- 基盤push後のclean GitHub Actionsでsubmodule取得・frozen install・統合test/buildを確認する。
+- 基盤commit `a524d95`をpushし、GitHub Actions run `33403352565`が3分32秒でsuccessした。clean checkoutで固定Daymark commit `e5b341d`を取得し、frozen installからDaymark単体gate・基盤統合gate・実HTTP・build・desktop/mobile E2Eまで再現した。
+- 基盤・Daymarkのlocal mainは各origin/mainと同期し、Daymarkの作業treeと基盤のgitlinkは一致している。Phase 20の対象変更を両repositoryへcommit・push済み。
+
+### 次フェーズ・変更していないもの
+
 - 習慣の業務機能・UIは未設計・未実装。Phase 21冒頭に所有者と設計する。
 - npm公開、Cloudflareへのdeploy・resource作成・課金変更・remote DB操作は実施していない。本番は従来のTech Inboxのまま。
