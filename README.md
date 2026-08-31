@@ -6,7 +6,7 @@ rizakura-hontaiは、本人限定のツールへの入口と共通基盤です�
 
 Phase 19では共通基盤と入口をローカル実装しました。`/`から`/tech-inbox/`へ進み、記事画面から入口へ戻れます。設定は`/tech-inbox/settings`です。旧`/articles`・`/settings`はqueryを維持して移動します。Daymarkは「準備中」で、習慣の機能・UIはまだ作っていません。
 
-この変更は未デプロイで、本番は従来のTech Inboxのままです。基盤名をrizakura-hontaiへ変更し、GitHub repositoryは旧webclipから[Rizakura0110/rizakura-hontai](https://github.com/Rizakura0110/rizakura-hontai)へ改名済みです。既存の別repository `rizakura-me`には触れていません。Worker・DB名・本番URL、ローカルdirectoryは維持し、Daymark repositoryの作成・npm公開はまだ行っていません。Daymarkの機能・UIはPhase 21冒頭に所有者と設計します。[設計書](docs/rizakura-hontai-design.md)と[Phase 18〜25の計画](docs/rizakura-hontai-roadmap.md)を参照してください。
+この変更は未デプロイで、本番は従来のTech Inboxのままです。基盤名をrizakura-hontaiへ変更し、GitHub repositoryは旧webclipから[Rizakura0110/rizakura-hontai](https://github.com/Rizakura0110/rizakura-hontai)へ改名済みです。既存の別repository `rizakura-me`には触れていません。Worker・DB名・本番URL、ローカルdirectoryは維持しています。Daymarkは別public repositoryをcommit固定のGit submoduleとして取り込み、npmには公開しません。Daymarkの機能・UIはPhase 21冒頭に所有者と設計します。[設計書](docs/rizakura-hontai-design.md)と[Phase 18〜25の計画](docs/rizakura-hontai-roadmap.md)を参照してください。
 
 ## Tech Inboxの主な機能
 
@@ -81,6 +81,7 @@ export COREPACK_HOME="$PROJECT_ROOT/.tools/corepack"
 export PLAYWRIGHT_BROWSERS_PATH="$PROJECT_ROOT/.cache/ms-playwright"
 export PNPM_CONFIG_NPMRC_AUTH_FILE="$PROJECT_ROOT/.config/pnpm-auth-empty"
 cd "$PROJECT_ROOT"
+git submodule update --init -- modules/daymark
 pnpm install --frozen-lockfile
 cp apps/web/.dev.vars.example apps/web/.dev.vars
 pnpm db:migrate:local
@@ -88,6 +89,21 @@ pnpm dev
 ```
 
 `apps/web/.dev.vars`はlocal用の`ENVIRONMENT=local`とloopbackの`APP_ORIGIN`だけを使用し、commitしません。通常は`http://localhost:5173`を開きます。local D1は`apps/web/.wrangler/state`へ保存されます。
+
+## Daymarkの取り込み・更新
+
+`modules/daymark`は[別repository](https://github.com/Rizakura0110/daymark)のGit submoduleです。初回は上記の初期化command、または`git clone --recurse-submodules`で取得します。npmログインは不要です。
+
+Daymarkの変更を単体test・reviewしてcommit/pushした後、基盤側で組み合わせを検証します。
+
+```bash
+pnpm --dir modules/daymark check
+pnpm check
+git add modules/daymark
+# 基盤の他のin-scope変更と参照commitをreview・commit・pushする
+```
+
+`git -C modules/daymark status`で別repositoryの変更を確認できます。基盤へ記録するのはDaymarkのsourceコピーではなくcommit SHAです。Daymarkだけのpushでは基盤・本番は変わりません。build/deploy中に`--remote`で最新版を取り込まず、reviewしたcommitだけを使います。Cloudflareへの反映は別途承認後に行います。
 
 ## Test and quality gates
 

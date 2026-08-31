@@ -23,4 +23,5 @@
 - For Phase 18 onward, use `docs/rizakura-hontai-design.md` and `docs/rizakura-hontai-roadmap.md` alongside the latest user instructions.
 - Prepare the shared foundation, portal, and repository integration first. Daymark feature behavior and UI must be designed with the owner immediately before feature implementation at the start of Phase 21.
 - Through Phase 20, use only non-sensitive connectivity stubs for Daymark integration. Do not pre-build habit forms, domain API contracts, business tables, migrations, or achievement/aggregation rules from earlier draft ideas.
-- Resolve Daymark repository visibility and package distribution before the external operations in Phase 20; unanswered visibility questions do not block Phase 18/19 foundation work.
+- Daymark uses the approved public `Rizakura0110/daymark` repository as a commit-pinned Git submodule at `modules/daymark`, linked through pnpm workspace. Do not publish it to npm or request npm credentials. Preserve the registry dependency supply-chain policy.
+- Commit and push tested Daymark changes before committing the foundation's updated submodule pointer. Never follow a moving branch automatically during build/deploy; review and test each combined revision.

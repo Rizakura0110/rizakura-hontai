@@ -35,6 +35,16 @@ pnpm audit --audit-level high
 - Node.js、pnpm store、Playwright browser、XDG data、temporary fileをGitHub workspace配下へ置く
 - 同じbranch/refの古いrunはcancelし、jobを25分で停止する
 
+## Daymark integration gate
+
+Phase 20では`pnpm check`の先頭でDaymark独立gate（format、lint、TypeScript、coverage付きtest、宣言付きbuild、audit）を実行する。単独cloneのCIでも同じgateを実行し、Cloudflare credentialは不要。browser/server/contracts/schemaの接続用stubだけが対象で、習慣機能は未設計である。
+
+基盤の`pnpm daymark:boundaries`は実際のVite buildでbrowser/contractsの成功とserver/schemaのbrowser build失敗を検証する。package exportsだけでなく、Vite pluginで解決後sourceのclient混入を拒否する。通常のbuildにも同じpluginを適用し、client型検査にはbrowser条件を付ける。
+
+`/api/v1/daymark/status`を共通保護配下へ組み込み、認証・Rate Limit・安全なerror・no-store・非機密status・書き込みendpoint不在をtestする。実HTTP gateで成功を、Playwrightで未認証401を確認する。schemaは空で、既存記事・タグのDB/migrationは変更しない。
+
+GitHub Actionsは`submodules: true`で基盤gitlinkの固定commitを取得する。Daymarkだけのpushで基盤参照や本番を更新しない。Phase完了時は新しい作業コピーで固定commit取得・frozen install・統合test/buildも確認する。
+
 ## Coverage policy
 
 V8 coverageはstatements、branches、functions、linesの全指標に80%の最低値を設定する。さらにURL正規化、metadata-fetcherのSSRF URL判定、契約schemaはbranch coverage 90%以上を必須にする。

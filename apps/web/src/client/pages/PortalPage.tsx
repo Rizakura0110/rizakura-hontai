@@ -1,3 +1,5 @@
+import { daymarkPlaceholder } from "@rizakura-hontai/daymark/browser";
+
 export function PortalPage() {
   return (
     <div className="min-h-dvh bg-[#f7f8fa] text-slate-800">
@@ -51,12 +53,14 @@ export function PortalPage() {
               D
             </span>
             <p className="mt-6 text-xs font-medium text-slate-500">習慣管理</p>
-            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">Daymark</h2>
+            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">
+              {daymarkPlaceholder.name}
+            </h2>
             <p className="mb-8 mt-3 text-sm leading-7 text-slate-600">
               日々の習慣や目標を記録するためのツール。これから用意していきます。
             </p>
             <p className="mt-auto rounded-lg bg-slate-100 px-4 py-3 text-center text-sm font-medium text-slate-500">
-              準備中
+              {daymarkPlaceholder.label}
             </p>
           </article>
         </section>

@@ -1429,7 +1429,7 @@
 
 ## Phase 20: 別repositoryとpackage連携の準備
 
-状態: 進行中（2026-08-31）。基盤名の変更は実装・検証済み。npm認証・Daymark作成・配布連携は未完了で、Phase 20全体を完了とはしない。
+状態: 進行中（2026-08-31）。命名移行に続き、Daymarkのpublic repository・Git submodule連携を実装し、local全品質gateを通過した。基盤CIのclean checkout検証後に完了とする。npm公開は最新の所有者指示で取り下げた。
 
 ### 命名移行
 
@@ -1452,9 +1452,33 @@
 - auditはhigh 0・critical 0。既知の開発時推移依存moderate 1件は継続。本番Secrets不足のbuild warningにはcredentialを補充せず、E2Eは専用fixtureを使用した。
 - 全差分をreviewし、documentのlocal link 53件、ignore・tracked contentのcredential pattern scanを確認した。移動した設計書のADR link 1件を修正して再検証した。生成物や秘密fileはcommit対象に含まない。
 
-### 残作業
+### Git submodule連携の実施内容・採用判断
 
-- Daymarkのpublic repositoryとnpm public配布は所有者承認済み。今回の名称変更によって再承認待ちへ戻さない。
-- npmは`whoami`がENEEDAUTHを返した。公開前に所有者のログイン、package namespace・権限を確認する。内部のprivate workspace名はnpm scope所有の証明ではない。
-- Daymark独立repository、非機密の接続用stub、CI、配布物検証、固定version取り込みと公開後7日gateは未実施。
-- 習慣の業務機能・UIは未設計・未実装。Phase 20完了後のPhase 21冒頭に所有者と設計する。
+- 所有者が記事クリップと同じ開発・test・push・承認後deployを希望し、npmを使わない方式を承認した。ADR-0012でregistry配布案を取り下げた。npmログイン・scope取得・公開後7日の自作package待機は不要になったが、第三者registry依存の7日gateは維持した。
+- owner・衝突なし・権限を確認し、public `Rizakura0110/daymark`を作成した。`modules/daymark`に別Git履歴を保持し、基盤はgitlinkの完全commit SHAとworkspace参照で統合する。既存の別repository rizakura-meには触れていない。
+- Daymarkはprivate workspace packageとしてbrowser/server/contracts/schemaの非機密stubを提供する。portalの準備中表示と保護された`/api/v1/daymark/status`で接続確認し、習慣機能・UI・table・migrationは未作成のままとした。
+- 両repositoryの固定toolchain・lockfile・供給網policyを維持した。単体CIと基盤のsubmodule checkout付きCIを用意し、Cloudflare credentialsやdeploy jobは追加していない。
+- Viteがbrowser:nullだけではserver importを拒否しないことを失敗testで検出した。解決後sourceを検査するVite pluginとbrowser条件の型検査を追加し、package import・相対source importの両方を実buildで拒否する。
+- 初回の実HTTP gateはWranglerのworkerd/worker/browser条件でserver入口が拒否され失敗した。workerd条件を先に解決するexportと回帰testを追加し、修正後のfull checkがpassした。gateを迂回・無効化していない。
+
+### 変更ファイル
+
+- `.gitmodules`と`modules/daymark`のgitlink、workspace/lockfile、CI、root scripts
+- portalのbrowser import、共通保護配下のDaymark接続APIとtest、client型検査、Vite境界plugin・実build検証
+- 実HTTP・E2E検証、ADR、設計・roadmap・README・品質基準・依存基準・作業規約
+
+### コマンドと追加検証結果
+
+- `pnpm daymark:check`: frozen install、format、lint、TypeScript、2 files・8 tests、coverage全指標100%、宣言付きbuild、audit pass（単体は既知脆弱性なし）。DaymarkのGitHub Actionsも`e5b341d`でsuccess。
+- 修正後の`pnpm check`: format、lint、生成型整合、TypeScript、40 files・419 tests、coverage、fresh local D1、実HTTP、production/dry-run build、artifact budget、E2E、auditすべてpass。
+- coverage: statements 87.02%、branches 83.00%、functions 87.29%、lines 88.61%。既存thresholdを維持した。
+- E2E: desktop/mobile 27 pass、desktop専用sidebarのmobile実行1件は従来どおりskip。新接続APIの未認証401も確認した。
+- artifact raw/gzip: app Worker 452.3/97.2 KiB、fetcher 585.6/88.8、client JS 359.7/106.0、CSS 30.2/6.5。すべてbudget内。
+- audit: high 0、critical 0、既知の開発用推移依存moderate 1。第三者依存のversion・integrityと既存migrationに変更なし。
+- Daymarkを先にcommit/pushしてから基盤の参照を更新した。公開物review、秘密情報pattern scan、生成物ignore確認を実施した。
+
+### 残作業・変更していないもの
+
+- 基盤push後のclean GitHub Actionsでsubmodule取得・frozen install・統合test/buildを確認する。
+- 習慣の業務機能・UIは未設計・未実装。Phase 21冒頭に所有者と設計する。
+- npm公開、Cloudflareへのdeploy・resource作成・課金変更・remote DB操作は実施していない。本番は従来のTech Inboxのまま。

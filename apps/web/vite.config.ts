@@ -3,6 +3,7 @@ import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 import { fileURLToPath } from "node:url";
+import { daymarkBoundary } from "./daymark-boundary";
 
 export default defineConfig({
   appType: "mpa",
@@ -19,6 +20,7 @@ export default defineConfig({
     },
   },
   plugins: [
+    daymarkBoundary(),
     react(),
     tailwindcss(),
     cloudflare({

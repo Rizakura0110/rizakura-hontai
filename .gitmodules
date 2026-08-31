@@ -1,0 +1,3 @@
+[submodule "modules/daymark"]
+	path = modules/daymark
+	url = https://github.com/Rizakura0110/daymark.git

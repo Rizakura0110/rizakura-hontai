@@ -98,6 +98,8 @@ Phase 1の初回installで報告されたbuild scriptを確認し、次だけを
 
 ## Lockfileと監査結果
 
+- Phase 20のDaymarkは所有者承認の[Git submodule方式](decisions/0012-daymark-git-submodule.md)に変更した。`workspace:0.0.0`参照と完全commit SHAで自作sourceを固定し、npmへは公開しない。Git URLをpackage dependencyに指定する方式ではない。第三者の完全version・7日gate・integrity・install script制限は両repositoryで維持する。Daymark単体lockfileと基盤lockfileを分け、独立CIと統合CIの両方を通す。
+
 - 2026-08-31のPhase 20命名移行では所有者指示により、基盤の内部workspaceを`rizakura-hontai`、`@rizakura-hontai/web`、`@rizakura-hontai/contracts`、`@rizakura-hontai/db`へ変更した。第三者version・integrity・供給網設定は変更せず、`pnpm install --frozen-lockfile`で395 entriesのpolicy検証と再リンクを確認した。これはnpm packageの公開ではない。
 
 - 2026-08-31のPhase 19では内部workspace名だけを`rizakura-me`、`@rizakura-me/web`、`@rizakura-me/contracts`、`@rizakura-me/db`へ整理した。`@tech-inbox/core`とmetadata-fetcherは記事専用として維持する。lockfileはworkspace参照名だけの変更で、第三者packageのversion・integrity・供給網設定を変更せず、`pnpm install --frozen-lockfile`で395 entriesのpolicy検証と再リンクを確認した。

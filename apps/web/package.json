@@ -11,6 +11,7 @@
     "cf:typecheck": "wrangler types --env-interface CloudflareBindings --check"
   },
   "dependencies": {
+    "@rizakura-hontai/daymark": "workspace:0.0.0",
     "@rizakura-hontai/contracts": "workspace:0.0.0",
     "@tech-inbox/core": "workspace:0.0.0",
     "@rizakura-hontai/db": "workspace:0.0.0",

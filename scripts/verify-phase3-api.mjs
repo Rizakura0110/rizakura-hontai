@@ -301,6 +301,10 @@ try {
 
   await waitForWorker();
 
+  const daymark = await requestJson("/api/v1/daymark/status");
+  assert.equal(daymark.response.status, 200);
+  assert.deepEqual(daymark.body, { product: "daymark", status: "not_configured" });
+
   const first = await createArticle("https://Example.com/first/?utm_source=test");
   assert.equal(
     first.response.status,

@@ -2,6 +2,7 @@ packages:
   - apps/*
   - workers/*
   - packages/*
+  - modules/daymark
 
 registries:
   default: https://registry.npmjs.org/

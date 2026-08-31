@@ -25,10 +25,10 @@ Browser → Cloudflare Access → rizakura-hontai（入口）
 
 基盤repository → 各機能をbuild時に統合 → app Worker → 共通D1
                        ↑                               ├─ 記事用table
-               Daymarkの固定version                    └─ Daymark用table
+               Daymarkの固定commit SHA                    └─ Daymark用table
 ```
 
-repository、PWA、deployment、databaseの単位は独立して考える。Daymark repositoryへのpushだけではproductionを更新しない。基盤側で取り込みversionを更新し、組み合わせを検証してからdeployする。3つ目の基盤専用repository、別の習慣用production Worker、独自domain購入は今回のscope外。
+repository、PWA、deployment、databaseの単位は独立して考える。Daymark repositoryへのpushだけではproductionを更新しない。基盤側で取り込みcommitを更新し、組み合わせを検証してからdeployする。3つ目の基盤専用repository、別の習慣用production Worker、独自domain購入は今回のscope外。
 
 ## 2. コードの所有と連携
 
@@ -47,19 +47,19 @@ repository、PWA、deployment、databaseの単位は独立して考える。Daym
 - 注入されたDB・clock・ID生成などの必要な能力を使い、Tech Inboxのserviceやtableを直接参照しない。
 - 共通contractは製品に依存させず、統合部分だけが両製品を参照する。相互importや、Daymarkから基盤アプリ全体への依存を作らない。
 
-### パッケージ取り込み
+### Git submoduleとworkspaceによる取り込み
 
-- 自作moduleを完全version固定したpackageとして取り込む。rootのlockfileでproductionの組み合わせを再現する。sourceを手作業でコピーして二重編集しない。
+- `modules/daymark`のGit submoduleを完全commit SHAで固定し、`@rizakura-hontai/daymark`を`workspace:0.0.0`として取り込む。gitlinkが自作source、root lockfileが第三者依存の組み合わせを固定する。sourceを手作業でコピーして二重編集しない。
 - React等の共有runtimeは互換peerを宣言し、基盤の固定versionへ揃える。秘密情報、実データ、Cloudflare設定、不要なtest成果物は配布物へ含めない。
 - Git URL、直接tarball URL、moving branch/tag、`latest`、未審査のinstall scriptをdependency指定に使わない。
-- [既存の供給網ルール](dependency-baseline.md)を維持する。registryから取り込む自作packageにも既存の公開後7日ルールが適用されるため、即日取り込みを前提にしない。例外設定を勝手に追加しない。
-- Phase 20では、clean checkoutから取得・build・統合testを再現する最小moduleで連携を先に検証する。公開直後は検証用source testを進めても、本番候補の取り込みgateを迂回しない。
+- [既存の供給網ルール](dependency-baseline.md)を両repositoryで維持する。registry依存には公開後7日gateを適用し、例外設定を追加しない。自作sourceはnpm配布をやめ、既存のworkspace sourceと同じくGit reviewと品質gateを通す。
+- Phase 20では、clean checkoutから固定commitの取得・build・統合testを再現する。Daymark単体CIと基盤統合CIを設け、Daymarkを先にcommit/pushしてから基盤のgitlinkを更新する。build時の`git submodule update --remote`は使わない。
 
-2026-08-31に所有者が`Rizakura0110/daymark`のpublic作成とnpm public packageでの配布を承認した。npmの公開用ログイン・namespace所有権・publish権限はまだ未確認で、これらを解決するまで公開しない。`@rizakura-hontai/*`は現在privateな内部workspace名であり、同名npm scopeの所有を意味しない。公開物に秘密情報や実データを含めず、有料private packageへ切り替えない。[npm public](https://docs.npmjs.com/about-public-packages/)
+2026-08-31に所有者がnpm公開を使わないGit submodule方式を承認した。`Rizakura0110/daymark`のpublic作成承認は維持する。packageは`private: true`とし、npmアカウント・scope取得・publish権限は不要。公開repositoryに秘密情報や実データを含めない。判断変更は[ADR-0012](decisions/0012-daymark-git-submodule.md)に記録する。
 
 Phase 20までに扱うDaymark moduleは、読み込み・認証・build境界を検証する非機密の接続確認用stubに限定する。仮の習慣フォーム、記録用API DTO、業務table、migration、集計処理を先に作らない。接続確認用stubを習慣機能の仕様やUI承認とみなさない。
 
-新repositoryのローカル配置は現在の許可領域内の無視対象directoryを候補とし、親repositoryに`.git`やsourceを取り込まない。兄弟directoryや現在のworkspace自体の移動は、この設計だけを根拠に実施しない。clone先、ignore、realpath、個別Git rootをPhase 20で確認する。
+新repositoryのローカル配置は現在の許可領域内の`modules/daymark`とする。親repositoryはgitlinkと`.gitmodules`だけを管理し、Daymarkのsourceは別Git履歴へ記録する。両repositoryのcache・dist・秘密fileはignoreする。兄弟directoryやworkspace自体は移動せず、realpathとGit rootを確認する。
 
 ## 3. URL・HTML・独立PWA
 
@@ -145,8 +145,8 @@ D1の物理名変更は安全なin-place変更が可能かを実行時に確認�
 
 ## 8. 未実施の外部操作・所有者確認
 
-1. Daymarkのpublic repositoryとnpm public配布は承認済み。npmログイン・package namespace・publish権限を確認する。GitHub公開だけでregistryの所有権や認証を得たとは扱わない。
-2. Daymarkのrepository・package作成と公開物review、固定version取り込み、7日gate通過は残作業。習慣機能/UIは作らない。
+1. Daymarkのpublic repository作成とcommit固定のGit submodule連携は承認済み。npm公開・ログインは行わない。
+2. Phase 20ではrepository公開物review、独立CIと基盤統合gate、clean checkoutを検証する。習慣機能/UIは作らない。
 3. 基盤GitHubの改名は完了。Daymark新規作成前には対象・衝突・権限を再確認する。
 4. Phase 25でのproduction DB更新・deploy・リソース名/URL移行の承認。
 

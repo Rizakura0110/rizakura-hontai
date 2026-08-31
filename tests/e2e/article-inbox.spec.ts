@@ -467,7 +467,12 @@ test("unknown documents, assets and unauthenticated future APIs never receive an
     expect(response.status()).toBe(404);
     expect(await response.text()).not.toContain('<div id="root">');
   }
-  for (const path of ["/api", "/api/v1/daymark/future", "/api/v2/unknown"]) {
+  for (const path of [
+    "/api",
+    "/api/v1/daymark/status",
+    "/api/v1/daymark/future",
+    "/api/v2/unknown",
+  ]) {
     const response = await page.request.get(path, {
       headers: { "Sec-Fetch-Mode": "navigate", Accept: "text/html" },
     });
