@@ -1233,6 +1233,8 @@
 
 ## Phase 17: iPhone PWA基盤
 
+完了: 2026-08-31。本番反映済みで、所有者からSafariでのPWA確認完了報告を受領した。
+
 ### 実施内容
 
 - Tech InboxをiPhoneのホーム画面からstandalone表示で起動するWeb App Manifestを追加した。
@@ -1258,6 +1260,7 @@
 - `README.md`
 - `docs/security.md`
 - `docs/quality-gates.md`
+- `docs/manual-device-test.md`
 - `docs/progress.md`
 
 ### 採用判断
@@ -1274,6 +1277,10 @@
 - `vitest run apps/web/src/worker/app.test.ts`
 - production build後の対象Playwright test
 - `pnpm check`
+- deploy前後の`pnpm cloudflare:preflight`
+- app Workerだけのproduction deploy
+- 未認証root・API・manifestのHTTP確認と`pnpm cloudflare:health`
+- 実機完了報告後の文書更新に対する`pnpm format:check`
 - `git diff --check`、ignore確認、tracked contentのcredential pattern scan
 
 ### 検証結果
@@ -1290,11 +1297,18 @@
 - Playwright: desktop/mobile合計21 tests pass、desktop専用regression testのmobile実行1件skip
 - audit: high 0、critical 0、既知moderate 1
 - GitHub Actions run `33256409753`: success（feature commit `36cfedb`）
-- dependency、DB schema、API、Worker binding、migration、production resourceの変更: なし
-- production deploy: 未実施
+- production app Worker deployment version: `991d4212-61d0-4543-b4b2-fa4e1c7f782d`
+- D1、Queue、Service Binding、5種類のRate Limiting binding、production変数: 維持
+- dependency、DB schema、API機能、migration、新規resource、metadata-fetcherの変更: なし
+- deploy前後preflight: owner email完全一致policy、7日session、launcher非表示、appだけの公開境界を維持してpass
+- deploy時の未認証`/`・`/api/articles`・`/manifest.webmanifest`: Cloudflare Accessへ302 redirect（API確認に使ったpathは`/api/articles`であり、実際のAPI routeは`/api/v1/articles`）
+- deploy後health: app Worker 43 requests・43 success・0 errors、metadata-fetcher 1 request・1 success・0 errors
+- 同healthで通常Queue backlog 0件、直近24時間のDLQ/fail 0件。過去のDLQ 7件・851 bytesは本文を読まず変更なし
+- 上記のproduction checkはデプロイ時の結果であり、2026-08-31の実機完了報告受領時に再実行したものではない
+- 2026-08-31にownerからSafariでのPWA確認完了報告を受領。案内した確認範囲と未確認項目は`docs/manual-device-test.md`に記録した
 
 ### 未解決事項
 
-- production反映後、ownerがiPhone Safariからホーム画面へ追加し、icon、standalone起動、Access再ログイン、既存機能を実機確認する。
+- Access session期限切れ後の再ログインとSafariでの全CRUD操作は今回の実機確認には含めない。
 - Android Chrome実機はowner判断でスキップした状態を維持する。
 - 既知のmoderate advisory 1件はDrizzle Kit配下の開発専用推移依存であり、runtime bundleには含まれない。

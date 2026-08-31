@@ -43,7 +43,7 @@ tech-inbox-metadata-fetcher Worker
 - 開発: macOS arm64、Node.js 24.19.0、pnpm 11.22.0
 - 自動E2E: Desktop Chrome 1280 × 800、Mobile Chrome 320 × 700
 - 実機確認: iPhone Chrome
-- PWAのインストール・standalone表示: iPhone Safari（production反映後に実機確認）
+- PWAのインストール・standalone表示: iPhone Safari（2026-08-31に所有者から本番での確認完了報告）
 - Android Chrome: 手順は用意済みですが、所有者判断で実機確認をスキップしています
 - 通常の機能確認におけるSafari、Firefox、Edgeは正式な動作保証対象外です
 
@@ -138,14 +138,14 @@ Cloudflare API tokenもrepositoryへ保存せず、対象account・必要権限�
 
 ## 初期版で対応しないもの
 
-- PWA、Service Worker、offline、Web Push、ホーム画面install
+- Service Worker、offline、Web Push
 - RSS、自動AI要約、AIタグ付け
 - 記事本文・画像の保存
 - メモ、お気に入り、優先度、共有、コメント
 - 複数ユーザー、組織、招待、権限管理
 - React Native、Share Extension、Android共有、native通知
 - R2、KV、Durable Objects、Vectorize、Workers AI、Browser Rendering
-- ダークモードとChrome以外の正式保証
+- ダークモードとChrome以外の全機能の正式保証（iPhone SafariのPWA確認は上記の範囲で実施済み）
 
 ## Troubleshooting
 
