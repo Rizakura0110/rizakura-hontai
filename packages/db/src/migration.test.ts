@@ -14,6 +14,7 @@ describe("database migrations", () => {
   it("contains a generated initial migration", () => {
     expect(migrationFiles.filter((fileName) => /^0000_.+\.sql$/u.test(fileName))).toHaveLength(1);
     expect(migrationFiles.filter((fileName) => /^0001_.+\.sql$/u.test(fileName))).toHaveLength(1);
+    expect(migrationFiles.filter((fileName) => /^0002_.+\.sql$/u.test(fileName))).toHaveLength(1);
   });
 
   it("persists all table invariants as SQLite constraints", () => {
@@ -31,6 +32,12 @@ describe("database migrations", () => {
       'CONSTRAINT "articles_status_read_at_check"',
       'CONSTRAINT "tags_name_length_check"',
       'CONSTRAINT "tags_color_hue_check"',
+      "CREATE TABLE `daymark_habits`",
+      "CREATE TABLE `daymark_habit_versions`",
+      "CREATE TABLE `daymark_records`",
+      'CONSTRAINT "daymark_habits_kind_check"',
+      'CONSTRAINT "daymark_habit_versions_shape_check"',
+      'CONSTRAINT "daymark_records_shape_check"',
     ]) {
       expect(migrationSql).toContain(expectedSql);
     }
@@ -57,6 +64,12 @@ describe("database migrations", () => {
     );
     expect(migrationSql).toContain(
       "CREATE INDEX `article_tags_tag_id_idx` ON `article_tags` (`tag_id`)",
+    );
+    expect(migrationSql).toContain(
+      "CREATE UNIQUE INDEX `daymark_habit_versions_habit_effective_uidx` ON `daymark_habit_versions` (`habit_id`,`effective_from`)",
+    );
+    expect(migrationSql).toContain(
+      "CREATE UNIQUE INDEX `daymark_records_habit_date_uidx` ON `daymark_records` (`habit_id`,`record_date`)",
     );
   });
 });

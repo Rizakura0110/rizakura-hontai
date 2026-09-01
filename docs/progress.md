@@ -1486,3 +1486,38 @@
 
 - 習慣の業務機能・UIは未設計・未実装。Phase 21冒頭に所有者と設計する。
 - npm公開、Cloudflareへのdeploy・resource作成・課金変更・remote DB操作は実施していない。本番は従来のTech Inboxのまま。
+
+## Phase 21: Daymarkの機能設計とデータ・API基盤
+
+状態: 完了（2026-09-01、未デプロイ）。所有者と習慣の要件および日・週・月のPC画面案を合意し、画面実装と分けて契約・domain・DB schema・保護APIまでを実装した。
+
+### 合意した仕様
+
+- 毎日1件ずつ記録するチェック式と数値式の習慣を扱う。数値は0〜10億、小数3桁まで、単位と「目標以上/以下」の比較を持つ。
+- 日付は日本時間。今日と過去の記録を作成・修正・削除でき、未来は拒否する。記録なしは未入力、チェックfalseまたは目標未達値は明示的未達として区別する。
+- 状態は有効・休止・アーカイブ。休止・アーカイブ、作成前、未来日は集計の分母から除く。
+- 目標・単位・比較条件・状態の変更は今日以降の適用開始日を持つversionとして保存し、過去の評価を変更しない。種類は作成後に変えない。
+- 週表示は月曜〜日曜の7日を日別・習慣別に集計し、週途中に作成した習慣は作成日以降だけを対象とする。月表示は暦月の全日を日別集計する。
+
+### 実装内容
+
+- Daymark repositoryへZod契約、JST日付・1000倍整数・達成判定・設定履歴・日/週/月集計のdomain service、repository interfaceを追加した。
+- `daymark_habits`、`daymark_habit_versions`、`daymark_records`のDrizzle schemaを追加した。名称/単位長、種類/状態、チェック/数値shape、数値上限、一意性、index、cascadeをDB制約にした。
+- 基盤repositoryがmigration `0002_mature_iron_monger.sql`とsnapshotを所有する。既存の記事・URL alias・タグ・タグ付けtableを変更せず、同じD1へ`daymark_`tableを追加する。
+- app WorkerへD1 adapterと`/api/v1/daymark/*`を追加した。習慣一覧/作成、名称変更、今日以降の設定upsert、日次取得、記録upsert/削除、週/月集計を既存のAccess認証、Origin・JSON・client header検証、read/mutate Rate Limit、安全なerror/log配下へ置いた。
+- API statusはdomain準備完了を示す`ready`とJSTを返す。browserはまだ準備中表示のままで、利用画面を先行公開しない。
+- 判断をADR-0013、設計・roadmap・README・品質基準・運用手順へ反映した。
+
+### 検証結果
+
+- Daymark単体: format、lint、TypeScript、5 files・38 tests、coverage全指標100%、宣言付きbuild、既知脆弱性0件。
+- 基盤: Cloudflare生成型整合、TypeScript、40 files・423 tests、coverage statements 87.32% / branches 83.40% / functions 87.32% / lines 88.90%がpass。
+- fresh local D1でmigration `0000`〜`0002`、全Daymark table/index/CHECK/UNIQUE/cascade、数値上限、再適用無変更を検証した。既存記事・タグ入りDBも保持した。
+- 一時local D1を使う実HTTPでDaymark status、作成、一覧、記録、日/週/月集計、削除と既存記事フローがpassした。
+- production/dry-run buildとentrypoint境界がpass。artifactはapp Worker 482.2 KiB raw / 103.1 KiB gzip、metadata-fetcher 585.6 / 88.8、client JS 359.7 / 106.0、CSS 30.2 / 6.5でbudget内。
+- Playwrightはdesktop/mobile 27件pass、desktop専用sidebarのmobile 1件skip。依存監査はhigh 0・critical 0で、既知の開発用推移依存moderate 1件だけを継続した。
+
+### 変更していないもの・次フェーズ
+
+- production D1へのmigration、Cloudflare deploy、resource作成、Access・課金設定変更は実施していない。本番は従来どおり。
+- Daymarkの日・週・月画面、responsive対応、専用manifest/PWAはPhase 22で実装する。製品別JSON backupはPhase 23へ残す。

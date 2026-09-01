@@ -1,12 +1,12 @@
 # Quality gates
 
-最終更新: 2026-08-31
+最終更新: 2026-09-01
 
 ## 標準ゲート
 
 `pnpm check`はformat、lint、Cloudflare生成型、TypeScript、unit/component/integration test、coverage、fresh local D1、実HTTP API、production build、artifact budget、desktop/mobile Chrome E2E、dependency auditを順に実行する。
 
-2026-08-28のPhase 11最終実行では、Vitest 30 files・325 tests、Playwright desktop/mobile合計18 testsが成功した。
+2026-09-01のPhase 21最終実行では、Daymark単体5 files・38 tests、基盤Vitest 40 files・423 tests、Playwright desktop/mobile 27 testsが成功した。desktop専用sidebar testのmobile実行1件は意図どおりskipした。
 
 個別確認には次を使う。
 
@@ -37,11 +37,17 @@ pnpm audit --audit-level high
 
 ## Daymark integration gate
 
-Phase 20では`pnpm check`の先頭でDaymark独立gate（format、lint、TypeScript、coverage付きtest、宣言付きbuild、audit）を実行する。単独cloneのCIでも同じgateを実行し、Cloudflare credentialは不要。browser/server/contracts/schemaの接続用stubだけが対象で、習慣機能は未設計である。
+`pnpm check`の先頭でDaymark独立gate（format、lint、TypeScript、coverage付きtest、宣言付きbuild、audit）を実行する。単独cloneのCIでも同じgateを実行し、Cloudflare credentialは不要。Phase 21からcontracts/server/schemaの業務実装を対象に含む。browser画面はPhase 22まで準備中のままとする。
 
 基盤の`pnpm daymark:boundaries`は実際のVite buildでbrowser/contractsの成功とserver/schemaのbrowser build失敗を検証する。package exportsだけでなく、Vite pluginで解決後sourceのclient混入を拒否する。通常のbuildにも同じpluginを適用し、client型検査にはbrowser条件を付ける。
 
-`/api/v1/daymark/status`を共通保護配下へ組み込み、認証・Rate Limit・安全なerror・no-store・非機密status・書き込みendpoint不在をtestする。実HTTP gateで成功を、Playwrightで未認証401を確認する。schemaは空で、既存記事・タグのDB/migrationは変更しない。
+`/api/v1/daymark/*`を共通保護配下へ組み込み、認証・Origin・JSON・client header・Rate Limit・安全なerror・no-storeをtestする。実HTTP gateでは習慣作成、一覧、日次記録、週/月集計、記録削除と既存記事APIを同じ一時D1で確認する。Playwrightの未認証401はPhase 22の画面と合わせて拡張する。
+
+local D1 gateはmigration `0002`を空DBと既存記事/タグ入りDBへ適用し、次を必須とする。
+
+- `daymark_habits`、`daymark_habit_versions`、`daymark_records`と必要なindexが作られる
+- 種類・状態・チェック/数値shape・数値上限・名称/単位長・一意性・cascadeの制約が機能する
+- 同じmigrationの再適用が無変更になり、既存の記事・URL alias・タグ・タグ付けが保持される
 
 GitHub Actionsは`submodules: true`で基盤gitlinkの固定commitを取得する。Daymarkだけのpushで基盤参照や本番を更新しない。Phase完了時は新しい作業コピーで固定commit取得・frozen install・統合test/buildも確認する。
 
@@ -58,9 +64,12 @@ V8 coverageはstatements、branches、functions、linesの全指標に80%の最�
 | SSRF URL判定 | 100% | 96.00% | 100% | 100% |
 | 契約schema | 100% | 100% | 100% | 100% |
 
+Phase 21追加後の基盤全体はstatements 87.32%、branches 83.40%、functions 87.32%、lines 88.90%。Daymark単体は全指標100%で、最低値を変更していない。
+
 V8 unit coverageから次だけを除外する。
 
 - `apps/web/src/worker/repositories/d1-article-repository.ts`: fake DBではなく、`pnpm api:verify:local`でfreshな実D1と実HTTPを検証する。
+- `apps/web/src/worker/repositories/d1-daymark-repository.ts`: 同様に、migration `0002`適用後のfreshな実D1とDaymark実HTTPフローで検証する。
 - `apps/web/src/worker/d1-article-repository.integration-fixture.ts`: 上記adapterをlocal Workerから実行するtest専用entrypointとして、`pnpm api:verify:local`で検証する。
 - app Workerとmetadata-fetcherの`index.ts`: runtime composition entrypointとして、生成型、typecheck、production dry-run build、統合テストで検証する。
 - client `main.tsx`・`portal.tsx`: browser boot entrypointとしてproduction buildとPlaywrightで検証する。

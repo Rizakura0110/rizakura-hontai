@@ -1,6 +1,18 @@
 import { ARTICLE_STATUSES, ARTICLE_URL_KINDS } from "@tech-inbox/core/article";
 import { METADATA_ERROR_CODES, METADATA_STATUSES } from "@tech-inbox/core/metadata";
 import { MAX_TAG_NAME_LENGTH, TAG_COLOR_HUE_COUNT } from "@tech-inbox/core/tag";
+export {
+  type DaymarkHabitInsert,
+  type DaymarkHabitRow,
+  type DaymarkHabitVersionInsert,
+  type DaymarkHabitVersionRow,
+  type DaymarkRecordInsert,
+  type DaymarkRecordRow,
+  daymarkHabitVersions,
+  daymarkHabits,
+  daymarkRecords,
+  daymarkSchema,
+} from "@rizakura-hontai/daymark/schema";
 import { sql } from "drizzle-orm/sql";
 import { desc } from "drizzle-orm/sql/expressions/select";
 import { check } from "drizzle-orm/sqlite-core/checks";

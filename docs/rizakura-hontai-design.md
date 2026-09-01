@@ -1,7 +1,7 @@
 # rizakura-hontai: 共通基盤とDaymarkの設計
 
-最終更新: 2026-08-31
-状態: Phase 20完了。基盤名をrizakura-hontaiへ変更し、GitHubのwebclipを同名へ改名した。Daymarkのpublic repositoryとcommit固定のGit submodule、非機密の接続用stub、独立・統合CIを実装済み。production反映は未実施。Daymarkの機能・UIはPhase 21冒頭に所有者と設計する。本書の後続計画は実装・公開済みを意味しない。
+最終更新: 2026-09-01
+状態: Phase 21完了。Daymarkの合意済み業務仕様を契約・domain・DB schema・保護APIへ実装し、local D1と実HTTPで検証した。画面・独立PWA・backupとproduction反映は未実施。本書の後続計画は実装・公開済みを意味しない。
 
 2026-08-31の所有者指示で、当初の基盤名rizakura-meをrizakura-hontaiへ変更した。既存の`Rizakura0110/rizakura-me`は別repositoryとしてそのまま残し、今回の基盤には使わない。Phase 18/19の実行記録とADRは当時の名称を保持する。
 
@@ -57,7 +57,7 @@ repository、PWA、deployment、databaseの単位は独立して考える。Daym
 
 2026-08-31に所有者がnpm公開を使わないGit submodule方式を承認した。`Rizakura0110/daymark`のpublic作成承認は維持する。packageは`private: true`とし、npmアカウント・scope取得・publish権限は不要。公開repositoryに秘密情報や実データを含めない。判断変更は[ADR-0012](decisions/0012-daymark-git-submodule.md)に記録する。
 
-Phase 20までに扱うDaymark moduleは、読み込み・認証・build境界を検証する非機密の接続確認用stubに限定する。仮の習慣フォーム、記録用API DTO、業務table、migration、集計処理を先に作らない。接続確認用stubを習慣機能の仕様やUI承認とみなさない。
+Phase 20は読み込み・認証・build境界を検証する非機密の接続確認用stubに限定した。Phase 21は所有者との機能・PC画面設計後に、画面より先に必要な契約・domain・schema・APIを実装した。browser画面を同じフェーズへ混ぜず、Phase 22で合意済み画面を接続する。
 
 新repositoryのローカル配置は現在の許可領域内の`modules/daymark`とする。親repositoryはgitlinkと`.gitmodules`だけを管理し、Daymarkのsourceは別Git履歴へ記録する。両repositoryのcache・dist・秘密fileはignoreする。兄弟directoryやworkspace自体は移動せず、realpathとGit rootを確認する。
 
@@ -68,7 +68,7 @@ Phase 20までに扱うDaymark moduleは、読み込み・認証・build境界�
 | `/` | rizakura-hontaiの入口。記事・習慣の2つの導線 | 専用manifestなし |
 | `/tech-inbox/` | Tech Inboxの全記事画面 | Tech Inbox専用 |
 | `/tech-inbox/settings` | 記事のタグ管理・backup等 | Tech Inbox専用 |
-| `/daymark/` | Daymarkの製品入口。内部画面・navigationは実装直前に設計 | Daymark専用 |
+| `/daymark/` | Daymarkの製品入口。Phase 21時点は準備中、Phase 22で日・週・月画面を統合 | Daymark専用 |
 | `/api/v1/articles*`、`/api/v1/tags*`、既存export/import | 既存APIを互換維持 | 対象外 |
 | `/api/v1/daymark/*` | 新しい習慣API | 対象外 |
 
@@ -104,23 +104,37 @@ manifest linkの`crossorigin="use-credentials"`を維持する。Service Worker�
 - 通常testはlocal DBだけを使う。Daymark独立test用の一時DBに加え、基盤側では既存記事・タグを入れたDBへの追加migrationを検証する。
 - logへ習慣名、実績値、記事情報、backup本文を追加しない。DB全体のTime Travel復元は両製品へ影響するため、製品別JSON復元と区別する。
 
-## 5. Daymarkの機能・UIは実装直前に設計する
+## 5. Daymarkの合意仕様
 
-2026-08-31の所有者指示により、習慣管理の機能・UIを今の段階で確定しない。初回draftにあった入力方式、数値精度、目標の適用日、集計ルール、具体的なtable構成は採用済みの仕様ではなく、本設計から外した。
+2026-09-01に所有者と初期要件およびPC画面案を確認し、日・週・月の構成で実装を進めることを合意した。Phase 21はデータ・API、Phase 22は画面・PWAに分ける。
 
-現在維持するのは「習慣の達成状況や数値目標の記録を管理したい」という目的と、別repository・共通基盤・独立PWAという技術境界だけとする。
+### 記録と達成判定
 
-- Phase 18/19: 共通認証、入口、Tech Inboxの分離、命名と互換性を先に進める。
-- Phase 20: repository・開発環境・CI・非機密の接続確認用stubによる連携を準備する。習慣の業務仕様に依存する実装は行わない。
-- Phase 20完了後、Phase 21の機能実装前に一度区切り、所有者と機能・UIを設計する。画面案だけでなく、入力・保存・達成判定・履歴の意味も合わせて決める。
-- 所有者との設計合意後に、DB schema、API DTO、業務処理、画面実装へ進む。先に作ったDB/APIへUIを合わせる順序にはしない。
+- 記録粒度は1日。初期版では曜日限定・週N回・月N回の習慣を作らない。
+- 種類はチェック式と数値式。数値式は0〜10億、小数3桁まで、20文字までの単位、「目標以上」または「目標以下」を持つ。DBは1000倍の整数で保持する。
+- チェック式の`true`は達成、`false`は明示的未達。数値式は保存値をその日の目標と比較する。記録なしは未入力として未達と区別する。
+- 日付境界は`Asia/Tokyo`。今日と過去は作成・修正・削除できる。未来への記録と未来の週/月の取得は拒否し、現在の週/月に含まれる未来日は集計対象外にする。
 
-設計時には、入力形式・記録の粒度、達成条件、数値/単位、日付の区切り、未入力の扱い、目標変更・休止・過去修正、集計、画面構成・navigation、必要なbackup項目を確認する。この列挙は検討項目であり、機能の採否や既定値の決定ではない。
+### 設定履歴
+
+- 習慣は有効・休止・アーカイブの状態を持つ。休止・アーカイブ中は日次の記録対象および集計の分母から除く。
+- 種類は作成後に変更しない。名称は現在名を更新できる。
+- 目標、単位、比較条件、状態は適用開始日付きversionとして保存する。変更の適用日は今日以降だけとし、過去日を以前の設定で再評価できるようにする。
+- 習慣作成前の日は対象外。週途中で作成した場合、その週の作成日以降だけを習慣別集計へ含める。
+
+### 表示用集計と画面
+
+- 日表示は各習慣の設定・記録・達成/未達/未入力と日全体の件数・達成率を返し、Phase 22の主な入力画面にする。
+- 週表示は月曜〜日曜の7日を固定し、日別集計と習慣別の対象日・達成数・達成率を返す。
+- 月表示は暦月の全日を返し、各日の達成・未達・未入力・対象数・達成率と月全体の集計を表示する。
+- PC画面は日・週・月を切り替える。Phase 22でresponsive対応とDaymark専用PWAを実装し、画面上の最終文言・操作詳細を確認する。
+
+具体的な契約と判断理由は[ADR-0013](decisions/0013-daymark-daily-domain.md)を参照する。
 
 ## 6. Backup方針
 
 - Tech Inboxの既存schema v1/v2 export/importを維持する。Daymarkを追加しただけで旧exportがDB全体のbackupになったとは扱わない。
-- 製品別backupの識別・version管理を行い、Daymarkの項目・UI上の入口・復元の意味は機能/UI設計後に定める。
+- 製品別backupの識別・version管理を行い、Daymarkの項目・UI上の入口・復元の意味はPhase 23で現在のデータモデルに合わせて定める。
 - Tech InboxへのimportはDaymark tableを操作せず、Daymarkへのimportは記事tableを操作しない。
 - Daymarkのrecord識別、衝突の扱い、参照整合の具体的な規則は確定したデータモデルに合わせる。既存データを無断で上書きせず、他製品を変更しないことを共通の安全条件とする。
 - 現在の記事import上限1 MiB・記事件数上限を習慣へそのまま流用しない。Phase 23で長期記録を使って容量・batch数・CPUを検証し、必要なら期間分割を提供する。書き出し成功したデータが無説明で復元不能になる仕様や、黙った切り捨ては禁止する。
@@ -146,9 +160,10 @@ D1の物理名変更は安全なin-place変更が可能かを実行時に確認�
 ## 8. 外部操作・所有者確認
 
 1. Daymarkのpublic repository作成、commit固定のGit submodule連携、repository公開物review、独立CIと基盤のclean checkout統合gateは完了した。npm公開・ログインは行わない。
-2. Phase 21冒頭で所有者と習慣の機能・UIを設計する。設計合意まで業務実装を開始しない。
-3. Phase 25でproduction DB更新・deploy・リソース名/URL移行の承認を得る。
+2. Phase 21の機能・PC画面設計は所有者と合意し、データ・APIのlocal実装まで完了した。
+3. Phase 22で合意した画面とDaymark専用PWAを実装する。
+4. Phase 25でproduction DB更新・deploy・リソース名/URL移行の承認を得る。
 
-外部操作とは別に、Phase 21の業務実装前には所有者との機能・UI設計合意を必須とする。準備完了や基盤作業への許可を、未設計の習慣機能への承認へ読み替えない。
+Phase 21の合意はデータ・APIのlocal実装を対象とし、本番D1へのmigrationやdeploy承認には読み替えない。
 
 料金や権限の確認が必要でも、推測で有料プランや公開設定を選ばない。Phase 18ではCloudflare、GitHub repository設定、registry、依存設定を変更しない。

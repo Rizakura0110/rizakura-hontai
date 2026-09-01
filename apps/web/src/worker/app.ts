@@ -1,6 +1,11 @@
-import { getDaymarkConnectionStatus } from "@rizakura-hontai/daymark/server";
 import { Hono } from "hono";
 import type { AppBindings } from "./bindings";
+import {
+  createDaymarkApi,
+  daymarkRoutePolicy,
+  defaultDaymarkDependencies,
+  type DaymarkDependencies,
+} from "./daymark-api";
 import { createApiApp, type ApiDependencies } from "./platform/api";
 import { serveDocument } from "./platform/documents";
 import {
@@ -12,21 +17,16 @@ import {
 
 export type { AppBindings } from "./bindings";
 export type { RequestLogEvent } from "./platform/api";
-export type AppDependencies = TechInboxDependencies & ApiDependencies;
+export type AppDependencies = TechInboxDependencies & DaymarkDependencies & ApiDependencies;
 
 export function createApp(overrides: Partial<AppDependencies> = {}) {
   const api = createApiApp<AppBindings>(
     overrides,
     (method, pathname) => {
-      if ((method === "GET" || method === "HEAD") && pathname === "/api/v1/daymark/status") {
-        return { name: "daymark.status", rateLimit: "read" };
-      }
-      return techInboxRoutePolicy(method, pathname);
+      return daymarkRoutePolicy(method, pathname) ?? techInboxRoutePolicy(method, pathname);
     },
     (protectedApi) => {
-      protectedApi.get("/v1/daymark/status", (context) =>
-        context.json(getDaymarkConnectionStatus()),
-      );
+      protectedApi.route("/", createDaymarkApi({ ...defaultDaymarkDependencies, ...overrides }));
       protectedApi.route(
         "/",
         createTechInboxApi({ ...defaultTechInboxDependencies, ...overrides }),

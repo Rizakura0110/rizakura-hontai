@@ -1,0 +1,702 @@
+{
+  "version": "6",
+  "dialect": "sqlite",
+  "id": "ea4bc65d-539b-43aa-9ab6-662f5fa03fc9",
+  "prevId": "e92b6ce0-378a-461b-8c91-051d837870fc",
+  "tables": {
+    "article_tags": {
+      "name": "article_tags",
+      "columns": {
+        "article_id": {
+          "name": "article_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "tag_id": {
+          "name": "tag_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "article_tags_tag_id_idx": {
+          "name": "article_tags_tag_id_idx",
+          "columns": ["tag_id"],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "article_tags_article_id_articles_id_fk": {
+          "name": "article_tags_article_id_articles_id_fk",
+          "tableFrom": "article_tags",
+          "tableTo": "articles",
+          "columnsFrom": ["article_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "article_tags_tag_id_tags_id_fk": {
+          "name": "article_tags_tag_id_tags_id_fk",
+          "tableFrom": "article_tags",
+          "tableTo": "tags",
+          "columnsFrom": ["tag_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "article_tags_article_id_tag_id_pk": {
+          "columns": ["article_id", "tag_id"],
+          "name": "article_tags_article_id_tag_id_pk"
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "article_urls": {
+      "name": "article_urls",
+      "columns": {
+        "normalized_url": {
+          "name": "normalized_url",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "article_id": {
+          "name": "article_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "kind": {
+          "name": "kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "article_urls_article_id_idx": {
+          "name": "article_urls_article_id_idx",
+          "columns": ["article_id"],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "article_urls_article_id_articles_id_fk": {
+          "name": "article_urls_article_id_articles_id_fk",
+          "tableFrom": "article_urls",
+          "tableTo": "articles",
+          "columnsFrom": ["article_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "article_urls_kind_check": {
+          "name": "article_urls_kind_check",
+          "value": "\"article_urls\".\"kind\" IN ('original', 'canonical')"
+        }
+      }
+    },
+    "articles": {
+      "name": "articles",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "original_url": {
+          "name": "original_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "canonical_url": {
+          "name": "canonical_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "title_is_manual": {
+          "name": "title_is_manual",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "0"
+        },
+        "site_name": {
+          "name": "site_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "favicon_url": {
+          "name": "favicon_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "image_url": {
+          "name": "image_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "published_at": {
+          "name": "published_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "metadata_status": {
+          "name": "metadata_status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "metadata_error_code": {
+          "name": "metadata_error_code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "metadata_attempt_count": {
+          "name": "metadata_attempt_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "metadata_fetched_at": {
+          "name": "metadata_fetched_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "saved_at": {
+          "name": "saved_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "read_at": {
+          "name": "read_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "articles_status_saved_at_id_idx": {
+          "name": "articles_status_saved_at_id_idx",
+          "columns": ["status", "\"saved_at\" desc", "\"id\" desc"],
+          "isUnique": false
+        },
+        "articles_status_read_at_id_idx": {
+          "name": "articles_status_read_at_id_idx",
+          "columns": ["status", "\"read_at\" desc", "\"id\" desc"],
+          "isUnique": false
+        },
+        "articles_site_name_idx": {
+          "name": "articles_site_name_idx",
+          "columns": ["site_name"],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "articles_title_is_manual_check": {
+          "name": "articles_title_is_manual_check",
+          "value": "\"articles\".\"title_is_manual\" IN (0, 1)"
+        },
+        "articles_status_check": {
+          "name": "articles_status_check",
+          "value": "\"articles\".\"status\" IN ('unread', 'read')"
+        },
+        "articles_metadata_status_check": {
+          "name": "articles_metadata_status_check",
+          "value": "\"articles\".\"metadata_status\" IN ('pending', 'ready', 'failed')"
+        },
+        "articles_metadata_attempt_count_check": {
+          "name": "articles_metadata_attempt_count_check",
+          "value": "\"articles\".\"metadata_attempt_count\" >= 0"
+        },
+        "articles_status_read_at_check": {
+          "name": "articles_status_read_at_check",
+          "value": "((\"articles\".\"status\" = 'unread' AND \"articles\".\"read_at\" IS NULL) OR (\"articles\".\"status\" = 'read' AND \"articles\".\"read_at\" IS NOT NULL))"
+        }
+      }
+    },
+    "daymark_habit_versions": {
+      "name": "daymark_habit_versions",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "habit_id": {
+          "name": "habit_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "effective_from": {
+          "name": "effective_from",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "kind": {
+          "name": "kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "target_milli": {
+          "name": "target_milli",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "unit": {
+          "name": "unit",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "comparison": {
+          "name": "comparison",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "daymark_habit_versions_habit_effective_uidx": {
+          "name": "daymark_habit_versions_habit_effective_uidx",
+          "columns": ["habit_id", "effective_from"],
+          "isUnique": true
+        },
+        "daymark_habit_versions_effective_idx": {
+          "name": "daymark_habit_versions_effective_idx",
+          "columns": ["effective_from", "habit_id"],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "daymark_habit_versions_habit_id_daymark_habits_id_fk": {
+          "name": "daymark_habit_versions_habit_id_daymark_habits_id_fk",
+          "tableFrom": "daymark_habit_versions",
+          "tableTo": "daymark_habits",
+          "columnsFrom": ["habit_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "daymark_habit_versions_effective_from_check": {
+          "name": "daymark_habit_versions_effective_from_check",
+          "value": "length(\"daymark_habit_versions\".\"effective_from\") = 10"
+        },
+        "daymark_habit_versions_kind_check": {
+          "name": "daymark_habit_versions_kind_check",
+          "value": "\"daymark_habit_versions\".\"kind\" IN ('check', 'number')"
+        },
+        "daymark_habit_versions_status_check": {
+          "name": "daymark_habit_versions_status_check",
+          "value": "\"daymark_habit_versions\".\"status\" IN ('active', 'paused', 'archived')"
+        },
+        "daymark_habit_versions_shape_check": {
+          "name": "daymark_habit_versions_shape_check",
+          "value": "((\"daymark_habit_versions\".\"kind\" = 'check' AND \"daymark_habit_versions\".\"target_milli\" IS NULL AND \"daymark_habit_versions\".\"unit\" IS NULL AND \"daymark_habit_versions\".\"comparison\" IS NULL) OR (\"daymark_habit_versions\".\"kind\" = 'number' AND \"daymark_habit_versions\".\"target_milli\" IS NOT NULL AND \"daymark_habit_versions\".\"target_milli\" BETWEEN 0 AND 1000000000000 AND \"daymark_habit_versions\".\"unit\" IS NOT NULL AND length(\"daymark_habit_versions\".\"unit\") BETWEEN 1 AND 20 AND \"daymark_habit_versions\".\"comparison\" IN ('at_least', 'at_most')))"
+        }
+      }
+    },
+    "daymark_habits": {
+      "name": "daymark_habits",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "kind": {
+          "name": "kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_on": {
+          "name": "created_on",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "daymark_habits_created_on_id_idx": {
+          "name": "daymark_habits_created_on_id_idx",
+          "columns": ["created_on", "id"],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "daymark_habits_name_length_check": {
+          "name": "daymark_habits_name_length_check",
+          "value": "length(\"daymark_habits\".\"name\") BETWEEN 1 AND 80"
+        },
+        "daymark_habits_kind_check": {
+          "name": "daymark_habits_kind_check",
+          "value": "\"daymark_habits\".\"kind\" IN ('check', 'number')"
+        },
+        "daymark_habits_created_on_check": {
+          "name": "daymark_habits_created_on_check",
+          "value": "length(\"daymark_habits\".\"created_on\") = 10"
+        }
+      }
+    },
+    "daymark_records": {
+      "name": "daymark_records",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "habit_id": {
+          "name": "habit_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "record_date": {
+          "name": "record_date",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "kind": {
+          "name": "kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "checked": {
+          "name": "checked",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "value_milli": {
+          "name": "value_milli",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "daymark_records_habit_date_uidx": {
+          "name": "daymark_records_habit_date_uidx",
+          "columns": ["habit_id", "record_date"],
+          "isUnique": true
+        },
+        "daymark_records_date_habit_idx": {
+          "name": "daymark_records_date_habit_idx",
+          "columns": ["record_date", "habit_id"],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "daymark_records_habit_id_daymark_habits_id_fk": {
+          "name": "daymark_records_habit_id_daymark_habits_id_fk",
+          "tableFrom": "daymark_records",
+          "tableTo": "daymark_habits",
+          "columnsFrom": ["habit_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "daymark_records_date_check": {
+          "name": "daymark_records_date_check",
+          "value": "length(\"daymark_records\".\"record_date\") = 10"
+        },
+        "daymark_records_kind_check": {
+          "name": "daymark_records_kind_check",
+          "value": "\"daymark_records\".\"kind\" IN ('check', 'number')"
+        },
+        "daymark_records_shape_check": {
+          "name": "daymark_records_shape_check",
+          "value": "((\"daymark_records\".\"kind\" = 'check' AND \"daymark_records\".\"checked\" IS NOT NULL AND \"daymark_records\".\"checked\" IN (0, 1) AND \"daymark_records\".\"value_milli\" IS NULL) OR (\"daymark_records\".\"kind\" = 'number' AND \"daymark_records\".\"checked\" IS NULL AND \"daymark_records\".\"value_milli\" IS NOT NULL AND \"daymark_records\".\"value_milli\" BETWEEN 0 AND 1000000000000))"
+        }
+      }
+    },
+    "tags": {
+      "name": "tags",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "normalized_name": {
+          "name": "normalized_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "color_hue": {
+          "name": "color_hue",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "tags_normalized_name_uidx": {
+          "name": "tags_normalized_name_uidx",
+          "columns": ["normalized_name"],
+          "isUnique": true
+        },
+        "tags_color_hue_uidx": {
+          "name": "tags_color_hue_uidx",
+          "columns": ["color_hue"],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "tags_name_length_check": {
+          "name": "tags_name_length_check",
+          "value": "length(\"tags\".\"name\") BETWEEN 1 AND 30"
+        },
+        "tags_color_hue_check": {
+          "name": "tags_color_hue_check",
+          "value": "\"tags\".\"color_hue\" >= 0 AND \"tags\".\"color_hue\" < 360"
+        }
+      }
+    }
+  },
+  "views": {},
+  "enums": {},
+  "_meta": {
+    "schemas": {},
+    "tables": {},
+    "columns": {}
+  },
+  "internal": {
+    "indexes": {
+      "articles_status_saved_at_id_idx": {
+        "columns": {
+          "\"saved_at\" desc": {
+            "isExpression": true
+          },
+          "\"id\" desc": {
+            "isExpression": true
+          }
+        }
+      },
+      "articles_status_read_at_id_idx": {
+        "columns": {
+          "\"read_at\" desc": {
+            "isExpression": true
+          },
+          "\"id\" desc": {
+            "isExpression": true
+          }
+        }
+      }
+    }
+  }
+}

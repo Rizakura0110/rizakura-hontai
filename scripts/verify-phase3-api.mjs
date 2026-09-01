@@ -303,7 +303,54 @@ try {
 
   const daymark = await requestJson("/api/v1/daymark/status");
   assert.equal(daymark.response.status, 200);
-  assert.deepEqual(daymark.body, { product: "daymark", status: "not_configured" });
+  assert.deepEqual(daymark.body, {
+    product: "daymark",
+    status: "ready",
+    timeZone: "Asia/Tokyo",
+  });
+
+  const today = new Date(Date.now() + 9 * 60 * 60 * 1_000).toISOString().slice(0, 10);
+  const todayInstant = new Date(`${today}T00:00:00.000Z`);
+  const mondayInstant = new Date(todayInstant);
+  mondayInstant.setUTCDate(todayInstant.getUTCDate() - ((todayInstant.getUTCDay() + 6) % 7));
+  const monday = mondayInstant.toISOString().slice(0, 10);
+  const month = today.slice(0, 7);
+  const daymarkHabit = await requestJson("/api/v1/daymark/habits", {
+    method: "POST",
+    headers: mutationHeaders,
+    body: JSON.stringify({ name: "API smoke", kind: "check" }),
+  });
+  assert.equal(daymarkHabit.response.status, 201);
+  assert.equal(daymarkHabit.body.habit.configuration.kind, "check");
+  const daymarkHabitId = daymarkHabit.body.habit.id;
+  const daymarkListed = await requestJson("/api/v1/daymark/habits");
+  assert.equal(daymarkListed.response.status, 200);
+  assert.deepEqual(
+    daymarkListed.body.habits.map(({ id }) => id),
+    [daymarkHabitId],
+  );
+  const daymarkRecorded = await requestJson(
+    `/api/v1/daymark/habits/${daymarkHabitId}/records/${today}`,
+    {
+      method: "PUT",
+      headers: mutationHeaders,
+      body: JSON.stringify({ kind: "check", checked: true }),
+    },
+  );
+  assert.equal(daymarkRecorded.response.status, 200);
+  assert.equal(daymarkRecorded.body.summary.rate, 100);
+  const daymarkWeek = await requestJson(`/api/v1/daymark/history/week?start=${monday}`);
+  assert.equal(daymarkWeek.response.status, 200);
+  assert.equal(daymarkWeek.body.days.length, 7);
+  const daymarkMonth = await requestJson(`/api/v1/daymark/history/month?month=${month}`);
+  assert.equal(daymarkMonth.response.status, 200);
+  assert.ok(daymarkMonth.body.days.length >= 28 && daymarkMonth.body.days.length <= 31);
+  const daymarkCleared = await requestJson(
+    `/api/v1/daymark/habits/${daymarkHabitId}/records/${today}`,
+    { method: "DELETE", headers: mutationHeaders },
+  );
+  assert.equal(daymarkCleared.response.status, 200);
+  assert.deepEqual(daymarkCleared.body, { result: "deleted" });
 
   const first = await createArticle("https://Example.com/first/?utm_source=test");
   assert.equal(

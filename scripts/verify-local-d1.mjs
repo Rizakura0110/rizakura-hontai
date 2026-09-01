@@ -106,13 +106,21 @@ let verificationError;
 
 try {
   const firstApplication = runWrangler(["d1", "migrations", "apply", ...d1Arguments]);
-  if (!firstApplication.includes("0000_") || !firstApplication.includes("0001_")) {
-    throw new Error("The article and tag migrations were not reported as applied.");
+  if (
+    !firstApplication.includes("0000_") ||
+    !firstApplication.includes("0001_") ||
+    !firstApplication.includes("0002_")
+  ) {
+    throw new Error("The article, tag, and Daymark migrations were not reported as applied.");
   }
 
   runWrangler(["d1", "migrations", "list", ...d1Arguments]);
   const appliedMigrations = execute("SELECT name FROM d1_migrations ORDER BY id;");
-  if (!appliedMigrations.includes("0000_") || !appliedMigrations.includes("0001_")) {
+  if (
+    !appliedMigrations.includes("0000_") ||
+    !appliedMigrations.includes("0001_") ||
+    !appliedMigrations.includes("0002_")
+  ) {
     throw new Error("A required migration is missing from the local D1 migration history.");
   }
 
@@ -131,6 +139,14 @@ try {
     "tags_normalized_name_uidx",
     "tags_color_hue_uidx",
     "article_tags_tag_id_idx",
+    "daymark_habits",
+    "daymark_habits_created_on_id_idx",
+    "daymark_habit_versions",
+    "daymark_habit_versions_habit_effective_uidx",
+    "daymark_habit_versions_effective_idx",
+    "daymark_records",
+    "daymark_records_habit_date_uidx",
+    "daymark_records_date_habit_idx",
   ]) {
     if (!databaseObjects.includes(name)) {
       throw new Error(`Expected local D1 object ${name} was not created.`);
@@ -252,6 +268,61 @@ try {
   execute(
     "INSERT INTO tags (id, name, normalized_name, color_hue, created_at, updated_at) VALUES ('tag-typescript', 'TypeScript', 'typescript', 40, '2026-08-26T00:00:00.000Z', '2026-08-26T00:00:00.000Z'); INSERT INTO article_tags (article_id, tag_id, created_at) VALUES ('valid-article', 'tag-typescript', '2026-08-26T00:00:00.000Z');",
   );
+
+  expectSqlFailure(
+    "INSERT INTO daymark_habits (id, name, kind, created_on, created_at, updated_at) VALUES ('invalid-daymark-kind', 'Invalid', 'boolean', '2026-09-01', '2026-09-01T00:00:00.000Z', '2026-09-01T00:00:00.000Z');",
+    /daymark_habits_kind_check/u,
+  );
+  expectSqlFailure(
+    "INSERT INTO daymark_habits (id, name, kind, created_on, created_at, updated_at) VALUES ('invalid-daymark-name', '', 'check', '2026-09-01', '2026-09-01T00:00:00.000Z', '2026-09-01T00:00:00.000Z');",
+    /daymark_habits_name_length_check/u,
+  );
+  execute(
+    "INSERT INTO daymark_habits (id, name, kind, created_on, created_at, updated_at) VALUES ('habit-check', 'Stretch', 'check', '2026-09-01', '2026-09-01T00:00:00.000Z', '2026-09-01T00:00:00.000Z');",
+  );
+  execute(
+    "INSERT INTO daymark_habits (id, name, kind, created_on, created_at, updated_at) VALUES ('habit-number', 'Read', 'number', '2026-09-01', '2026-09-01T00:00:00.000Z', '2026-09-01T00:00:00.000Z');",
+  );
+  expectSqlFailure(
+    "INSERT INTO daymark_habit_versions (id, habit_id, effective_from, kind, status, target_milli, unit, comparison, created_at, updated_at) VALUES ('invalid-check-version', 'habit-check', '2026-09-01', 'check', 'active', 1000, NULL, NULL, '2026-09-01T00:00:00.000Z', '2026-09-01T00:00:00.000Z');",
+    /daymark_habit_versions_shape_check/u,
+  );
+  execute(
+    "INSERT INTO daymark_habit_versions (id, habit_id, effective_from, kind, status, target_milli, unit, comparison, created_at, updated_at) VALUES ('version-check', 'habit-check', '2026-09-01', 'check', 'active', NULL, NULL, NULL, '2026-09-01T00:00:00.000Z', '2026-09-01T00:00:00.000Z');",
+  );
+  expectSqlFailure(
+    "INSERT INTO daymark_habit_versions (id, habit_id, effective_from, kind, status, target_milli, unit, comparison, created_at, updated_at) VALUES ('oversized-number-version', 'habit-number', '2026-09-01', 'number', 'active', 1000000000001, '分', 'at_least', '2026-09-01T00:00:00.000Z', '2026-09-01T00:00:00.000Z');",
+    /daymark_habit_versions_shape_check/u,
+  );
+  execute(
+    "INSERT INTO daymark_habit_versions (id, habit_id, effective_from, kind, status, target_milli, unit, comparison, created_at, updated_at) VALUES ('version-number', 'habit-number', '2026-09-01', 'number', 'active', 30000, '分', 'at_least', '2026-09-01T00:00:00.000Z', '2026-09-01T00:00:00.000Z');",
+  );
+  expectSqlFailure(
+    "INSERT INTO daymark_habit_versions (id, habit_id, effective_from, kind, status, target_milli, unit, comparison, created_at, updated_at) VALUES ('duplicate-check-version', 'habit-check', '2026-09-01', 'check', 'paused', NULL, NULL, NULL, '2026-09-01T00:00:00.000Z', '2026-09-01T00:00:00.000Z');",
+    /UNIQUE constraint failed: daymark_habit_versions\.habit_id, daymark_habit_versions\.effective_from/iu,
+  );
+  expectSqlFailure(
+    "INSERT INTO daymark_records (id, habit_id, record_date, kind, checked, value_milli, created_at, updated_at) VALUES ('invalid-check-record', 'habit-check', '2026-09-01', 'check', NULL, NULL, '2026-09-01T00:00:00.000Z', '2026-09-01T00:00:00.000Z');",
+    /daymark_records_shape_check/u,
+  );
+  execute(
+    "INSERT INTO daymark_records (id, habit_id, record_date, kind, checked, value_milli, created_at, updated_at) VALUES ('record-check', 'habit-check', '2026-09-01', 'check', 1, NULL, '2026-09-01T00:00:00.000Z', '2026-09-01T00:00:00.000Z');",
+  );
+  expectSqlFailure(
+    "INSERT INTO daymark_records (id, habit_id, record_date, kind, checked, value_milli, created_at, updated_at) VALUES ('oversized-number-record', 'habit-number', '2026-09-01', 'number', NULL, 1000000000001, '2026-09-01T00:00:00.000Z', '2026-09-01T00:00:00.000Z');",
+    /daymark_records_shape_check/u,
+  );
+  expectSqlFailure(
+    "INSERT INTO daymark_records (id, habit_id, record_date, kind, checked, value_milli, created_at, updated_at) VALUES ('duplicate-check-record', 'habit-check', '2026-09-01', 'check', 0, NULL, '2026-09-01T00:00:00.000Z', '2026-09-01T00:00:00.000Z');",
+    /UNIQUE constraint failed: daymark_records\.habit_id, daymark_records\.record_date/iu,
+  );
+  execute("DELETE FROM daymark_habits WHERE id IN ('habit-check', 'habit-number');");
+  const daymarkCascade = execute(
+    "SELECT CASE WHEN (SELECT COUNT(*) FROM daymark_habit_versions) = 0 AND (SELECT COUNT(*) FROM daymark_records) = 0 THEN 'DAYMARK_CASCADE_OK' ELSE 'DAYMARK_CASCADE_FAILED' END AS cascade_result;",
+  );
+  if (!daymarkCascade.includes("DAYMARK_CASCADE_OK") || daymarkCascade.includes("FAILED")) {
+    throw new Error("Deleting a Daymark habit did not cascade to versions and records.");
+  }
 
   execute(
     "INSERT INTO articles (id, original_url, title_is_manual, status, metadata_status, metadata_attempt_count, metadata_fetched_at, saved_at, read_at, created_at, updated_at) VALUES ('valid-read-article', 'https://example.com/valid-read-article', 1, 'read', 'ready', 2, '2026-08-26T00:00:00.000Z', '2026-08-26T00:00:00.000Z', '2026-08-26T00:00:00.000Z', '2026-08-26T00:00:00.000Z', '2026-08-26T00:00:00.000Z');",

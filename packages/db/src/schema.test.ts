@@ -17,6 +17,9 @@ import {
   articleTags,
   articles,
   articleUrls,
+  daymarkHabitVersions,
+  daymarkHabits,
+  daymarkRecords,
   tags,
 } from "./schema";
 
@@ -184,5 +187,24 @@ describe("database record types", () => {
     expectTypeOf<TagInsert["normalizedName"]>().toEqualTypeOf<string>();
     expectTypeOf<ArticleTagRow["tagId"]>().toEqualTypeOf<string>();
     expectTypeOf<ArticleTagInsert["createdAt"]>().toEqualTypeOf<string>();
+  });
+});
+
+describe("Daymark schema integration", () => {
+  it("re-exports only product-prefixed habit tables into the shared migration graph", () => {
+    expect(
+      [daymarkHabits, daymarkHabitVersions, daymarkRecords].map(
+        (table) => getTableConfig(table).name,
+      ),
+    ).toEqual(["daymark_habits", "daymark_habit_versions", "daymark_records"]);
+  });
+
+  it("keeps Daymark relationships internal to the product", () => {
+    expect(getTableConfig(daymarkHabitVersions).foreignKeys[0]?.reference().foreignTable).toBe(
+      daymarkHabits,
+    );
+    expect(getTableConfig(daymarkRecords).foreignKeys[0]?.reference().foreignTable).toBe(
+      daymarkHabits,
+    );
   });
 });

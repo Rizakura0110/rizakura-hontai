@@ -1,6 +1,6 @@
 # rizakura-hontai / Daymark フェーズ計画
 
-最終更新: 2026-08-31
+最終更新: 2026-09-01
 
 Phase 17までのTech Inboxは完了済み。以下は所有者と合意した次期計画であり、未実装の機能を本番提供済みとは扱わない。詳細は[設計書](rizakura-hontai-design.md)、実行結果は[Progress](progress.md)へ記録する。
 
@@ -13,7 +13,7 @@ Phase 17までのTech Inboxは完了済み。以下は所有者と合意した�
 | 18 | 完了 | 共通基盤・命名・連携境界の設計 | 入口＋2つのPWA、2 repository、1 app Worker/DB、互換移行と後続の確認gateを記録する。習慣機能/UIは確定しない |
 | 19 | 完了（未デプロイ） | 共通基盤の整理とrizakura-hontaiの入口 | 既存記事を保ちながら認証・共通UI・製品別routingを分離。入口からTech Inboxへ進め、旧URLも動作する |
 | 20 | 完了 | Daymark repositoryとpackage連携の準備 | 公開範囲・配布方式を確認し、非機密の接続確認用stubをcommit SHA固定で取り込む。業務DB/API・機能UIは作らない |
-| 21 | 未着手・冒頭に設計合意gate | 習慣の機能/UI設計、その後にデータ・API | 所有者と機能・UIを合意してからDB/APIを実装し、localで検証する。既存記事への影響がない |
+| 21 | 完了（未デプロイ） | 習慣の機能/UI設計、その後にデータ・API | 所有者と機能・UIを合意し、DB/APIをlocal D1・実HTTPで検証。既存記事への影響がない |
 | 22 | 未着手 | 合意した習慣画面と独立PWA | Phase 21で合意した機能UI、入口との往復、Daymark専用manifestが動作する |
 | 23 | 未着手 | 製品別backup・復元 | 記事v1/v2を維持し、Daymarkを参照整合・競合表示付きで復元できる。他製品を変更しない |
 | 24 | 未着手 | 統合品質・互換性・無料枠内設計の検証 | 各repositoryと組み合わせのgate、旧記事・既存PWA移行、2 manifest、認証、migration、容量の検証が通る |
@@ -56,9 +56,9 @@ Phase 17までのTech Inboxは完了済み。以下は所有者と合意した�
 
 ## Phase 21〜23: 機能実装
 
-- Phase 21冒頭: Phase 20の準備完了時点で一度区切り、所有者と習慣の機能・UIを設計する。入力、達成判定、日付、変更履歴、集計、画面案を合意するまで業務実装へ進まない。初回draftの具体案を合意済みとして復活させない。
-- Phase 21設計合意後: UIと機能の要件からDB schema・API DTOを決め、`daymark_`tableのmigrationを基盤側で管理する。空DBと記事入りDBで検証し、独立したproduction migration履歴を作らない。
-- Phase 21設計合意後: 合意した日付・記録・変更・集計ルール、再送/競合処理、認証・Rate Limitを実DB/APIで検証する。
+- Phase 21: 所有者と日次のチェック/数値習慣、JST、未入力、設定履歴、休止、月曜始まりの週、月カレンダー、PC画面案を合意した。
+- Phase 21: 要件から契約・domain service・`daymark_`tableのschema・migration `0002`を実装した。migration履歴は基盤側だけで管理し、既存記事入りのlocal D1で検証した。
+- Phase 21: 習慣作成・名称/設定変更・記録作成/修正/削除・日/週/月取得を共通認証とRate Limit配下へ組み込み、実HTTPで検証した。production migration/deployは行っていない。
 - Phase 22: 同じDB/APIを使うDaymarkの画面を組み込み、専用icon・HTML・manifest・scopeを配信する。Tech InboxとDaymarkを切り替えても製品metadataが混ざらないことをtestする。
 - Phase 23: Daymark export/importと、旧Tech Inbox JSONの互換testを追加する。長期記録の件数・file size・DB batch上限を測り、容量超過時の分割または明示的な停止を実装する。
 
@@ -74,7 +74,7 @@ Phase 17までのTech Inboxは完了済み。以下は所有者と合意した�
 
 - Phase 20ではnpmアカウント操作は不要。Daymarkのpublic作成とGit submodule連携は承認済みで、繰り返し確認しない。
 - 基盤GitHubの改名先はrizakura-hontaiで確定・改名済み。ローカル作業directoryは移動しない。新repositoryの対象・衝突は作成直前に確認する。
-- Phase 20完了後・Phase 21の業務実装前: 習慣管理の機能・UIを一緒に設計し、合意する。
+- Phase 21の機能・PC画面設計は合意済み。Phase 22では実装した画面を所有者が確認する。
 - Phase 25: 本番DB更新・deploy・必要な名称移行の承認と、iPhoneの2 PWA実機確認。
 
 そのほかの実装・自動検証はagent側で行う。新しい月額契約や追加の課金設定は前提にしない。

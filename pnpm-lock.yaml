@@ -104,6 +104,13 @@ importers:
         version: 4.124.0
 
   modules/daymark:
+    dependencies:
+      drizzle-orm:
+        specifier: 0.45.2
+        version: 0.45.2
+      zod:
+        specifier: 4.4.3
+        version: 4.4.3
     devDependencies:
       '@biomejs/biome':
         specifier: 2.5.9
@@ -131,6 +138,9 @@ importers:
 
   packages/db:
     dependencies:
+      '@rizakura-hontai/daymark':
+        specifier: workspace:0.0.0
+        version: link:../../modules/daymark
       '@tech-inbox/core':
         specifier: workspace:0.0.0
         version: link:../core
