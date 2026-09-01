@@ -7,10 +7,17 @@ function assets(status = 200) {
     ASSETS: {
       fetch: vi.fn(
         async (request: Request) =>
-          new Response(request.method === "HEAD" ? null : "<title>Tech Inbox</title>", {
-            status,
-            headers: { "Content-Type": "text/html; charset=utf-8" },
-          }),
+          new Response(
+            request.method === "HEAD"
+              ? null
+              : request.url.endsWith("/daymark/")
+                ? "<title>Daymark</title>"
+                : "<title>Tech Inbox</title>",
+            {
+              status,
+              headers: { "Content-Type": "text/html; charset=utf-8" },
+            },
+          ),
       ),
     },
   };
@@ -25,6 +32,8 @@ describe("product document routing", () => {
     ["/tech-inbox", "/tech-inbox/"],
     ["/tech-inbox/index.html", "/tech-inbox/"],
     ["/tech-inbox/settings/", "/tech-inbox/settings"],
+    ["/daymark", "/daymark/"],
+    ["/daymark/index.html", "/daymark/"],
   ])("redirects %s to a fixed same-origin destination", async (source, target) => {
     const bindings = assets();
     const query = "?q=a%20b&returnTo=https%3A%2F%2Fevil.invalid";
@@ -56,8 +65,24 @@ describe("product document routing", () => {
         expect(response.headers.get(key)).toBe(value);
     },
   );
+  it("serves the Daymark HTML only at its product root", async () => {
+    const bindings = assets();
+    const response = await serveDocument(
+      new Request("https://app.invalid/daymark/?date=private", {
+        headers: { "If-None-Match": "stale-etag" },
+      }),
+      bindings,
+    );
+    expect(response.status).toBe(200);
+    expect(await response.text()).toContain("<title>Daymark</title>");
+    const forwarded = bindings.ASSETS.fetch.mock.calls[0]?.[0];
+    expect(forwarded?.url).toBe("https://app.invalid/daymark/");
+    expect(forwarded?.headers.has("If-None-Match")).toBe(false);
+    for (const [key, value] of Object.entries(SECURITY_HEADERS))
+      expect(response.headers.get(key)).toBe(value);
+  });
   it.each([
-    "/daymark/",
+    "/daymark/unknown",
     "/other",
     "/api/v1/unknown",
     "/assets/missing.js",
@@ -72,7 +97,7 @@ describe("product document routing", () => {
   });
   it("handles HEAD without a body and rejects document writes", async () => {
     const bindings = assets();
-    for (const path of ["/tech-inbox/settings", "/not-found"]) {
+    for (const path of ["/tech-inbox/settings", "/daymark/", "/not-found"]) {
       const response = await serveDocument(
         new Request(`https://app.invalid${path}`, { method: "HEAD" }),
         bindings,
@@ -91,6 +116,11 @@ describe("product document routing", () => {
       new Request("https://app.invalid/tech-inbox/"),
       assets(404),
     );
+    expect(response.status).toBe(503);
+    expect(await response.text()).toBe("");
+  });
+  it("fails safely if the built Daymark entry is unavailable", async () => {
+    const response = await serveDocument(new Request("https://app.invalid/daymark/"), assets(404));
     expect(response.status).toBe(503);
     expect(await response.text()).toBe("");
   });

@@ -9,10 +9,10 @@
 GitHubは旧`Rizakura0110/webclip`を`Rizakura0110/rizakura-hontai`へ改名済みです。別repositoryの`Rizakura0110/rizakura-me`は変更していません。GitHubの命名変更はCloudflareへのdeployを伴いません。基盤codeの`@rizakura-hontai/*`は内部workspace名で、npm scopeを作成・公開した記録ではありません。
 
 - Phase 21でDaymark用の追加migration `0002`を生成しました。local D1と実HTTPでは検証済みですが、production D1には未適用です。既存記事tableの変更・削除はありません。
-- deploy後は`/`が入口、`/tech-inbox/`が記事、`/tech-inbox/settings`が設定になります。旧記事・設定URLはqueryを維持して同一origin内へ移動します。
-- 入口・記事のHTMLはそれぞれbuildします。全pathを入口HTMLへ戻すSPA fallbackを復活させないでください。
+- deploy後は`/`が入口、`/tech-inbox/`が記事、`/tech-inbox/settings`が設定、`/daymark/`が習慣管理になります。旧記事・設定URLはqueryを維持して同一origin内へ移動します。
+- 入口・記事・DaymarkのHTMLはそれぞれbuildします。全pathを入口HTMLへ戻すSPA fallbackを復活させないでください。
 - app Workerの`ASSETS`は既存のStatic Assetsへアクセスするbindingで、新しいDBやWorkerの作成ではありません。
-- Accessのhost全体保護、旧PWAからの記事起動、manifest更新、記事画面から入口への往復は承認後の本番反映時に確認します。Daymark APIは画面未接続で、本番からはまだ利用しません。
+- Accessのhost全体保護、旧PWAからの記事起動、2つのmanifest、各製品と入口の往復は承認後の本番反映時に確認します。Daymark画面/API/PWAはlocal接続済みですが、本番からはまだ利用しません。
 - 新旧client headerを互換対応しています。rollback時は既知のapp Worker versionへ戻し、古いHTMLが残る場合は再読み込みします。旧manifest/URLは削除しません。
 
 ## 運用原則

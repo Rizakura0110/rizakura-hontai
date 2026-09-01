@@ -1,4 +1,4 @@
-import { daymarkPlaceholder } from "@rizakura-hontai/daymark/browser";
+import { daymarkProduct } from "@rizakura-hontai/daymark/browser";
 
 export function PortalPage() {
   return (
@@ -45,27 +45,30 @@ export function PortalPage() {
               Tech Inboxを開く<span aria-hidden="true">→</span>
             </a>
           </article>
-          <article className="flex flex-col rounded-2xl border border-slate-200 bg-white p-6 sm:p-8">
+          <article className="flex flex-col rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
             <span
               aria-hidden="true"
-              className="grid size-12 place-items-center rounded-xl bg-slate-100 font-semibold text-slate-500"
+              className="grid size-12 place-items-center rounded-xl bg-blue-600 font-semibold text-white"
             >
               D
             </span>
-            <p className="mt-6 text-xs font-medium text-slate-500">習慣管理</p>
+            <p className="mt-6 text-xs font-medium text-blue-700">習慣管理</p>
             <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">
-              {daymarkPlaceholder.name}
+              {daymarkProduct.name}
             </h2>
             <p className="mb-8 mt-3 text-sm leading-7 text-slate-600">
-              日々の習慣や目標を記録するためのツール。これから用意していきます。
+              {daymarkProduct.description}。日・週・月の表示で、積み重ねを振り返れます。
             </p>
-            <p className="mt-auto rounded-lg bg-slate-100 px-4 py-3 text-center text-sm font-medium text-slate-500">
-              {daymarkPlaceholder.label}
-            </p>
+            <a
+              className="mt-auto flex min-h-11 items-center justify-between gap-3 rounded-lg bg-blue-600 px-4 py-3 text-sm font-semibold text-white hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-blue-600"
+              href="/daymark/"
+            >
+              Daymarkを開く<span aria-hidden="true">→</span>
+            </a>
           </article>
         </section>
         <p className="mt-8 text-xs leading-6 text-slate-500">
-          Tech Inboxはホーム画面に追加して、直接開くこともできます。
+          Tech InboxとDaymarkは、それぞれホーム画面に追加して直接開くこともできます。
         </p>
       </main>
     </div>

@@ -9,6 +9,7 @@ const { build } = await import(pathToFileURL(require.resolve("vite")).href);
 const virtualEntry = `${webRoot}__daymark_boundary__.ts`;
 
 async function bundle(entrypoint, server = false, direct = false) {
+  const sourceExtension = entrypoint === "app" ? "tsx" : "ts";
   return build({
     configFile: false,
     root: webRoot,
@@ -21,7 +22,7 @@ async function bundle(entrypoint, server = false, direct = false) {
         resolveId: (id) => (id === virtualEntry ? id : undefined),
         load: (id) =>
           id === virtualEntry
-            ? `export * from "${direct ? `../../modules/daymark/src/${entrypoint}.ts` : `@rizakura-hontai/daymark/${entrypoint}`}";`
+            ? `export * from "${direct ? `../../modules/daymark/src/${entrypoint}.${sourceExtension}` : `@rizakura-hontai/daymark/${entrypoint}`}";`
             : undefined,
       },
     ],
@@ -33,7 +34,7 @@ async function bundle(entrypoint, server = false, direct = false) {
   });
 }
 
-for (const entrypoint of ["browser", "contracts"]) {
+for (const entrypoint of ["app", "browser", "contracts"]) {
   const result = await bundle(entrypoint);
   const bundles = Array.isArray(result) ? result : [result];
   for (const output of bundles) {
@@ -59,4 +60,6 @@ for (const entrypoint of ["server", "schema"]) {
     );
   }
 }
-console.info("Daymark entrypoints: browser/contracts build; server/schema build only on server.");
+console.info(
+  "Daymark entrypoints: app/browser/contracts build; server/schema build only on server.",
+);

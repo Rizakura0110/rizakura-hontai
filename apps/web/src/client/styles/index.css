@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@source "../../../../../modules/daymark/src/app.tsx";
 
 :root {
   color: #1f2937;

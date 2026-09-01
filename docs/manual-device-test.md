@@ -1,6 +1,6 @@
 # Manual device test
 
-最終更新: 2026-08-31
+最終更新: 2026-09-01
 
 ## 現在の状態
 
@@ -10,11 +10,13 @@
 | Playwright mobile Chrome 320 × 700 | 成功 | 自動E2E 9シナリオ。実機確認の代替ではない |
 | iPhone Google Chrome | 成功 | 2026-08-27の実機共通チェックと、2026-08-28のタグ機能再確認に成功 |
 | iPhone Safari PWA | 成功 | 2026-08-31に所有者から本番でのPWA確認完了報告。範囲はPhase 17の結果を参照 |
+| Daymark desktop/mobile Chrome | 成功 | 2026-09-01にlocal自動E2E。実機確認の代替ではない |
+| Daymark iPhone Safari PWA | 未実施 | Phase 22は未デプロイ。Phase 25の本番反映後に確認する |
 | Android Google Chrome | スキップ | 所有者判断でPhase 9では実施しない。成功扱いにはしない |
 
 実機を操作していない状態を「確認済み」と記録しない。OS、Chrome、端末、向き、実施者、日時を結果に残す。個人情報や秘密値をスクリーンショット、issue、commitへ含めない。
 
-Phase 19の入口・URL整理はまだproduction未反映です。上記の既存iPhone成功を新構成の移行成功とは扱いません。反映後は入口→Tech Inbox→入口の往復と、既存PWAが旧`/articles`から新`/tech-inbox/`へ起動できることを確認します。metadataが更新されない場合だけ追加し直しを検討し、Daymark用PWAは実装後に別途確認します。
+Phase 19〜22の入口・URL整理・Daymarkはまだproduction未反映です。上記の既存iPhone成功を新構成の移行成功とは扱いません。反映後は入口と両製品の往復、既存PWAが旧`/articles`から新`/tech-inbox/`へ起動できること、Daymarkを別PWAとして追加・直接起動できることを確認します。metadataが更新されない場合だけ追加し直しを検討します。
 
 ## 実施前提
 

@@ -17,6 +17,7 @@ export default defineConfig({
       exclude: [
         "**/*.{test,spec}.{ts,tsx}",
         "apps/web/src/client/main.tsx",
+        "apps/web/src/client/daymark.tsx",
         "apps/web/src/client/portal.tsx",
         // Runtime composition is covered by typecheck, dry-run builds, and integration/E2E gates.
         "apps/web/src/worker/index.ts",

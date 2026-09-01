@@ -1521,3 +1521,33 @@
 
 - production D1へのmigration、Cloudflare deploy、resource作成、Access・課金設定変更は実施していない。本番は従来どおり。
 - Daymarkの日・週・月画面、responsive対応、専用manifest/PWAはPhase 22で実装する。製品別JSON backupはPhase 23へ残す。
+
+## Phase 22: Daymark画面と独立PWA
+
+状態: 完了（2026-09-01、未デプロイ）。Phase 21で合意した日・週・月・習慣管理画面を保護APIへ接続し、Daymark専用HTML・manifest・iconをlocal buildとdesktop/mobile E2Eで検証した。
+
+### 実装内容
+
+- Daymark repositoryへ、注入された`DaymarkClient`だけを使うReact画面を追加した。日次のチェック・数値入力、過去日移動、未入力への戻し、達成率を操作できる。
+- 月曜〜日曜の週tableと、暦月の各日を達成率で表示して日次画面へ進める月カレンダーを実装した。
+- チェック式・数値式の習慣追加と、名称・目標・単位・達成条件・有効/休止/アーカイブ変更を実装した。設定変更は既存APIどおり今日から適用する。
+- desktop固定sidebar、mobile bottom navigation、入口への通常linkを持つresponsive構成にした。
+- 基盤repositoryへDaymark API client、`/daymark/`専用HTML entrypoint、Tailwind source連携、document routingを追加し、入口の準備中表示を利用可能な導線へ変更した。
+- Daymark専用manifestはid/start_url/scopeを`/daymark/`へ揃え、専用Apple/192/512/maskable iconを配信する。入口にmanifestを付けず、Tech Inboxの既存identityと混在させない。
+- Static Assetsのworker-first対象をHTML pathだけに限定した。`/daymark/*`全体を先にWorkerへ渡すとmanifest/iconが404になることをE2Eで検出し、root/indexだけへ狭めた。
+- Vite boundaryへ`app` entrypointを加え、Daymarkのserver/schemaがbrowser bundleへ混入しない既存拒否を維持した。
+
+### 検証結果
+
+- 最終`pnpm check`が成功。format、lint、Cloudflare生成型、TypeScript、unit/component/integration test、coverage、fresh local D1、実HTTP、production/dry-run build、artifact budget、desktop/mobile E2E、auditを通過した。
+- Daymark単体は7 files・43 testsがpassし、domain・契約・日付処理のcoverageはstatements/branches/functions/linesすべて100%。宣言付きbuildと依存監査も成功し、既知脆弱性0件だった。
+- 基盤は41 files・429 testsがpass。coverageはstatements 87.50%、branches 83.45%、functions 87.57%、lines 89.06%で既存threshold内。
+- Playwrightは31 testsがpassし、desktop専用sidebar testのmobile実行1件だけを意図どおりskipした。Daymarkの日次記録、週/月切替、習慣追加・編集、320px幅、専用HTML/manifest/iconを両viewportで確認した。
+- artifact raw/gzipはapp Worker 482.5/103.2 KiB、metadata-fetcher 585.6/88.8、client JavaScript 399.6/115.7、CSS 34.0/7.1で全budget内。
+- 基盤auditはhigh 0・critical 0。既知の開発用推移依存moderate 1件だけを継続し、Daymark単体は既知脆弱性0件だった。
+- build時の本番Secrets不足warningにはcredentialを補充せず、E2Eは`.invalid`のtest専用値を使用した。
+
+### 変更していないもの・次フェーズ
+
+- production D1へのmigration、Cloudflare deploy、resource・Access・課金設定変更は実施していない。本番は従来のTech Inboxのまま。
+- Phase 23でDaymarkのJSON backup・復元を実装する。Phase 24の統合互換確認、Phase 25の明示承認後deploy・iPhone実機確認は未実施。

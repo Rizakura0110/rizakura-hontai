@@ -6,7 +6,7 @@
 
 `pnpm check`はformat、lint、Cloudflare生成型、TypeScript、unit/component/integration test、coverage、fresh local D1、実HTTP API、production build、artifact budget、desktop/mobile Chrome E2E、dependency auditを順に実行する。
 
-2026-09-01のPhase 21最終実行では、Daymark単体5 files・38 tests、基盤Vitest 40 files・423 tests、Playwright desktop/mobile 27 testsが成功した。desktop専用sidebar testのmobile実行1件は意図どおりskipした。
+2026-09-01のPhase 22最終実行では、Daymark単体7 files・43 tests、基盤Vitest 41 files・429 tests、Playwright desktop/mobile 31 testsが成功した。desktop専用sidebar testのmobile実行1件は意図どおりskipした。
 
 個別確認には次を使う。
 
@@ -37,7 +37,7 @@ pnpm audit --audit-level high
 
 ## Daymark integration gate
 
-`pnpm check`の先頭でDaymark独立gate（format、lint、TypeScript、coverage付きtest、宣言付きbuild、audit）を実行する。単独cloneのCIでも同じgateを実行し、Cloudflare credentialは不要。Phase 21からcontracts/server/schemaの業務実装を対象に含む。browser画面はPhase 22まで準備中のままとする。
+`pnpm check`の先頭でDaymark独立gate（format、lint、TypeScript、coverage付きtest、宣言付きbuild、audit）を実行する。単独cloneのCIでも同じgateを実行し、Cloudflare credentialは不要。contracts/server/schema/date処理は全指標100% coverageを維持し、React画面は単体component testと基盤側desktop/mobile E2Eで検証する。
 
 基盤の`pnpm daymark:boundaries`は実際のVite buildでbrowser/contractsの成功とserver/schemaのbrowser build失敗を検証する。package exportsだけでなく、Vite pluginで解決後sourceのclient混入を拒否する。通常のbuildにも同じpluginを適用し、client型検査にはbrowser条件を付ける。
 
@@ -64,15 +64,16 @@ V8 coverageはstatements、branches、functions、linesの全指標に80%の最�
 | SSRF URL判定 | 100% | 96.00% | 100% | 100% |
 | 契約schema | 100% | 100% | 100% | 100% |
 
-Phase 21追加後の基盤全体はstatements 87.32%、branches 83.40%、functions 87.32%、lines 88.90%。Daymark単体は全指標100%で、最低値を変更していない。
+Phase 22追加後の基盤全体はstatements 87.50%、branches 83.45%、functions 87.57%、lines 89.06%。Daymarkのdomain・契約・日付処理は全指標100%で、最低値を変更していない。React画面はcomponent testとdesktop/mobile E2Eの操作・表示検証を必須とする。
 
 V8 unit coverageから次だけを除外する。
 
+- `modules/daymark/src/app.tsx`: Daymark単体component testと基盤側desktop/mobile E2Eで画面の操作・表示を検証する。domain・契約・日付処理は除外せず100%を維持する。
 - `apps/web/src/worker/repositories/d1-article-repository.ts`: fake DBではなく、`pnpm api:verify:local`でfreshな実D1と実HTTPを検証する。
 - `apps/web/src/worker/repositories/d1-daymark-repository.ts`: 同様に、migration `0002`適用後のfreshな実D1とDaymark実HTTPフローで検証する。
 - `apps/web/src/worker/d1-article-repository.integration-fixture.ts`: 上記adapterをlocal Workerから実行するtest専用entrypointとして、`pnpm api:verify:local`で検証する。
 - app Workerとmetadata-fetcherの`index.ts`: runtime composition entrypointとして、生成型、typecheck、production dry-run build、統合テストで検証する。
-- client `main.tsx`・`portal.tsx`: browser boot entrypointとしてproduction buildとPlaywrightで検証する。
+- client `main.tsx`・`portal.tsx`・`daymark.tsx`: browser boot entrypointとしてproduction buildとPlaywrightで検証する。
 
 除外は未検証を意味しない。対応する統合ゲートを`pnpm check`から外さない。
 
@@ -95,7 +96,11 @@ V8 unit coverageから次だけを除外する。
 | unauthorized API拒否 | mockを通らないWorker APIの401。設定欠落時の403はWorker testで確認 |
 | タグの全操作 | 作成、複数付与、絞り込み、解除、名前変更、削除後の記事保持 |
 | PWA配信境界 | credential付きmanifest link、standalone設定、192/512/maskable/Apple icon、manifestだけを許可するCSP、Service Worker禁止 |
-| rizakura-hontai入口 | 入口では記事APIを取得しない、Daymark準備中、記事とのdocument navigation往復、320px幅 |
+| rizakura-hontai入口 | 入口では製品APIを取得しない、Tech Inbox・Daymarkへのdocument navigation、320px幅 |
+| Daymark日次記録 | チェックと数値の保存、達成率更新、desktop/mobile navigation |
+| Daymark履歴 | 月曜始まりの週tableと暦月カレンダーの切り替え |
+| Daymark習慣管理 | チェック習慣の追加、名称・状態変更、一覧の再取得 |
+| Daymark PWA配信境界 | 専用HTML/metadata、credential付きmanifest、独立id/start/scope、専用4 icon |
 | URLとHTML互換 | 旧記事・設定pathのquery維持、直接設定URLのHTML、入口にmanifestなし、記事の既存idと専用scope |
 | fallback境界 | 未知document・欠落assetは404、将来のAPIも未認証で401・JSON |
 

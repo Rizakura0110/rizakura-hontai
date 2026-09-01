@@ -23,7 +23,10 @@
       "/settings",
       "/settings/",
       "/tech-inbox",
-      "/tech-inbox/*"
+      "/tech-inbox/*",
+      "/daymark",
+      "/daymark/",
+      "/daymark/index.html"
     ]
   },
   "d1_databases": [

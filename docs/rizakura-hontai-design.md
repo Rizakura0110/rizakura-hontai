@@ -1,7 +1,7 @@
 # rizakura-hontai: 共通基盤とDaymarkの設計
 
 最終更新: 2026-09-01
-状態: Phase 21完了。Daymarkの合意済み業務仕様を契約・domain・DB schema・保護APIへ実装し、local D1と実HTTPで検証した。画面・独立PWA・backupとproduction反映は未実施。本書の後続計画は実装・公開済みを意味しない。
+状態: Phase 22完了。Daymarkの契約・domain・DB schema・保護APIに加え、日・週・月・習慣管理画面と独立PWAをlocal実装・検証した。backupとproduction反映は未実施。本書の後続計画は実装・公開済みを意味しない。
 
 2026-08-31の所有者指示で、当初の基盤名rizakura-meをrizakura-hontaiへ変更した。既存の`Rizakura0110/rizakura-me`は別repositoryとしてそのまま残し、今回の基盤には使わない。Phase 18/19の実行記録とADRは当時の名称を保持する。
 
@@ -57,7 +57,7 @@ repository、PWA、deployment、databaseの単位は独立して考える。Daym
 
 2026-08-31に所有者がnpm公開を使わないGit submodule方式を承認した。`Rizakura0110/daymark`のpublic作成承認は維持する。packageは`private: true`とし、npmアカウント・scope取得・publish権限は不要。公開repositoryに秘密情報や実データを含めない。判断変更は[ADR-0012](decisions/0012-daymark-git-submodule.md)に記録する。
 
-Phase 20は読み込み・認証・build境界を検証する非機密の接続確認用stubに限定した。Phase 21は所有者との機能・PC画面設計後に、画面より先に必要な契約・domain・schema・APIを実装した。browser画面を同じフェーズへ混ぜず、Phase 22で合意済み画面を接続する。
+Phase 20は読み込み・認証・build境界を検証する非機密の接続確認用stubに限定した。Phase 21は所有者との機能・PC画面設計後に、画面より先に必要な契約・domain・schema・APIを実装した。Phase 22ではDaymark repositoryが注入可能なReact画面を所有し、基盤が認証済みHTTP client・HTML・PWA配信を接続した。
 
 新repositoryのローカル配置は現在の許可領域内の`modules/daymark`とする。親repositoryはgitlinkと`.gitmodules`だけを管理し、Daymarkのsourceは別Git履歴へ記録する。両repositoryのcache・dist・秘密fileはignoreする。兄弟directoryやworkspace自体は移動せず、realpathとGit rootを確認する。
 
@@ -68,7 +68,7 @@ Phase 20は読み込み・認証・build境界を検証する非機密の接続�
 | `/` | rizakura-hontaiの入口。記事・習慣の2つの導線 | 専用manifestなし |
 | `/tech-inbox/` | Tech Inboxの全記事画面 | Tech Inbox専用 |
 | `/tech-inbox/settings` | 記事のタグ管理・backup等 | Tech Inbox専用 |
-| `/daymark/` | Daymarkの製品入口。Phase 21時点は準備中、Phase 22で日・週・月画面を統合 | Daymark専用 |
+| `/daymark/` | Daymarkの日次入力、週/月履歴、習慣管理画面 | Daymark専用 |
 | `/api/v1/articles*`、`/api/v1/tags*`、既存export/import | 既存APIを互換維持 | 対象外 |
 | `/api/v1/daymark/*` | 新しい習慣API | 対象外 |
 
@@ -161,9 +161,10 @@ D1の物理名変更は安全なin-place変更が可能かを実行時に確認�
 
 1. Daymarkのpublic repository作成、commit固定のGit submodule連携、repository公開物review、独立CIと基盤のclean checkout統合gateは完了した。npm公開・ログインは行わない。
 2. Phase 21の機能・PC画面設計は所有者と合意し、データ・APIのlocal実装まで完了した。
-3. Phase 22で合意した画面とDaymark専用PWAを実装する。
-4. Phase 25でproduction DB更新・deploy・リソース名/URL移行の承認を得る。
+3. Phase 22で合意した画面とDaymark専用PWAをlocal実装・検証した。
+4. Phase 23でDaymarkのbackup・復元を実装する。
+5. Phase 25でproduction DB更新・deploy・リソース名/URL移行の承認を得る。
 
-Phase 21の合意はデータ・APIのlocal実装を対象とし、本番D1へのmigrationやdeploy承認には読み替えない。
+Phase 21・22の完了はlocal実装と検証を対象とし、本番D1へのmigrationやdeploy承認には読み替えない。
 
 料金や権限の確認が必要でも、推測で有料プランや公開設定を選ばない。Phase 18ではCloudflare、GitHub repository設定、registry、依存設定を変更しない。

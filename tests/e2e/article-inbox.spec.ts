@@ -380,7 +380,7 @@ test.beforeEach(async ({ page }) => {
   await mockArticleApi(page);
 });
 
-test("portal and Tech Inbox use separate documents and only the article product is installable", async ({
+test("portal links to both products and Tech Inbox keeps its separate document", async ({
   page,
 }) => {
   let dataRequests = 0;
@@ -390,8 +390,10 @@ test("portal and Tech Inbox use separate documents and only the article product 
   await page.goto("/");
   await expect(page).toHaveTitle("rizakura-hontai");
   await expect(page.getByRole("heading", { name: "今日も、自分のペースで。" })).toBeVisible();
-  await expect(page.getByText("準備中", { exact: true })).toBeVisible();
-  await expect(page.locator('a[href^="/daymark"]')).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Daymarkを開く" })).toHaveAttribute(
+    "href",
+    "/daymark/",
+  );
   await expect(page.locator('link[rel="manifest"]')).toHaveCount(0);
   await expect(page.locator('meta[name="apple-mobile-web-app-capable"]')).toHaveCount(0);
   expect(dataRequests).toBe(0);
@@ -459,7 +461,7 @@ test("unknown documents, assets and unauthenticated future APIs never receive an
     "/assets/missing.js",
     "/tech-inbox/missing.css",
     "/tech-inbox/unknown",
-    "/daymark/",
+    "/daymark/unknown",
   ]) {
     const response = await page.request.get(path, {
       headers: { "Sec-Fetch-Mode": "navigate", Accept: "text/html" },

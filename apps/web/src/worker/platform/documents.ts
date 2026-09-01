@@ -33,6 +33,8 @@ export async function serveDocument(
     "/tech-inbox": "/tech-inbox/",
     "/tech-inbox/index.html": "/tech-inbox/",
     "/tech-inbox/settings/": "/tech-inbox/settings",
+    "/daymark": "/daymark/",
+    "/daymark/index.html": "/daymark/",
   };
   const destination = redirects[url.pathname];
   if (destination !== undefined) {
@@ -41,6 +43,12 @@ export async function serveDocument(
   if (url.pathname === "/tech-inbox/" || url.pathname === "/tech-inbox/settings") {
     const assetUrl = new URL("/tech-inbox/", request.url);
     // Strip client conditionals so an HTML shell is never returned as an empty 304.
+    const response = await bindings.ASSETS.fetch(new Request(assetUrl, { method: request.method }));
+    if (!response.ok) return documentResponse(null, 503);
+    return documentResponse(response.body, response.status, response.headers);
+  }
+  if (url.pathname === "/daymark/") {
+    const assetUrl = new URL("/daymark/", request.url);
     const response = await bindings.ASSETS.fetch(new Request(assetUrl, { method: request.method }));
     if (!response.ok) return documentResponse(null, 503);
     return documentResponse(response.body, response.status, response.headers);

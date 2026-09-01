@@ -14,7 +14,7 @@ Phase 17までのTech Inboxは完了済み。以下は所有者と合意した�
 | 19 | 完了（未デプロイ） | 共通基盤の整理とrizakura-hontaiの入口 | 既存記事を保ちながら認証・共通UI・製品別routingを分離。入口からTech Inboxへ進め、旧URLも動作する |
 | 20 | 完了 | Daymark repositoryとpackage連携の準備 | 公開範囲・配布方式を確認し、非機密の接続確認用stubをcommit SHA固定で取り込む。業務DB/API・機能UIは作らない |
 | 21 | 完了（未デプロイ） | 習慣の機能/UI設計、その後にデータ・API | 所有者と機能・UIを合意し、DB/APIをlocal D1・実HTTPで検証。既存記事への影響がない |
-| 22 | 未着手 | 合意した習慣画面と独立PWA | Phase 21で合意した機能UI、入口との往復、Daymark専用manifestが動作する |
+| 22 | 完了（未デプロイ） | 合意した習慣画面と独立PWA | Phase 21で合意した機能UI、入口との往復、Daymark専用manifestが動作する |
 | 23 | 未着手 | 製品別backup・復元 | 記事v1/v2を維持し、Daymarkを参照整合・競合表示付きで復元できる。他製品を変更しない |
 | 24 | 未着手 | 統合品質・互換性・無料枠内設計の検証 | 各repositoryと組み合わせのgate、旧記事・既存PWA移行、2 manifest、認証、migration、容量の検証が通る |
 | 25 | 未着手 | 承認後のproduction反映と実機確認 | backup後のDB更新・deploy、Access、記事/習慣、iPhoneの2 PWAを確認し、運用と移行結果を記録する |
@@ -59,7 +59,7 @@ Phase 17までのTech Inboxは完了済み。以下は所有者と合意した�
 - Phase 21: 所有者と日次のチェック/数値習慣、JST、未入力、設定履歴、休止、月曜始まりの週、月カレンダー、PC画面案を合意した。
 - Phase 21: 要件から契約・domain service・`daymark_`tableのschema・migration `0002`を実装した。migration履歴は基盤側だけで管理し、既存記事入りのlocal D1で検証した。
 - Phase 21: 習慣作成・名称/設定変更・記録作成/修正/削除・日/週/月取得を共通認証とRate Limit配下へ組み込み、実HTTPで検証した。production migration/deployは行っていない。
-- Phase 22: 同じDB/APIを使うDaymarkの画面を組み込み、専用icon・HTML・manifest・scopeを配信する。Tech InboxとDaymarkを切り替えても製品metadataが混ざらないことをtestする。
+- Phase 22: 同じDB/APIを使う日・週・月・習慣管理のresponsive画面を組み込み、専用icon・HTML・manifest・scopeを配信した。入口からの往復、製品metadataの分離、記録・追加・編集をcomponent testとdesktop/mobile E2Eで確認した。production deployは行っていない。
 - Phase 23: Daymark export/importと、旧Tech Inbox JSONの互換testを追加する。長期記録の件数・file size・DB batch上限を測り、容量超過時の分割または明示的な停止を実装する。
 
 ## Phase 24〜25: リリース
@@ -74,7 +74,7 @@ Phase 17までのTech Inboxは完了済み。以下は所有者と合意した�
 
 - Phase 20ではnpmアカウント操作は不要。Daymarkのpublic作成とGit submodule連携は承認済みで、繰り返し確認しない。
 - 基盤GitHubの改名先はrizakura-hontaiで確定・改名済み。ローカル作業directoryは移動しない。新repositoryの対象・衝突は作成直前に確認する。
-- Phase 21の機能・PC画面設計は合意済み。Phase 22では実装した画面を所有者が確認する。
+- Phase 21の機能・PC画面設計は合意済み。Phase 22の画面はlocal自動検証済みで、所有者の実画面確認はproduction反映後に行う。
 - Phase 25: 本番DB更新・deploy・必要な名称移行の承認と、iPhoneの2 PWA実機確認。
 
 そのほかの実装・自動検証はagent側で行う。新しい月額契約や追加の課金設定は前提にしない。

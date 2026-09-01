@@ -1,14 +1,14 @@
 # rizakura-hontai
 
-rizakura-hontaiは、本人限定のツールへの入口と共通基盤です。記事管理のTech Inboxを含み、習慣管理のDaymarkは別repositoryから統合します。Phase 21でDaymarkの日次記録・設定履歴・日/週/月集計と保護API、共通D1用migrationをローカル実装しました。Cloudflare Accessと既存のapp Worker・D1を共有する構成です。
+rizakura-hontaiは、本人限定のツールへの入口と共通基盤です。記事管理のTech Inboxを含み、習慣管理のDaymarkは別repositoryから統合します。Daymarkの日次記録・設定履歴・日/週/月集計、保護API、responsive画面、独立PWAをローカル実装しました。Cloudflare Accessと既存のapp Worker・D1を共有する構成です。
 
 ## 実装と本番の状態
 
-Phase 19では共通基盤と入口をローカル実装しました。`/`から`/tech-inbox/`へ進み、記事画面から入口へ戻れます。設定は`/tech-inbox/settings`です。旧`/articles`・`/settings`はqueryを維持して移動します。Daymarkのデータ/API基盤は実装済みですが、画面はPhase 22まで「準備中」です。
+Phase 19では共通基盤と入口をローカル実装しました。`/`から`/tech-inbox/`と`/daymark/`へ進み、各製品から入口へ戻れます。記事設定は`/tech-inbox/settings`です。旧`/articles`・`/settings`はqueryを維持して移動します。Daymarkでは日次入力、週/月履歴、習慣追加・名称/目標/状態変更を操作できます。
 
 Phase 19以降の変更は未デプロイで、本番は従来のTech Inboxのままです。Daymark migration `0002`も本番D1へ未適用です。基盤名をrizakura-hontaiへ変更し、GitHub repositoryは旧webclipから[Rizakura0110/rizakura-hontai](https://github.com/Rizakura0110/rizakura-hontai)へ改名済みです。既存の別repository `rizakura-me`には触れていません。Worker・DB名・本番URL、ローカルdirectoryは維持しています。Daymarkは別public repositoryをcommit固定のGit submoduleとして取り込み、npmには公開しません。[設計書](docs/rizakura-hontai-design.md)と[Phase 18〜25の計画](docs/rizakura-hontai-roadmap.md)を参照してください。
 
-## DaymarkのPhase 21機能
+## DaymarkのPhase 21・22機能
 
 - 日次のチェック習慣と、単位・目標・以上/以下を持つ数値習慣
 - JST基準で今日・過去の記録を保存・修正・未入力へ戻す。未来日は拒否
@@ -16,8 +16,13 @@ Phase 19以降の変更は未デプロイで、本番は従来のTech Inboxの�
 - 未入力・明示的未達・達成を区別した日次表示用データ
 - 月曜〜日曜の週集計と、日別達成率を返す月集計
 - 共通認証、Origin/JSON/client header検証、read/mutate Rate Limitを通る`/api/v1/daymark/*`
+- 日次のチェック・数値入力、過去日移動、未入力への戻し
+- 月曜始まりの週tableと、暦月の達成カレンダー
+- 習慣追加、名称変更、目標・単位・達成条件・状態の変更
+- desktop sidebarとmobile bottom navigationを持つresponsive画面
+- `/daymark/`を起動先・scope・idとするDaymark専用manifest/icon/PWA
 
-画面、Daymark専用manifest/PWAはPhase 22、Daymark JSON backupはPhase 23です。
+Daymark JSON backupはPhase 23です。
 
 ## Tech Inboxの主な機能
 
@@ -74,7 +79,7 @@ productionへログインした状態でiPhone Safariの共有メニューを開
 
 PWAは現在のapp WorkerとCloudflare Accessをそのまま使用します。Service Workerとoffline cacheは登録しないため、利用時はnetwork接続が必要です。Access sessionの期限が切れた場合は再ログインします。
 
-Phase 19の反映後はTech Inbox画面から追加します。入口にはmanifestを付けず、Tech Inboxの既存PWA id `/`を維持して起動先・scopeを`/tech-inbox/`へ分けます。インストール済みPWAの実機移行は本番反映後に確認し、必要な場合だけ追加し直します。Daymark専用PWAは後続フェーズで実装します。
+Phase 19以降の反映後は各製品画面から追加します。入口にはmanifestを付けず、Tech Inboxの既存PWA id `/`を維持して起動先・scopeを`/tech-inbox/`へ分けます。Daymarkはid・起動先・scopeを`/daymark/`とする別PWAです。インストール済みTech Inboxの実機移行とDaymarkの追加・起動は本番反映後に確認し、必要な場合だけ追加し直します。
 
 ## Local setup
 

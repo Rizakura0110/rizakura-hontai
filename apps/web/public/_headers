@@ -17,3 +17,6 @@
 
 /manifest.webmanifest
   Cache-Control: no-cache
+
+/daymark/manifest.webmanifest
+  Cache-Control: no-cache
