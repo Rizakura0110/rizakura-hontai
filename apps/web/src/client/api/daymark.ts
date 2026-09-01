@@ -1,5 +1,9 @@
 import type { DaymarkClient } from "@rizakura-hontai/daymark/app";
 import {
+  daymarkBackupImportPreviewResponseSchema,
+  daymarkBackupImportResponseSchema,
+  type DaymarkBackupSnapshot,
+  daymarkBackupSnapshotSchema,
   dayResponseSchema,
   deleteHabitRecordResponseSchema,
   habitResponseSchema,
@@ -16,6 +20,26 @@ function habitPath(id: string): string {
 }
 
 export const daymarkClient: DaymarkClient = {
+  async exportBackup(signal) {
+    const response = await apiFetch(`${daymarkApi}/export`, {}, signal);
+    return daymarkBackupSnapshotSchema.parse(await assertSuccess(response));
+  },
+  async previewBackup(backup: DaymarkBackupSnapshot, signal) {
+    const response = await apiFetch(
+      `${daymarkApi}/import/preview`,
+      { method: "POST", body: JSON.stringify({ backup }) },
+      signal,
+    );
+    return daymarkBackupImportPreviewResponseSchema.parse(await assertSuccess(response));
+  },
+  async importBackup(backup: DaymarkBackupSnapshot, signal) {
+    const response = await apiFetch(
+      `${daymarkApi}/import`,
+      { method: "POST", body: JSON.stringify({ backup }) },
+      signal,
+    );
+    return daymarkBackupImportResponseSchema.parse(await assertSuccess(response));
+  },
   async listHabits(signal) {
     const response = await apiFetch(`${daymarkApi}/habits`, {}, signal);
     return listHabitsResponseSchema.parse(await assertSuccess(response));

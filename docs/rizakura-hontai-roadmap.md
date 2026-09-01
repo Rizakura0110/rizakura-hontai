@@ -15,7 +15,7 @@ Phase 17までのTech Inboxは完了済み。以下は所有者と合意した�
 | 20 | 完了 | Daymark repositoryとpackage連携の準備 | 公開範囲・配布方式を確認し、非機密の接続確認用stubをcommit SHA固定で取り込む。業務DB/API・機能UIは作らない |
 | 21 | 完了（未デプロイ） | 習慣の機能/UI設計、その後にデータ・API | 所有者と機能・UIを合意し、DB/APIをlocal D1・実HTTPで検証。既存記事への影響がない |
 | 22 | 完了（未デプロイ） | 合意した習慣画面と独立PWA | Phase 21で合意した機能UI、入口との往復、Daymark専用manifestが動作する |
-| 23 | 未着手 | 製品別backup・復元 | 記事v1/v2を維持し、Daymarkを参照整合・競合表示付きで復元できる。他製品を変更しない |
+| 23 | 完了（未デプロイ） | 製品別backup・復元 | 記事v1/v2を維持し、Daymarkを参照整合・競合表示付きで復元できる。他製品を変更しない |
 | 24 | 未着手 | 統合品質・互換性・無料枠内設計の検証 | 各repositoryと組み合わせのgate、旧記事・既存PWA移行、2 manifest、認証、migration、容量の検証が通る |
 | 25 | 未着手 | 承認後のproduction反映と実機確認 | backup後のDB更新・deploy、Access、記事/習慣、iPhoneの2 PWAを確認し、運用と移行結果を記録する |
 
@@ -60,7 +60,8 @@ Phase 17までのTech Inboxは完了済み。以下は所有者と合意した�
 - Phase 21: 要件から契約・domain service・`daymark_`tableのschema・migration `0002`を実装した。migration履歴は基盤側だけで管理し、既存記事入りのlocal D1で検証した。
 - Phase 21: 習慣作成・名称/設定変更・記録作成/修正/削除・日/週/月取得を共通認証とRate Limit配下へ組み込み、実HTTPで検証した。production migration/deployは行っていない。
 - Phase 22: 同じDB/APIを使う日・週・月・習慣管理のresponsive画面を組み込み、専用icon・HTML・manifest・scopeを配信した。入口からの往復、製品metadataの分離、記録・追加・編集をcomponent testとdesktop/mobile E2Eで確認した。production deployは行っていない。
-- Phase 23: Daymark export/importと、旧Tech Inbox JSONの互換testを追加する。長期記録の件数・file size・DB batch上限を測り、容量超過時の分割または明示的な停止を実装する。
+- Phase 23: Daymark専用schema v1のexport/import、参照整合、非破壊merge、競合skip、ID再割り当て、冪等性を実装した。旧Tech Inbox JSON v1/v2は維持し、両製品のimportが相手のtableを変更しないことをtestした。
+- Phase 23: 代表的な10習慣の記録では1年3,650件が1.12 MiB、3年10,950件が3.36 MiB、4 MiB境界が約13,046件だった。初期版は習慣200、設定履歴2,000、記録20,000とpretty JSON 4 MiBを上限にし、超過時は黙って分割・切り捨てず書き出しを停止する。D1適用はJSON配列を3 SQL statementへまとめ、table数に比例する単一transactional batchとした。
 
 ## Phase 24〜25: リリース
 
@@ -74,7 +75,7 @@ Phase 17までのTech Inboxは完了済み。以下は所有者と合意した�
 
 - Phase 20ではnpmアカウント操作は不要。Daymarkのpublic作成とGit submodule連携は承認済みで、繰り返し確認しない。
 - 基盤GitHubの改名先はrizakura-hontaiで確定・改名済み。ローカル作業directoryは移動しない。新repositoryの対象・衝突は作成直前に確認する。
-- Phase 21の機能・PC画面設計は合意済み。Phase 22の画面はlocal自動検証済みで、所有者の実画面確認はproduction反映後に行う。
+- Phase 21の機能・PC画面設計は合意済み。Phase 22の画面とPhase 23のbackupはlocal自動検証済みで、所有者の実画面確認はproduction反映後に行う。
 - Phase 25: 本番DB更新・deploy・必要な名称移行の承認と、iPhoneの2 PWA実機確認。
 
 そのほかの実装・自動検証はagent側で行う。新しい月額契約や追加の課金設定は前提にしない。

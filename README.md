@@ -1,6 +1,6 @@
 # rizakura-hontai
 
-rizakura-hontaiは、本人限定のツールへの入口と共通基盤です。記事管理のTech Inboxを含み、習慣管理のDaymarkは別repositoryから統合します。Daymarkの日次記録・設定履歴・日/週/月集計、保護API、responsive画面、独立PWAをローカル実装しました。Cloudflare Accessと既存のapp Worker・D1を共有する構成です。
+rizakura-hontaiは、本人限定のツールへの入口と共通基盤です。記事管理のTech Inboxを含み、習慣管理のDaymarkは別repositoryから統合します。Daymarkの日次記録・設定履歴・日/週/月集計、保護API、responsive画面、独立PWA、製品別JSONバックアップをローカル実装しました。Cloudflare Accessと既存のapp Worker・D1を共有する構成です。
 
 ## 実装と本番の状態
 
@@ -8,7 +8,7 @@ Phase 19では共通基盤と入口をローカル実装しました。`/`から
 
 Phase 19以降の変更は未デプロイで、本番は従来のTech Inboxのままです。Daymark migration `0002`も本番D1へ未適用です。基盤名をrizakura-hontaiへ変更し、GitHub repositoryは旧webclipから[Rizakura0110/rizakura-hontai](https://github.com/Rizakura0110/rizakura-hontai)へ改名済みです。既存の別repository `rizakura-me`には触れていません。Worker・DB名・本番URL、ローカルdirectoryは維持しています。Daymarkは別public repositoryをcommit固定のGit submoduleとして取り込み、npmには公開しません。[設計書](docs/rizakura-hontai-design.md)と[Phase 18〜25の計画](docs/rizakura-hontai-roadmap.md)を参照してください。
 
-## DaymarkのPhase 21・22機能
+## DaymarkのPhase 21〜23機能
 
 - 日次のチェック習慣と、単位・目標・以上/以下を持つ数値習慣
 - JST基準で今日・過去の記録を保存・修正・未入力へ戻す。未来日は拒否
@@ -21,8 +21,9 @@ Phase 19以降の変更は未デプロイで、本番は従来のTech Inboxの�
 - 習慣追加、名称変更、目標・単位・達成条件・状態の変更
 - desktop sidebarとmobile bottom navigationを持つresponsive画面
 - `/daymark/`を起動先・scope・idとするDaymark専用manifest/icon/PWA
-
-Daymark JSON backupはPhase 23です。
+- 習慣、設定履歴、日次記録を含むDaymark専用JSON schema v1の書き出し
+- 追加・一致・競合・ID再割り当てをpreviewし、既存値を上書きしない復元
+- 4 MiB・習慣200件・設定履歴2,000件・日次記録20,000件の明示上限。超過時は切り捨てず停止
 
 ## Tech Inboxの主な機能
 

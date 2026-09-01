@@ -1,7 +1,7 @@
 # rizakura-hontai: 共通基盤とDaymarkの設計
 
 最終更新: 2026-09-01
-状態: Phase 22完了。Daymarkの契約・domain・DB schema・保護APIに加え、日・週・月・習慣管理画面と独立PWAをlocal実装・検証した。backupとproduction反映は未実施。本書の後続計画は実装・公開済みを意味しない。
+状態: Phase 23完了。Daymarkの契約・domain・DB schema・保護API、日・週・月・習慣管理画面、独立PWA、製品別JSON backup・非破壊復元をlocal実装・検証した。production反映は未実施。本書の後続計画は実装・公開済みを意味しない。
 
 2026-08-31の所有者指示で、当初の基盤名rizakura-meをrizakura-hontaiへ変更した。既存の`Rizakura0110/rizakura-me`は別repositoryとしてそのまま残し、今回の基盤には使わない。Phase 18/19の実行記録とADRは当時の名称を保持する。
 
@@ -57,7 +57,7 @@ repository、PWA、deployment、databaseの単位は独立して考える。Daym
 
 2026-08-31に所有者がnpm公開を使わないGit submodule方式を承認した。`Rizakura0110/daymark`のpublic作成承認は維持する。packageは`private: true`とし、npmアカウント・scope取得・publish権限は不要。公開repositoryに秘密情報や実データを含めない。判断変更は[ADR-0012](decisions/0012-daymark-git-submodule.md)に記録する。
 
-Phase 20は読み込み・認証・build境界を検証する非機密の接続確認用stubに限定した。Phase 21は所有者との機能・PC画面設計後に、画面より先に必要な契約・domain・schema・APIを実装した。Phase 22ではDaymark repositoryが注入可能なReact画面を所有し、基盤が認証済みHTTP client・HTML・PWA配信を接続した。
+Phase 20は読み込み・認証・build境界を検証する非機密の接続確認用stubに限定した。Phase 21は所有者との機能・PC画面設計後に、画面より先に必要な契約・domain・schema・APIを実装した。Phase 22ではDaymark repositoryが注入可能なReact画面を所有し、基盤が認証済みHTTP client・HTML・PWA配信を接続した。Phase 23ではDaymarkがbackup schema・merge判断・設定画面を所有し、基盤が保護APIとD1 adapterを接続した。
 
 新repositoryのローカル配置は現在の許可領域内の`modules/daymark`とする。親repositoryはgitlinkと`.gitmodules`だけを管理し、Daymarkのsourceは別Git履歴へ記録する。両repositoryのcache・dist・秘密fileはignoreする。兄弟directoryやworkspace自体は移動せず、realpathとGit rootを確認する。
 
@@ -68,9 +68,9 @@ Phase 20は読み込み・認証・build境界を検証する非機密の接続�
 | `/` | rizakura-hontaiの入口。記事・習慣の2つの導線 | 専用manifestなし |
 | `/tech-inbox/` | Tech Inboxの全記事画面 | Tech Inbox専用 |
 | `/tech-inbox/settings` | 記事のタグ管理・backup等 | Tech Inbox専用 |
-| `/daymark/` | Daymarkの日次入力、週/月履歴、習慣管理画面 | Daymark専用 |
+| `/daymark/` | Daymarkの日次入力、週/月履歴、習慣管理、backup設定画面 | Daymark専用 |
 | `/api/v1/articles*`、`/api/v1/tags*`、既存export/import | 既存APIを互換維持 | 対象外 |
-| `/api/v1/daymark/*` | 新しい習慣API | 対象外 |
+| `/api/v1/daymark/*` | 習慣・集計・Daymark専用backup API | 対象外 |
 
 - `/articles`は`/tech-inbox/`、`/settings`は`/tech-inbox/settings`へ同一origin内で互換遷移させ、queryを維持する。任意URLへのredirectは許可しない。
 - 単一のHTMLを全pathへ返してmanifestだけをclient側で付け替える方式を避ける。直接アクセス時から入口・記事・習慣に適したHTML metadataとmanifest linkを返す。
@@ -134,10 +134,11 @@ manifest linkの`crossorigin="use-credentials"`を維持する。Service Worker�
 ## 6. Backup方針
 
 - Tech Inboxの既存schema v1/v2 export/importを維持する。Daymarkを追加しただけで旧exportがDB全体のbackupになったとは扱わない。
-- 製品別backupの識別・version管理を行い、Daymarkの項目・UI上の入口・復元の意味はPhase 23で現在のデータモデルに合わせて定める。
+- Daymark backupは`product: "daymark"`、schema version 1で識別し、習慣、全設定履歴、日次記録を含める。認証情報、Cloudflare設定、Tech Inboxの記事は含めない。
 - Tech InboxへのimportはDaymark tableを操作せず、Daymarkへのimportは記事tableを操作しない。
-- Daymarkのrecord識別、衝突の扱い、参照整合の具体的な規則は確定したデータモデルに合わせる。既存データを無断で上書きせず、他製品を変更しないことを共通の安全条件とする。
-- 現在の記事import上限1 MiB・記事件数上限を習慣へそのまま流用しない。Phase 23で長期記録を使って容量・batch数・CPUを検証し、必要なら期間分割を提供する。書き出し成功したデータが無説明で復元不能になる仕様や、黙った切り捨ては禁止する。
+- 習慣は互換な同一IDまたは一意な完全fingerprintへ対応付け、ID衝突時は再割り当てする。設定履歴は習慣IDと適用日、記録は習慣IDと記録日を自然keyとし、同値なら一致、異なる既存値は上書きせず競合skipとして表示する。同じbackupの再実行は重複を作らない。
+- Daymarkは習慣200、設定履歴2,000、記録20,000とpretty JSON 4 MiBを上限にする。書き出しと読み込みを同じfile上限に揃え、超過・参照不整合は明示errorで停止し、黙った切り捨てをしない。代表的な10習慣では1年3,650記録が1.12 MiB、3年10,950記録が3.36 MiB、4 MiB境界が約13,046記録だった。
+- D1復元は各tableの追加行をJSON配列から展開する3 SQL statementへまとめ、習慣、設定履歴、記録の順で単一batchへ渡す。行数に比例したD1 statementを発行せず、失敗時に部分retryしない。preview後の確定時は最新snapshotから計画を再計算する。
 - 初期版では両製品を一括上書きする復元を作らない。data migration前には両製品のbackupまたはDB全体の復元手段を確保する。
 
 ## 7. rizakura-hontaiへの命名移行
@@ -162,9 +163,9 @@ D1の物理名変更は安全なin-place変更が可能かを実行時に確認�
 1. Daymarkのpublic repository作成、commit固定のGit submodule連携、repository公開物review、独立CIと基盤のclean checkout統合gateは完了した。npm公開・ログインは行わない。
 2. Phase 21の機能・PC画面設計は所有者と合意し、データ・APIのlocal実装まで完了した。
 3. Phase 22で合意した画面とDaymark専用PWAをlocal実装・検証した。
-4. Phase 23でDaymarkのbackup・復元を実装する。
+4. Phase 23でDaymarkのbackup・復元をlocal実装・検証した。
 5. Phase 25でproduction DB更新・deploy・リソース名/URL移行の承認を得る。
 
-Phase 21・22の完了はlocal実装と検証を対象とし、本番D1へのmigrationやdeploy承認には読み替えない。
+Phase 21〜23の完了はlocal実装と検証を対象とし、本番D1へのmigrationやdeploy承認には読み替えない。
 
 料金や権限の確認が必要でも、推測で有料プランや公開設定を選ばない。Phase 18ではCloudflare、GitHub repository設定、registry、依存設定を変更しない。

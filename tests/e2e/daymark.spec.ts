@@ -1,5 +1,7 @@
 import type {
   DailyHabitDto,
+  DaymarkBackupImportSummary,
+  DaymarkBackupSnapshot,
   DayResponse,
   HabitDto,
   PutHabitConfigurationRequest,
@@ -105,6 +107,95 @@ async function mockDaymarkApi(page: Page) {
   let habits = [checkHabit(), numberHabit()];
   const records = new Map<string, PutHabitRecordRequest>();
 
+  const exportBackup = (): DaymarkBackupSnapshot => ({
+    product: "daymark",
+    schemaVersion: 1,
+    exportedAt: timestamp,
+    habits: habits.map((habit) => ({
+      id: habit.id,
+      name: habit.name,
+      kind: habit.configuration.kind,
+      createdOn: habit.createdOn,
+      createdAt: habit.createdAt,
+      updatedAt: habit.updatedAt,
+    })),
+    habitVersions: habits.map((habit) =>
+      habit.configuration.kind === "check"
+        ? {
+            id: `version-${habit.id}`,
+            habitId: habit.id,
+            effectiveFrom: habit.configuration.effectiveFrom,
+            kind: "check",
+            status: habit.configuration.status,
+            targetMilli: null,
+            unit: null,
+            comparison: null,
+            createdAt: habit.createdAt,
+            updatedAt: habit.updatedAt,
+          }
+        : {
+            id: `version-${habit.id}`,
+            habitId: habit.id,
+            effectiveFrom: habit.configuration.effectiveFrom,
+            kind: "number",
+            status: habit.configuration.status,
+            targetMilli: Math.round(habit.configuration.target * 1_000),
+            unit: habit.configuration.unit,
+            comparison: habit.configuration.comparison,
+            createdAt: habit.createdAt,
+            updatedAt: habit.updatedAt,
+          },
+    ),
+    records: [...records].map(([habitId, record], index) =>
+      record.kind === "check"
+        ? {
+            id: `record-${index}`,
+            habitId,
+            recordDate: today,
+            kind: "check",
+            checked: record.checked,
+            valueMilli: null,
+            createdAt: timestamp,
+            updatedAt: timestamp,
+          }
+        : {
+            id: `record-${index}`,
+            habitId,
+            recordDate: today,
+            kind: "number",
+            checked: null,
+            valueMilli: Math.round(record.value * 1_000),
+            createdAt: timestamp,
+            updatedAt: timestamp,
+          },
+    ),
+  });
+
+  const importSummary = (backup: DaymarkBackupSnapshot): DaymarkBackupImportSummary => ({
+    source: {
+      schemaVersion: 1,
+      exportedAt: backup.exportedAt,
+      habits: backup.habits.length,
+      habitVersions: backup.habitVersions.length,
+      records: backup.records.length,
+    },
+    changes: {
+      habitsCreated: backup.habits.length,
+      habitsMatched: 0,
+      habitIdsRemapped: 0,
+      habitVersionsCreated: backup.habitVersions.length,
+      habitVersionsMatched: 0,
+      habitVersionsSkipped: 0,
+      habitVersionIdsRemapped: 0,
+      recordsCreated: backup.records.length,
+      recordsMatched: 0,
+      recordsSkipped: 0,
+      recordIdsRemapped: 0,
+    },
+    hasChanges:
+      backup.habits.length > 0 || backup.habitVersions.length > 0 || backup.records.length > 0,
+  });
+
   await page.route("**/api/v1/daymark/**", async (route) => {
     const request = route.request();
     const url = new URL(request.url());
@@ -116,6 +207,24 @@ async function mockDaymarkApi(page: Page) {
     const recordMatch = url.pathname.match(
       /^\/api\/v1\/daymark\/habits\/([^/]+)\/records\/([^/]+)$/u,
     );
+
+    if (url.pathname === "/api/v1/daymark/export" && method === "GET") {
+      await route.fulfill({ json: exportBackup() });
+      return;
+    }
+    if (
+      ["/api/v1/daymark/import/preview", "/api/v1/daymark/import"].includes(url.pathname) &&
+      method === "POST"
+    ) {
+      const body = request.postDataJSON() as { backup: DaymarkBackupSnapshot };
+      await route.fulfill({
+        json: {
+          result: url.pathname.endsWith("/preview") ? "preview" : "imported",
+          summary: importSummary(body.backup),
+        },
+      });
+      return;
+    }
 
     if (url.pathname === "/api/v1/daymark/habits" && method === "GET") {
       await route.fulfill({ json: { habits } });
@@ -293,6 +402,56 @@ test("Daymark records habits and switches between daily, weekly, monthly, and ma
   await expect(page.getByRole("heading", { name: "白湯を飲む" })).toBeVisible();
   const renamedCard = page.locator("article").filter({ hasText: "白湯を飲む" });
   await expect(renamedCard.getByText("休止", { exact: true })).toBeVisible();
+
+  await navigation.getByRole("button", { name: "設定" }).click();
+  await expect(page.getByRole("heading", { name: "設定" })).toBeVisible();
+  await expect(page.getByText("JSONバックアップ", { exact: true })).toBeVisible();
+  const downloadPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: "JSONを書き出す" }).click();
+  expect((await downloadPromise).suggestedFilename()).toBe(`daymark-export-${today}.json`);
+
+  const restoreBackup: DaymarkBackupSnapshot = {
+    product: "daymark",
+    schemaVersion: 1,
+    exportedAt: timestamp,
+    habits: [
+      {
+        id: "habit-restored",
+        name: "復元する習慣",
+        kind: "check",
+        createdOn: today,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      },
+    ],
+    habitVersions: [
+      {
+        id: "version-restored",
+        habitId: "habit-restored",
+        effectiveFrom: today,
+        kind: "check",
+        status: "active",
+        targetMilli: null,
+        unit: null,
+        comparison: null,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      },
+    ],
+    records: [],
+  };
+  await page.getByLabel("Daymarkバックアップファイル（4MB以下）").setInputFiles({
+    name: "daymark-restore.json",
+    mimeType: "application/json",
+    buffer: Buffer.from(JSON.stringify(restoreBackup)),
+  });
+  await page.getByRole("button", { name: "復元内容を確認" }).click();
+  await expect(page.getByText("復元プレビュー")).toBeVisible();
+  await page
+    .getByRole("checkbox", { name: "既存データを上書きしないマージ内容を確認しました" })
+    .check();
+  await page.getByRole("button", { name: "安全に復元する" }).click();
+  await expect(page.getByText("Daymarkバックアップを安全に復元しました。")).toBeVisible();
 });
 
 test("Daymark has an independent install document, manifest, and icons", async ({ page }) => {

@@ -1,12 +1,12 @@
 # Security
 
-最終更新: 2026-08-31
+最終更新: 2026-09-01
 
 Phase 19の共通基盤整理を含むsourceの方針です。この変更のproduction反映は未実施であり、既存のAccess設定を変更した記録ではありません。
 
 ## 保護対象と境界
 
-Tech Inboxが扱う主なprivate dataは、保存した記事URL、タイトル等のメタデータ、既読状態、タグ、Accessで検証された所有者識別情報です。記事本文、画像、Access JWT、Cloudflare設定値、API tokenはD1へ保存しません。
+Tech Inboxが扱う主なprivate dataは保存した記事URL、タイトル等のメタデータ、既読状態、タグ、Daymarkが扱う主なprivate dataは習慣名、目標、状態履歴、日次記録です。Accessで検証された所有者識別情報は認証に使います。記事本文、画像、Access JWT、Cloudflare設定値、API tokenはD1へ保存しません。
 
 信頼境界は次の3つです。
 
@@ -34,7 +34,7 @@ metadata-fetcherをD1・Queue・Secretsから分離し、外部HTML取得側が�
 ## API入力と変更操作
 
 - request、query、responseをstrictなZod schemaで検証し、未知fieldを拒否する
-- 通常のJSON request bodyを16 KiB、backup importを1 MiBにenvelope余白を加えた上限までに制限し、宣言値とstream実測値の両方を検査する
+- 通常のJSON request bodyを16 KiB、Tech Inbox backup importを1 MiB、Daymark backup importを4 MiBに各envelope余白を加えた上限までに制限し、宣言値とstream実測値の両方を検査する
 - 変更操作は`Content-Type: application/json`、`Origin`の`APP_ORIGIN`完全一致、`X-Rizakura-Hontai-Client: web`を要求する。旧`X-Rizakura-Me-Client: web`・`X-Tech-Inbox-Client: web`だけのclientも互換入力として許可するが、指定したいずれかのheaderが不正・空・競合値なら拒否する。新clientはrollback互換のため現行headerと`X-Tech-Inbox-Client`を送る
 - URL、title、tag、pagination cursor等へ長さ・形式・列挙値の上限を設ける
 - D1のUNIQUE、CHECK、foreign key、transactional batchでservice検証を補強する
@@ -78,11 +78,12 @@ Static AssetsとAPIの両方に次を設定します。
 
 ## Data、export、backup
 
-- D1へ記事、URL alias、タグ、記事・タグ関連だけを保存する
-- JSON exportはruntime検証済みの公開DTOだけで構成し、認証情報やWorker設定を含めない
+- D1へ記事、URL alias、タグ、記事・タグ関連と、`daymark_`prefixの習慣、設定履歴、日次記録だけを保存する。製品間のforeign keyは作らない
+- 製品別JSON exportはruntime検証済みの公開DTOだけで構成し、認証情報、Worker設定、相手製品のデータを含めない。Tech Inbox schema v1/v2とDaymark schema v1を製品識別子で混同させない
 - export responseは`no-store`とし、Rate Limitを適用する
-- JSON importはschema、件数、参照整合、正規化URL、ID・名前・色の一意性を検証し、既存値を上書きしない。追加はD1の単一batchで確定する
-- import responseとrequest logにはURL、title、backup本文を含めず、件数と安全なerrorだけを返す
+- JSON importはschema、件数、参照整合、製品固有の一意性を検証し、既存値を上書きしない。Daymarkの競合設定・記録は現在値を残してskipし、追加はtableごとのJSON展開を単一D1 batchで確定する
+- import responseとrequest logにはURL、title、習慣名、実績値、backup本文を含めず、件数と安全なerrorだけを返す
+- Daymarkは習慣200、設定履歴2,000、日次記録20,000、pretty JSON 4 MiBを上限とし、書き出せたfileが読み込み上限を超えないよう同じfile上限を適用する。超過時は切り捨てず停止する
 - タグ削除は関連だけを削除し、記事本体を保持する
 - canonical重複統合では残存記事を決定的に選び、タグ上限超過件数を構造化logへ残す
 - migration前にJSON exportまたはD1 Time Travel bookmarkを確認する

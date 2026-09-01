@@ -345,6 +345,151 @@ try {
   const daymarkMonth = await requestJson(`/api/v1/daymark/history/month?month=${month}`);
   assert.equal(daymarkMonth.response.status, 200);
   assert.ok(daymarkMonth.body.days.length >= 28 && daymarkMonth.body.days.length <= 31);
+
+  const articlesBeforeDaymarkRestore = await requestJson("/api/v1/export");
+  const daymarkExport = await requestJson("/api/v1/daymark/export");
+  assert.equal(daymarkExport.response.status, 200);
+  assert.equal(daymarkExport.body.product, "daymark");
+  assert.equal(daymarkExport.body.schemaVersion, 1);
+  assert.equal(daymarkExport.body.habits.length, 1);
+  assert.equal(daymarkExport.body.habitVersions.length, 1);
+  assert.equal(daymarkExport.body.records.length, 1);
+  assert.match(
+    daymarkExport.response.headers.get("content-disposition") ?? "",
+    /^attachment; filename="daymark-export-\d{4}-\d{2}-\d{2}\.json"$/u,
+  );
+  const restoredHabitId = "daymark-api-restored";
+  const restoredVersionId = "daymark-api-restored-version";
+  const restoredRecordId = "daymark-api-restored-record";
+  const restoreTimestamp = new Date().toISOString();
+  const restoreBackup = {
+    ...daymarkExport.body,
+    habits: [
+      ...daymarkExport.body.habits,
+      {
+        id: restoredHabitId,
+        name: "Backup smoke",
+        kind: "check",
+        createdOn: today,
+        createdAt: restoreTimestamp,
+        updatedAt: restoreTimestamp,
+      },
+    ],
+    habitVersions: [
+      ...daymarkExport.body.habitVersions,
+      {
+        id: restoredVersionId,
+        habitId: restoredHabitId,
+        effectiveFrom: today,
+        kind: "check",
+        status: "active",
+        targetMilli: null,
+        unit: null,
+        comparison: null,
+        createdAt: restoreTimestamp,
+        updatedAt: restoreTimestamp,
+      },
+    ],
+    records: [
+      ...daymarkExport.body.records,
+      {
+        id: restoredRecordId,
+        habitId: restoredHabitId,
+        recordDate: today,
+        kind: "check",
+        checked: true,
+        valueMilli: null,
+        createdAt: restoreTimestamp,
+        updatedAt: restoreTimestamp,
+      },
+    ],
+  };
+  const daymarkPreview = await requestJson("/api/v1/daymark/import/preview", {
+    method: "POST",
+    headers: mutationHeaders,
+    body: JSON.stringify({ backup: restoreBackup }),
+  });
+  assert.equal(daymarkPreview.response.status, 200);
+  assert.equal(daymarkPreview.body.summary.changes.habitsCreated, 1);
+  assert.equal(daymarkPreview.body.summary.changes.habitVersionsCreated, 1);
+  assert.equal(daymarkPreview.body.summary.changes.recordsCreated, 1);
+  const daymarkImported = await requestJson("/api/v1/daymark/import", {
+    method: "POST",
+    headers: mutationHeaders,
+    body: JSON.stringify({ backup: restoreBackup }),
+  });
+  assert.equal(daymarkImported.response.status, 200);
+  assert.equal(daymarkImported.body.summary.hasChanges, true);
+  const repeatedDaymarkPreview = await requestJson("/api/v1/daymark/import/preview", {
+    method: "POST",
+    headers: mutationHeaders,
+    body: JSON.stringify({ backup: restoreBackup }),
+  });
+  assert.equal(repeatedDaymarkPreview.response.status, 200);
+  assert.equal(repeatedDaymarkPreview.body.summary.hasChanges, false);
+  assert.equal(repeatedDaymarkPreview.body.summary.changes.habitsMatched, 2);
+
+  const longTermHabits = Array.from({ length: 10 }, (_, index) => ({
+    id: `long-term-habit-${index}`,
+    name: `Long-term ${index}`,
+    kind: "check",
+    createdOn: "2020-01-01",
+    createdAt: restoreTimestamp,
+    updatedAt: restoreTimestamp,
+  }));
+  const longTermBackup = {
+    product: "daymark",
+    schemaVersion: 1,
+    exportedAt: restoreTimestamp,
+    habits: longTermHabits,
+    habitVersions: longTermHabits.map((habit, index) => ({
+      id: `long-term-version-${index}`,
+      habitId: habit.id,
+      effectiveFrom: habit.createdOn,
+      kind: "check",
+      status: "active",
+      targetMilli: null,
+      unit: null,
+      comparison: null,
+      createdAt: restoreTimestamp,
+      updatedAt: restoreTimestamp,
+    })),
+    records: Array.from({ length: 3_650 }, (_, index) => ({
+      id: `long-term-record-${index}`,
+      habitId: longTermHabits[index % longTermHabits.length].id,
+      recordDate: new Date(Date.UTC(2020, 0, 1 + Math.floor(index / longTermHabits.length)))
+        .toISOString()
+        .slice(0, 10),
+      kind: "check",
+      checked: true,
+      valueMilli: null,
+      createdAt: restoreTimestamp,
+      updatedAt: restoreTimestamp,
+    })),
+  };
+  assert.ok(Buffer.byteLength(`${JSON.stringify(longTermBackup, null, 2)}\n`) < 4 * 1024 * 1024);
+  const longTermPreview = await requestJson("/api/v1/daymark/import/preview", {
+    method: "POST",
+    headers: mutationHeaders,
+    body: JSON.stringify({ backup: longTermBackup }),
+  });
+  assert.equal(longTermPreview.response.status, 200);
+  assert.equal(longTermPreview.body.summary.changes.habitsCreated, 10);
+  assert.equal(longTermPreview.body.summary.changes.recordsCreated, 3_650);
+  const longTermImported = await requestJson("/api/v1/daymark/import", {
+    method: "POST",
+    headers: mutationHeaders,
+    body: JSON.stringify({ backup: longTermBackup }),
+  });
+  assert.equal(longTermImported.response.status, 200);
+  assert.equal(longTermImported.body.summary.changes.habitVersionsCreated, 10);
+  assert.equal(longTermImported.body.summary.changes.recordsCreated, 3_650);
+
+  const articlesAfterDaymarkRestore = await requestJson("/api/v1/export");
+  const { exportedAt: _beforeExportedAt, ...articleDataBefore } = articlesBeforeDaymarkRestore.body;
+  const { exportedAt: _afterExportedAt, ...articleDataAfter } = articlesAfterDaymarkRestore.body;
+  assert.deepEqual(articleDataAfter, articleDataBefore);
+
   const daymarkCleared = await requestJson(
     `/api/v1/daymark/habits/${daymarkHabitId}/records/${today}`,
     { method: "DELETE", headers: mutationHeaders },

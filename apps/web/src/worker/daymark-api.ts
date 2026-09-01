@@ -1,5 +1,9 @@
 import {
   createHabitRequestSchema,
+  daymarkBackupImportRequestSchema,
+  type DaymarkBackupImportPreviewResponse,
+  type DaymarkBackupImportResponse,
+  type DaymarkBackupSnapshot,
   daymarkDateQuerySchema,
   daymarkHabitDateParamsSchema,
   daymarkHabitParamsSchema,
@@ -10,16 +14,19 @@ import {
   type HabitResponse,
   type ListHabitsResponse,
   type MonthResponse,
+  MAX_DAYMARK_BACKUP_IMPORT_BYTES,
   putHabitConfigurationRequestSchema,
   putHabitRecordRequestSchema,
   renameHabitRequestSchema,
   type WeekResponse,
 } from "@rizakura-hontai/daymark/contracts";
 import {
+  DaymarkBackupService,
   DaymarkError,
   DaymarkService,
   getDaymarkConnectionStatus,
   type DaymarkClock,
+  type DaymarkBackupRepository,
   type DaymarkIdGenerator,
   type DaymarkRepository,
 } from "@rizakura-hontai/daymark/server";
@@ -29,17 +36,20 @@ import type { ApiEnvironment, ApiRoutePolicy } from "./platform/api";
 import { ApiError, validationError } from "./platform/errors";
 import { parseQuery, parseWithSchema, readJsonBody } from "./platform/request-validation";
 import { createD1DaymarkRepository } from "./repositories/d1-daymark-repository";
+import { createD1DaymarkBackupRepository } from "./repositories/d1-daymark-backup-repository";
 
 type AppEnvironment = ApiEnvironment<AppBindings>;
 
 export type DaymarkDependencies = {
   readonly daymarkRepositoryFactory: (bindings: AppBindings) => DaymarkRepository;
+  readonly daymarkBackupRepositoryFactory: (bindings: AppBindings) => DaymarkBackupRepository;
   readonly clock: DaymarkClock;
   readonly idGenerator: DaymarkIdGenerator;
 };
 
 export const defaultDaymarkDependencies: DaymarkDependencies = {
   daymarkRepositoryFactory: (bindings) => createD1DaymarkRepository(bindings.DB),
+  daymarkBackupRepositoryFactory: (bindings) => createD1DaymarkBackupRepository(bindings.DB),
   clock: () => new Date(),
   idGenerator: () => crypto.randomUUID(),
 };
@@ -54,6 +64,15 @@ export function daymarkRoutePolicy(method: string, pathname: string): ApiRoutePo
   }
   if (normalizedMethod === "GET" && pathname === "/api/v1/daymark/habits") {
     return { name: "daymark.habits.list", rateLimit: "read" };
+  }
+  if (normalizedMethod === "GET" && pathname === "/api/v1/daymark/export") {
+    return { name: "daymark.export.get", rateLimit: "export" };
+  }
+  if (normalizedMethod === "POST" && pathname === "/api/v1/daymark/import/preview") {
+    return { name: "daymark.import.preview", rateLimit: "export" };
+  }
+  if (normalizedMethod === "POST" && pathname === "/api/v1/daymark/import") {
+    return { name: "daymark.import.apply", rateLimit: "mutate" };
   }
   if (normalizedMethod === "POST" && pathname === "/api/v1/daymark/habits") {
     return { name: "daymark.habits.create", rateLimit: "mutate" };
@@ -93,6 +112,14 @@ function service(context: Context<AppEnvironment>, dependencies: DaymarkDependen
   );
 }
 
+function backupService(context: Context<AppEnvironment>, dependencies: DaymarkDependencies) {
+  return new DaymarkBackupService(
+    dependencies.daymarkBackupRepositoryFactory(context.env),
+    dependencies.clock,
+    dependencies.idGenerator,
+  );
+}
+
 async function daymarkResult<T>(operation: () => Promise<T>): Promise<T> {
   try {
     return await operation();
@@ -107,6 +134,32 @@ async function daymarkResult<T>(operation: () => Promise<T>): Promise<T> {
 export function createDaymarkApi(dependencies: DaymarkDependencies) {
   const app = new Hono<AppEnvironment>();
   app.get("/v1/daymark/status", (context) => context.json(getDaymarkConnectionStatus()));
+  app.get("/v1/daymark/export", async (context) => {
+    const response = await daymarkResult(() => backupService(context, dependencies).exportAll());
+    context.header(
+      "Content-Disposition",
+      `attachment; filename="daymark-export-${response.exportedAt.slice(0, 10)}.json"`,
+    );
+    return context.json<DaymarkBackupSnapshot>(response);
+  });
+  app.post("/v1/daymark/import/preview", async (context) => {
+    const request = parseWithSchema(
+      daymarkBackupImportRequestSchema,
+      await readJsonBody(context.req.raw, MAX_DAYMARK_BACKUP_IMPORT_BYTES),
+    );
+    return context.json<DaymarkBackupImportPreviewResponse>(
+      await daymarkResult(() => backupService(context, dependencies).preview(request)),
+    );
+  });
+  app.post("/v1/daymark/import", async (context) => {
+    const request = parseWithSchema(
+      daymarkBackupImportRequestSchema,
+      await readJsonBody(context.req.raw, MAX_DAYMARK_BACKUP_IMPORT_BYTES),
+    );
+    return context.json<DaymarkBackupImportResponse>(
+      await daymarkResult(() => backupService(context, dependencies).apply(request)),
+    );
+  });
   app.get("/v1/daymark/habits", async (context) =>
     context.json<ListHabitsResponse>(
       await daymarkResult(() => service(context, dependencies).listHabits()),

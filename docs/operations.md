@@ -12,7 +12,7 @@ GitHubは旧`Rizakura0110/webclip`を`Rizakura0110/rizakura-hontai`へ改名済�
 - deploy後は`/`が入口、`/tech-inbox/`が記事、`/tech-inbox/settings`が設定、`/daymark/`が習慣管理になります。旧記事・設定URLはqueryを維持して同一origin内へ移動します。
 - 入口・記事・DaymarkのHTMLはそれぞれbuildします。全pathを入口HTMLへ戻すSPA fallbackを復活させないでください。
 - app Workerの`ASSETS`は既存のStatic Assetsへアクセスするbindingで、新しいDBやWorkerの作成ではありません。
-- Accessのhost全体保護、旧PWAからの記事起動、2つのmanifest、各製品と入口の往復は承認後の本番反映時に確認します。Daymark画面/API/PWAはlocal接続済みですが、本番からはまだ利用しません。
+- Accessのhost全体保護、旧PWAからの記事起動、2つのmanifest、各製品と入口の往復は承認後の本番反映時に確認します。Daymark画面/API/PWA/backupはlocal接続済みですが、本番からはまだ利用しません。
 - 新旧client headerを互換対応しています。rollback時は既知のapp Worker versionへ戻し、古いHTMLが残る場合は再読み込みします。旧manifest/URLは削除しません。
 
 ## 運用原則
@@ -28,7 +28,7 @@ GitHubは旧`Rizakura0110/webclip`を`Rizakura0110/rizakura-hontai`へ改名済�
 
 ### Backup
 
-設定画面の「JSONを書き出す」から、少なくとも重要な変更前と定期的にbackupを取得します。exportには記事、URL alias、タグ、タグ付けが含まれ、認証情報やCloudflare設定は含まれません。download後はprivate dataとして安全な場所へ保存し、不要になった古いcopyを適切に削除してください。
+各製品の設定画面にある「JSONを書き出す」から、少なくとも重要な変更前と定期的にbackupを取得します。Tech Inbox exportには記事、URL alias、タグ、タグ付け、Daymark exportには習慣、設定履歴、日次記録が含まれます。どちらにも認証情報やCloudflare設定は含まれず、相手製品のデータも含まれません。download後はprivate dataとして安全な場所へ保存し、不要になった古いcopyを適切に削除してください。
 
 最低限、次の前に新しいexportを取得します。
 
@@ -49,6 +49,18 @@ GitHubは旧`Rizakura0110/webclip`を`Rizakura0110/rizakura-hontai`へ改名済�
 - 確定時に最新D1状態から計画を再計算し、すべての追加をD1の単一batchで適用する。予期しないconstraint conflictではbatch全体を失敗させる
 
 復元前にも現在のJSON exportを別名で保存します。preview後に別操作でデータが変わると確定結果の件数が変わり得るため、完了messageと更新後の件数を確認してください。同じbackupを再実行しても一致扱いとなり、重複recordは作成されません。JSONには記事情報が含まれるため、第三者へ送信したり公開場所へ置いたりしません。
+
+### Daymark JSON backupの復元
+
+Daymarkの「設定」では、`product: "daymark"`・schema version 1のJSONを最大4 MiBまで読み込めます。Tech InboxのJSONは選択できません。「復元内容を確認」で習慣、設定履歴、日次記録の追加・一致・競合・ID再割り当て件数を確認し、確認checkboxを選んでから「安全に復元する」を実行します。
+
+- 現在の習慣名、設定値、日次記録を更新・削除しない
+- 互換な同一習慣は既存recordへ対応付け、異なるrecordとのID衝突だけを未使用IDへ割り当て直す
+- 同じ習慣・日付の設定履歴または記録が同値なら一致、値が異なれば現在値を残して競合skipする
+- 確定時に最新D1状態から計画を再計算し、追加分を習慣・設定履歴・記録の3 SQL statementにまとめた単一batchで適用する
+- Tech Inboxのtableは読み書きせず、同じbackupの再実行でも重複を作らない
+
+初期版の上限は習慣200件、設定履歴2,000件、日次記録20,000件、pretty JSON 4 MiBです。代表的な10習慣の記録では1年3,650件が1.12 MiB、3年10,950件が3.36 MiB、4 MiB境界が約13,046件でした。上限超過時は記録を切り捨てず、書き出しを停止して画面にerrorを表示します。期間分割exportはまだありません。Daymark JSONも習慣名・実績値を含むprivate dataとして扱い、公開場所へ置かないでください。
 
 ### Queueとmetadata
 

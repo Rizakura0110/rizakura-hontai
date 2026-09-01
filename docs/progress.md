@@ -1551,3 +1551,36 @@
 
 - production D1へのmigration、Cloudflare deploy、resource・Access・課金設定変更は実施していない。本番は従来のTech Inboxのまま。
 - Phase 23でDaymarkのJSON backup・復元を実装する。Phase 24の統合互換確認、Phase 25の明示承認後deploy・iPhone実機確認は未実施。
+
+## Phase 23: Daymark製品別JSONバックアップ・復元
+
+状態: 完了（2026-09-01、未デプロイ）。Daymarkの習慣、設定履歴、日次記録を専用JSONへ書き出し、参照整合と競合件数をpreviewして既存値を上書きせず復元できるようにした。Tech Inboxのschema v1/v2とtableは維持した。
+
+### 実装内容・判断
+
+- Daymark repositoryへ`product: "daymark"`・schema version 1のbackup契約を追加した。習慣、全設定履歴、日次記録のID一意性、自然key、参照先、種類、作成日との前後関係、初期設定の存在をZodで検証する。
+- 非破壊merge planは、互換な同一習慣を既存recordへ対応付け、異なるrecordとのID衝突を未使用IDへ割り当て直す。設定履歴と日次記録は習慣＋日付で照合し、同値を一致、異値を競合skipとして現在値を保持する。同じbackupの再投入はno-opになる。
+- Daymark画面へ「設定」を追加し、件数表示、JSON download、4 MiB file検証、復元preview、確認checkbox、確定結果を実装した。競合skipとTech Inbox非変更を画面上で説明する。
+- 基盤へ`GET /api/v1/daymark/export`、`POST /api/v1/daymark/import/preview`、`POST /api/v1/daymark/import`を追加した。共通Access、Origin、JSON、client header、no-store、export/mutate Rate Limitを通す。
+- D1 adapterは追加行をtable別JSON配列へ変換し、`json_each`で展開する習慣・設定履歴・記録の最大3 SQL statementを1回のtransactional batchへ渡す。件数に比例したstatementを作らず、batch失敗を部分retryしない。
+- 上限は習慣200、設定履歴2,000、日次記録20,000、pretty JSON 4 MiB。書き出しと読み込みを同じfile上限にし、超過や不整合を黙って切り捨てず明示errorで停止する。判断は[ADR-0014](decisions/0014-daymark-product-backup.md)へ記録した。
+
+### 容量・DB適用測定
+
+- 36文字ID、標準timestamp、チェック式10習慣の代表fixtureでは、1年3,650記録が1,177,936 bytes（1.12 MiB）、3年10,950記録が3,521,236 bytes（3.36 MiB）だった。
+- 同fixtureのpretty JSON 4 MiB境界は約13,046記録・4,194,052 bytes。18,250記録は5.59 MiB、20,000記録は6.13 MiBとなるため、20,000記録fixtureでexport停止を自動testした。
+- 実local D1ではJSON配列を3 statementで取り込み、最小fixtureの確定・再preview no-opに加え、10習慣・10設定履歴・3,650日次記録のpreviewと確定を同じ実HTTP gateで確認した。20,000記録のrepository planもstatement数が3のままであることをunit testした。復元前後のTech Inbox exportから`exportedAt`を除いた内容が一致した。
+
+### 検証結果
+
+- Daymark単体は8 files・64 testsがpassし、domain・契約・日付・backup処理のcoverageはstatements/branches/functions/linesすべて100%。format、lint、TypeScript、宣言付きbuild、auditもpassした。
+- 基盤Vitestは42 files・434 testsがpass。coverageはstatements 87.75%、branches 83.70%、functions 87.89%、lines 89.26%で既存threshold内。
+- fresh一時D1を使う実HTTPでDaymark export、preview、確定、再実行no-op、3,650記録の長期fixture、既存記事不変を検証した。D1 repository unit testでは20,000記録でも最大3 statementの単一batchとなることと、失敗時の非retryを確認した。
+- Playwrightはdesktop/mobileでDaymark JSON download、file選択、preview、確認、復元完了を既存の日・週・月・習慣管理・PWAフローと合わせて検証し、31 testsがpass、desktop専用1 testがmobileで意図どおりskipした。
+- production/dry-run buildとartifact budgetはpassした。app Workerはraw 500.6 KiB・gzip 106.3 KiB、metadata Workerはraw 585.6 KiB・gzip 88.8 KiB、client JSはraw 411.4 KiB・gzip 118.3 KiB、CSSはraw 34.0 KiB・gzip 7.1 KiBで既存budget内だった。高・重大脆弱性0件も確認した。production secretは補充せず、本番D1・Cloudflareへ接続していない。
+
+### 変更していないもの・次フェーズ
+
+- production D1 migration、Cloudflare deploy、resource・Access・課金設定変更は実施していない。本番は従来のTech Inboxのまま。
+- 期間分割exportは初期版へ追加していない。上限超過時は明示停止し、Phase 24でquery/CPU・無料枠・全体互換性を再確認する。
+- 次はPhase 24の統合品質・互換性・無料枠内設計の検証。Phase 25の本番反映は引き続き所有者の明示承認後に行う。

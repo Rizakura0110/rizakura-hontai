@@ -1,4 +1,6 @@
 import type {
+  DaymarkBackupImportSummary,
+  DaymarkBackupSnapshot,
   DayResponse,
   HabitDto,
   MonthResponse,
@@ -71,6 +73,53 @@ const month: MonthResponse = {
     perfectDays: 0,
   },
 };
+const backup: DaymarkBackupSnapshot = {
+  product: "daymark",
+  schemaVersion: 1,
+  exportedAt: timestamp,
+  habits: [
+    {
+      id: habit.id,
+      name: habit.name,
+      kind: "check",
+      createdOn: habit.createdOn,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    },
+  ],
+  habitVersions: [
+    {
+      id: "version-water",
+      habitId: habit.id,
+      effectiveFrom: habit.createdOn,
+      kind: "check",
+      status: "active",
+      targetMilli: null,
+      unit: null,
+      comparison: null,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    },
+  ],
+  records: [],
+};
+const backupSummary: DaymarkBackupImportSummary = {
+  source: { schemaVersion: 1, exportedAt: timestamp, habits: 1, habitVersions: 1, records: 0 },
+  changes: {
+    habitsCreated: 1,
+    habitsMatched: 0,
+    habitIdsRemapped: 0,
+    habitVersionsCreated: 1,
+    habitVersionsMatched: 0,
+    habitVersionsSkipped: 0,
+    habitVersionIdsRemapped: 0,
+    recordsCreated: 0,
+    recordsMatched: 0,
+    recordsSkipped: 0,
+    recordIdsRemapped: 0,
+  },
+  hasChanges: true,
+};
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -86,6 +135,13 @@ describe("Daymark API client", () => {
     const fetchMock = vi.fn(
       async (input: string | URL | Request, init?: RequestInit): Promise<Response> => {
         const path = String(input);
+        if (path === "/api/v1/daymark/export") return jsonResponse(backup);
+        if (path === "/api/v1/daymark/import/preview") {
+          return jsonResponse({ result: "preview", summary: backupSummary });
+        }
+        if (path === "/api/v1/daymark/import") {
+          return jsonResponse({ result: "imported", summary: backupSummary });
+        }
         if (path === "/api/v1/daymark/habits" && init?.method === undefined) {
           return jsonResponse({ habits: [habit] });
         }
@@ -133,6 +189,15 @@ describe("Daymark API client", () => {
     await expect(daymarkClient.deleteRecord(habit.id, "2026-09-01")).resolves.toBeUndefined();
     await expect(daymarkClient.getWeek("2026-08-31")).resolves.toEqual(week);
     await expect(daymarkClient.getMonth("2026-09")).resolves.toEqual(month);
+    await expect(daymarkClient.exportBackup()).resolves.toEqual(backup);
+    await expect(daymarkClient.previewBackup(backup)).resolves.toEqual({
+      result: "preview",
+      summary: backupSummary,
+    });
+    await expect(daymarkClient.importBackup(backup)).resolves.toEqual({
+      result: "imported",
+      summary: backupSummary,
+    });
 
     expect(fetchMock.mock.calls[0]?.[1]?.signal).toBe(controller.signal);
     expect(fetchMock.mock.calls.map(([path]) => String(path))).toContain(
@@ -147,6 +212,8 @@ describe("Daymark API client", () => {
       { kind: "check", status: "paused" },
       { kind: "check", checked: true },
       {},
+      { backup },
+      { backup },
     ]);
   });
 

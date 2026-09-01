@@ -1,14 +1,17 @@
 import type {
+  DaymarkBackupImportPlan,
   HabitEntity,
   HabitRecordEntity,
   HabitVersionEntity,
 } from "@rizakura-hontai/daymark/server";
+import type { DaymarkBackupSnapshot } from "@rizakura-hontai/daymark/contracts";
 import { describe, expect, it, vi } from "vitest";
 import { createApp, type AppBindings } from "./app";
 import { daymarkRoutePolicy } from "./daymark-api";
 import { ApiError } from "./platform/errors";
 
 const origin = "https://app.invalid";
+const timestamp = "2026-09-01T03:00:00.000Z";
 const principal = {
   subject: "fixture",
   email: "fixture@example.invalid",
@@ -79,6 +82,20 @@ class MemoryDaymarkRepository {
     );
     return before !== this.records.length;
   }
+
+  async loadSnapshot() {
+    return {
+      habits: this.habits,
+      habitVersions: this.versions,
+      records: this.records,
+    };
+  }
+
+  async apply(plan: DaymarkBackupImportPlan) {
+    this.habits.push(...plan.habits);
+    this.versions.push(...plan.habitVersions);
+    this.records.push(...plan.records);
+  }
 }
 
 const createFixture = () => {
@@ -91,6 +108,7 @@ const createFixture = () => {
     enforceRateLimit,
     log,
     daymarkRepositoryFactory: () => repository,
+    daymarkBackupRepositoryFactory: () => repository,
     clock: () => new Date("2026-09-01T03:00:00.000Z"),
     idGenerator: () => {
       id += 1;
@@ -143,6 +161,18 @@ describe("Daymark shared protection and routing", () => {
       rateLimit: "read",
     });
     expect(daymarkRoutePolicy("POST", "/api/v1/daymark/habits")?.rateLimit).toBe("mutate");
+    expect(daymarkRoutePolicy("GET", "/api/v1/daymark/export")).toEqual({
+      name: "daymark.export.get",
+      rateLimit: "export",
+    });
+    expect(daymarkRoutePolicy("POST", "/api/v1/daymark/import/preview")).toEqual({
+      name: "daymark.import.preview",
+      rateLimit: "export",
+    });
+    expect(daymarkRoutePolicy("POST", "/api/v1/daymark/import")).toEqual({
+      name: "daymark.import.apply",
+      rateLimit: "mutate",
+    });
     expect(
       daymarkRoutePolicy("PUT", "/api/v1/daymark/habits/a/configurations/2026-09-01")?.name,
     ).toBe("daymark.habits.configure");
@@ -307,5 +337,107 @@ describe("Daymark habit API", () => {
         )
       ).status,
     ).toBe(403);
+  });
+});
+
+describe("Daymark product backup API", () => {
+  it("exports, previews, imports, and repeats without changing Tech Inbox data", async () => {
+    const source = createFixture();
+    const created = (await (
+      await source.app.request(
+        `${origin}/api/v1/daymark/habits`,
+        jsonRequest("POST", { name: "水を飲む", kind: "check" }),
+        bindings,
+      )
+    ).json()) as { habit: { id: string } };
+    await source.app.request(
+      `${origin}/api/v1/daymark/habits/${created.habit.id}/records/2026-09-01`,
+      jsonRequest("PUT", { kind: "check", checked: true }),
+      bindings,
+    );
+    const exported = await source.app.request(
+      `${origin}/api/v1/daymark/export`,
+      undefined,
+      bindings,
+    );
+    expect(exported.status).toBe(200);
+    expect(exported.headers.get("content-disposition")).toBe(
+      'attachment; filename="daymark-export-2026-09-01.json"',
+    );
+    const backup = (await exported.json()) as DaymarkBackupSnapshot;
+    expect(backup).toMatchObject({
+      product: "daymark",
+      schemaVersion: 1,
+      habits: [{ name: "水を飲む" }],
+      records: [{ checked: true }],
+    });
+    expect(backup).not.toHaveProperty("articles");
+
+    const target = createFixture();
+    const preview = await target.app.request(
+      `${origin}/api/v1/daymark/import/preview`,
+      jsonRequest("POST", { backup }),
+      bindings,
+    );
+    expect(preview.status).toBe(200);
+    await expect(preview.json()).resolves.toMatchObject({
+      result: "preview",
+      summary: {
+        changes: { habitsCreated: 1, habitVersionsCreated: 1, recordsCreated: 1 },
+        hasChanges: true,
+      },
+    });
+    expect(target.repository.habits).toHaveLength(0);
+
+    const applied = await target.app.request(
+      `${origin}/api/v1/daymark/import`,
+      jsonRequest("POST", { backup }),
+      bindings,
+    );
+    expect(applied.status).toBe(200);
+    expect(target.repository.habits).toHaveLength(1);
+    expect(target.repository.versions).toHaveLength(1);
+    expect(target.repository.records).toHaveLength(1);
+
+    const repeated = await target.app.request(
+      `${origin}/api/v1/daymark/import/preview`,
+      jsonRequest("POST", { backup }),
+      bindings,
+    );
+    await expect(repeated.json()).resolves.toMatchObject({
+      summary: {
+        changes: { habitsMatched: 1, habitVersionsMatched: 1, recordsMatched: 1 },
+        hasChanges: false,
+      },
+    });
+    expect(target.enforceRateLimit).toHaveBeenCalledWith(bindings, principal, "export");
+    expect(target.enforceRateLimit).toHaveBeenCalledWith(bindings, principal, "mutate");
+  });
+
+  it("rejects a Tech Inbox backup before opening Daymark storage", async () => {
+    const repository = new MemoryDaymarkRepository();
+    const loadSnapshot = vi.spyOn(repository, "loadSnapshot");
+    const app = createApp({
+      authenticateAccess: async () => principal,
+      enforceRateLimit: async () => undefined,
+      log: () => undefined,
+      daymarkBackupRepositoryFactory: () => repository,
+    });
+    const response = await app.request(
+      `${origin}/api/v1/daymark/import/preview`,
+      jsonRequest("POST", {
+        backup: {
+          schemaVersion: 2,
+          exportedAt: timestamp,
+          articles: [],
+          articleUrls: [],
+          tags: [],
+          articleTags: [],
+        },
+      }),
+      bindings,
+    );
+    expect(response.status).toBe(400);
+    expect(loadSnapshot).not.toHaveBeenCalled();
   });
 });

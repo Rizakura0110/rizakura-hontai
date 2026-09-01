@@ -98,6 +98,7 @@ Phase 1の初回installで報告されたbuild scriptを確認し、次だけを
 
 ## Lockfileと監査結果
 
+- 2026-09-01のPhase 23最終監査でも`pnpm audit --audit-level high`は成功し、高0件・重大0件だった。Phase 23では第三者dependencyとlockfileを変更していない。既知の開発専用・中程度1件は下記baselineから不変。
 - Phase 22のDaymark画面は基盤と同じReact 19.2.8をpeerとして使用し、単体component testへ既存baselineのReact DOM、Testing Library、jsdom、React型定義を追加した。新しいversion・install script例外・runtime network依存は導入せず、Daymark単体と基盤のlockfileで同じ完全versionを固定した。
 
 - Phase 20のDaymarkは所有者承認の[Git submodule方式](decisions/0012-daymark-git-submodule.md)に変更した。`workspace:0.0.0`参照と完全commit SHAで自作sourceを固定し、npmへは公開しない。Git URLをpackage dependencyに指定する方式ではない。第三者の完全version・7日gate・integrity・install script制限は両repositoryで維持する。Daymark単体lockfileと基盤lockfileを分け、独立CIと統合CIの両方を通す。

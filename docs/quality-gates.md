@@ -6,7 +6,7 @@
 
 `pnpm check`はformat、lint、Cloudflare生成型、TypeScript、unit/component/integration test、coverage、fresh local D1、実HTTP API、production build、artifact budget、desktop/mobile Chrome E2E、dependency auditを順に実行する。
 
-2026-09-01のPhase 22最終実行では、Daymark単体7 files・43 tests、基盤Vitest 41 files・429 tests、Playwright desktop/mobile 31 testsが成功した。desktop専用sidebar testのmobile実行1件は意図どおりskipした。
+2026-09-01のPhase 23最終実行では、Daymark単体8 files・64 tests、基盤Vitest 42 files・434 tests、Playwright desktop/mobile 31 testsが成功した。desktop専用sidebar testのmobile実行1件は意図どおりskipした。
 
 個別確認には次を使う。
 
@@ -41,7 +41,7 @@ pnpm audit --audit-level high
 
 基盤の`pnpm daymark:boundaries`は実際のVite buildでbrowser/contractsの成功とserver/schemaのbrowser build失敗を検証する。package exportsだけでなく、Vite pluginで解決後sourceのclient混入を拒否する。通常のbuildにも同じpluginを適用し、client型検査にはbrowser条件を付ける。
 
-`/api/v1/daymark/*`を共通保護配下へ組み込み、認証・Origin・JSON・client header・Rate Limit・安全なerror・no-storeをtestする。実HTTP gateでは習慣作成、一覧、日次記録、週/月集計、記録削除と既存記事APIを同じ一時D1で確認する。Playwrightの未認証401はPhase 22の画面と合わせて拡張する。
+`/api/v1/daymark/*`を共通保護配下へ組み込み、認証・Origin・JSON・client header・Rate Limit・安全なerror・no-storeをtestする。実HTTP gateでは習慣作成、一覧、日次記録、週/月集計、記録削除、Daymark export、preview、確定、再実行no-opと既存記事APIを同じ一時D1で確認する。Daymark復元前後でTech Inbox exportの内容が変わらないことも必須とする。
 
 local D1 gateはmigration `0002`を空DBと既存記事/タグ入りDBへ適用し、次を必須とする。
 
@@ -64,7 +64,7 @@ V8 coverageはstatements、branches、functions、linesの全指標に80%の最�
 | SSRF URL判定 | 100% | 96.00% | 100% | 100% |
 | 契約schema | 100% | 100% | 100% | 100% |
 
-Phase 22追加後の基盤全体はstatements 87.50%、branches 83.45%、functions 87.57%、lines 89.06%。Daymarkのdomain・契約・日付処理は全指標100%で、最低値を変更していない。React画面はcomponent testとdesktop/mobile E2Eの操作・表示検証を必須とする。
+Phase 23追加後の基盤全体はstatements 87.75%、branches 83.70%、functions 87.89%、lines 89.26%。Daymarkのdomain・契約・日付・backup処理は全指標100%で、最低値を変更していない。React画面はcomponent testとdesktop/mobile E2Eの操作・表示検証を必須とする。
 
 V8 unit coverageから次だけを除外する。
 
@@ -100,6 +100,7 @@ V8 unit coverageから次だけを除外する。
 | Daymark日次記録 | チェックと数値の保存、達成率更新、desktop/mobile navigation |
 | Daymark履歴 | 月曜始まりの週tableと暦月カレンダーの切り替え |
 | Daymark習慣管理 | チェック習慣の追加、名称・状態変更、一覧の再取得 |
+| Daymark backup | 専用JSON download、4 MiB file選択、preview、明示確認、非破壊復元結果 |
 | Daymark PWA配信境界 | 専用HTML/metadata、credential付きmanifest、独立id/start/scope、専用4 icon |
 | URLとHTML互換 | 旧記事・設定pathのquery維持、直接設定URLのHTML、入口にmanifestなし、記事の既存idと専用scope |
 | fallback境界 | 未知document・欠落assetは404、将来のAPIも未認証で401・JSON |
@@ -132,6 +133,8 @@ V8 unit coverageから次だけを除外する。
 タグ統合の実D1・実HTTP gateでは、JSON export version 2の参照整合性と、canonical URL重複統合時のタグ移動を検証する。残存記事のタグ9件と重複記事のタグ3件を統合し、残存記事が10件、移せなかった関連が2件、重複記事だけが削除され、タグ定義はすべて保持されることを必須とする。
 
 JSON restoreの実D1・実HTTP gateでは、version 2 backupのpreviewと確定結果が一致し、記事・URL alias・タグ・タグ付けが追加されること、既存IDと色の衝突が再割り当てされること、`pending`が再取得可能な`failed`になること、同じbackupの再実行が無変更になることを確認する。repository unit testでは全insertが1回のD1 batchへ渡され、batch失敗を部分retryしないことも確認する。
+
+Daymark restoreは専用schema、参照整合、習慣・設定履歴・記録のID衝突、同値一致、異値競合skip、冪等性を単体testで確認する。実D1では追加行を3 SQL statementへまとめた単一batchで適用し、10習慣・10設定履歴・3,650記録の長期fixture、再実行no-op、Tech Inbox export不変を確認する。代表的な10習慣では3,650記録が1.12 MiB、10,950記録が3.36 MiB、pretty JSON 4 MiB境界が約13,046記録であることを測定し、20,000記録でもrepository statement数が3のまま、同件数のexportはfile上限で明示停止するtestを維持する。
 
 Playwrightのmobile viewport成功は実機確認の代替にしない。手順と結果は`docs/manual-device-test.md`へ残す。
 
