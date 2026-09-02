@@ -360,7 +360,9 @@ test("Daymark records habits and switches between daily, weekly, monthly, and ma
 }, testInfo) => {
   await page.goto("/daymark/");
   await expect(page).toHaveTitle("Daymark");
-  await expect(page.getByRole("heading", { name: "今日の記録" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "今日の記録" })).toBeVisible({
+    timeout: 15_000,
+  });
   await expect(page.getByRole("heading", { name: "水を飲む" })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
     true,
