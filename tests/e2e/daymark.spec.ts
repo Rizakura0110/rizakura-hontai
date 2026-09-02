@@ -1,3 +1,4 @@
+import { expect, type Page, test } from "@playwright/test";
 import type {
   DailyHabitDto,
   DaymarkBackupImportSummary,
@@ -7,7 +8,6 @@ import type {
   PutHabitConfigurationRequest,
   PutHabitRecordRequest,
 } from "@rizakura-hontai/daymark/contracts";
-import { expect, type Page, test } from "@playwright/test";
 
 const today = new Date(Date.now() + 9 * 60 * 60 * 1_000).toISOString().slice(0, 10);
 const currentMonth = today.slice(0, 7);
@@ -351,6 +351,12 @@ async function mockDaymarkApi(page: Page) {
 }
 
 test.beforeEach(async ({ page }) => {
+  page.on("pageerror", (error) => {
+    console.error(`[Daymark browser error] ${error.stack ?? error.message}`);
+  });
+  page.on("console", (message) => {
+    if (message.type() === "error") console.error(`[Daymark console error] ${message.text()}`);
+  });
   await page.clock.setFixedTime(new Date(`${today}T03:00:00+09:00`));
   await mockDaymarkApi(page);
 });
