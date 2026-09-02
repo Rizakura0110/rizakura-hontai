@@ -2,7 +2,7 @@
 
 最終更新: 2026-09-02
 
-Phase 19の共通基盤整理を含むsourceの方針です。この変更のproduction反映は未実施であり、既存のAccess設定を変更した記録ではありません。
+Phase 19以降の共通基盤整理を含むsourceとproductionの方針です。Phase 25で統合版をproductionへ反映し、既存のAccess所有者email完全一致policyを維持しています。
 
 ## 保護対象と境界
 
