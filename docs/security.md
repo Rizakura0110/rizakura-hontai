@@ -1,6 +1,6 @@
 # Security
 
-最終更新: 2026-09-01
+最終更新: 2026-09-02
 
 Phase 19の共通基盤整理を含むsourceの方針です。この変更のproduction反映は未実施であり、既存のAccess設定を変更した記録ではありません。
 
@@ -81,7 +81,7 @@ Static AssetsとAPIの両方に次を設定します。
 - D1へ記事、URL alias、タグ、記事・タグ関連と、`daymark_`prefixの習慣、設定履歴、日次記録だけを保存する。製品間のforeign keyは作らない
 - 製品別JSON exportはruntime検証済みの公開DTOだけで構成し、認証情報、Worker設定、相手製品のデータを含めない。Tech Inbox schema v1/v2とDaymark schema v1を製品識別子で混同させない
 - export responseは`no-store`とし、Rate Limitを適用する
-- JSON importはschema、件数、参照整合、製品固有の一意性を検証し、既存値を上書きしない。Daymarkの競合設定・記録は現在値を残してskipし、追加はtableごとのJSON展開を単一D1 batchで確定する
+- JSON importはschema、件数、参照整合、製品固有の一意性を検証し、既存値を上書きしない。Daymarkの競合設定・記録は現在値を残してskipし、追加はUTF-8で1,000,000 bytes以下のJSON bound valueへ分割して単一D1 batchで確定する
 - import responseとrequest logにはURL、title、習慣名、実績値、backup本文を含めず、件数と安全なerrorだけを返す
 - Daymarkは習慣200、設定履歴2,000、日次記録20,000、pretty JSON 4 MiBを上限とし、書き出せたfileが読み込み上限を超えないよう同じfile上限を適用する。超過時は切り捨てず停止する
 - タグ削除は関連だけを削除し、記事本体を保持する
@@ -126,6 +126,9 @@ backupと復元手順は[Operations](operations.md)を参照してください�
 - Rate Limiting bindingはeventually consistentで、厳密なglobal quotaではない
 - 外部siteのHTMLやnetwork特性によりmetadata取得は失敗し得る
 - Freeプラン上限超過時は課金される前提にせず、処理失敗や機能制限を想定する
+- Daymark確定復元はsnapshot取得を含めて50 D1 query/invocation以内、最大新規復元を88,600 rows written/day相当へ制限する。同じUTC日の大容量操作を重ねず、D1 metricsを運用判断値にする
+- Tech Inbox全体には件数上限がないため、D1の将来容量をlocal fixtureから保証しない。production database sizeが400 MB以上ならmigration・大量import・deployを停止する
+- 3年backupのparse・検証・mergeはCPU負荷が大きくなり得る。local時間で安全と断定せず、Phase 25のpreview-only本番観測でError 1102、`exceededCpu`、反復する10 ms超過を停止条件にする
 - Android実機確認は所有者判断でスキップされており、mobile Chromium E2Eは実機成功の代替ではない
 - D1 Time Travelの保持期間外に備え、定期的なJSON exportが必要である
 

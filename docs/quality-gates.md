@@ -1,12 +1,12 @@
 # Quality gates
 
-最終更新: 2026-09-01
+最終更新: 2026-09-02
 
 ## 標準ゲート
 
 `pnpm check`はformat、lint、Cloudflare生成型、TypeScript、unit/component/integration test、coverage、fresh local D1、実HTTP API、production build、artifact budget、desktop/mobile Chrome E2E、dependency auditを順に実行する。
 
-2026-09-01のPhase 23最終実行では、Daymark単体8 files・64 tests、基盤Vitest 42 files・434 tests、Playwright desktop/mobile 31 testsが成功した。desktop専用sidebar testのmobile実行1件は意図どおりskipした。
+2026-09-02のPhase 24最終実行では、Daymark単体8 files・64 tests、基盤Vitest 43 files・440 tests、Playwright desktop/mobile 31 testsが成功した。desktop専用sidebar testのmobile実行1件は意図どおりskipした。
 
 個別確認には次を使う。
 
@@ -64,7 +64,7 @@ V8 coverageはstatements、branches、functions、linesの全指標に80%の最�
 | SSRF URL判定 | 100% | 96.00% | 100% | 100% |
 | 契約schema | 100% | 100% | 100% | 100% |
 
-Phase 23追加後の基盤全体はstatements 87.75%、branches 83.70%、functions 87.89%、lines 89.26%。Daymarkのdomain・契約・日付・backup処理は全指標100%で、最低値を変更していない。React画面はcomponent testとdesktop/mobile E2Eの操作・表示検証を必須とする。
+Phase 24追加後の基盤全体はstatements 87.80%、branches 83.67%、functions 87.94%、lines 89.31%。Daymarkのdomain・契約・日付・backup処理は全指標100%で、最低値を変更していない。React画面はcomponent testとdesktop/mobile E2Eの操作・表示検証を必須とする。
 
 V8 unit coverageから次だけを除外する。
 
@@ -134,7 +134,22 @@ V8 unit coverageから次だけを除外する。
 
 JSON restoreの実D1・実HTTP gateでは、version 2 backupのpreviewと確定結果が一致し、記事・URL alias・タグ・タグ付けが追加されること、既存IDと色の衝突が再割り当てされること、`pending`が再取得可能な`failed`になること、同じbackupの再実行が無変更になることを確認する。repository unit testでは全insertが1回のD1 batchへ渡され、batch失敗を部分retryしないことも確認する。
 
-Daymark restoreは専用schema、参照整合、習慣・設定履歴・記録のID衝突、同値一致、異値競合skip、冪等性を単体testで確認する。実D1では追加行を3 SQL statementへまとめた単一batchで適用し、10習慣・10設定履歴・3,650記録の長期fixture、再実行no-op、Tech Inbox export不変を確認する。代表的な10習慣では3,650記録が1.12 MiB、10,950記録が3.36 MiB、pretty JSON 4 MiB境界が約13,046記録であることを測定し、20,000記録でもrepository statement数が3のまま、同件数のexportはfile上限で明示停止するtestを維持する。
+Daymark restoreは専用schema、参照整合、習慣・設定履歴・記録のID衝突、同値一致、異値競合skip、冪等性を単体testで確認する。実D1では追加行をUTF-8で1,000,000 bytes以下のJSON bound valueへ分割し、習慣・設定履歴・記録の順を保つ単一batchで適用する。10習慣・10設定履歴・10,950記録（3年分）のpreview、確定、再preview no-op、Tech Inbox export不変を確認する。代表fixtureの1年3,650記録が1.12 MiB、3年10,950記録が3.36 MiB、pretty JSON 4 MiB境界が約13,046記録であることを測定し、20,000記録の各bound valueが1,000,000 bytes以下かつwrite最大47 statement、同件数のexportはfile上限で明示停止するtestを維持する。
+
+## Phase 24 platform budget gate
+
+`scripts/phase24-platform-budget.test.mjs`は2026-09-02に再確認したCloudflare Free境界と、repository内の構成・契約上限を決定的に照合する。
+
+- app/metadataの2 Worker、共有D1 1個、metadata QueueとDLQ 2個だけであること
+- D1を直接使うのはapp Workerだけで、local/通常testのD1 bindingは`remote: false`であること
+- 採用していないR2、KV、AI、Browser、Vectorize、Durable Objects、Hyperdrive、Workflows bindingがないこと
+- Queue batch 1、retry 3、最大契約messageが128 KB未満であること
+- Tech InboxとDaymarkのPWA id/start/scopeが独立していること
+- backup requestが100 MB未満、Daymarkのbound valueが2,000,000 bytes未満、snapshot 3 query＋write最大47が50 query以内であること
+- 最大Daymark snapshotの論理行22,200件をtable/indexで2倍にした44,400 rows read、最大復元がtable/index込み88,600 rows writtenの設計予算内であること
+- D1は1 database 500 MBだが、Tech Inbox全体には件数上限がないため静的な最大容量を保証しない。Phase 25でproductionの現在値を確認し、400 MBを停止閾値にする
+
+3年分の実HTTP local gateは互換性・DB適用を検証するが、Cloudflare CPU timeの代替にはしない。Phase 25では書き込みを行わない同fixtureのproduction previewをWorkers Logsで観測し、通常処理の10 ms超過が3回以上連続するか反復する場合、Error 1102、`exceededCpu`、例外が1件でもある場合は停止する。[ADR-0015](decisions/0015-free-tier-release-gates.md)を参照する。
 
 Playwrightのmobile viewport成功は実機確認の代替にしない。手順と結果は`docs/manual-device-test.md`へ残す。
 
@@ -191,7 +206,7 @@ Playwrightのmobile viewport成功は実機確認の代替にしない。手順�
 - D1 adapterはN+1 queryを避け、exportも記事、alias、タグ、タグ関連を1回のD1 batchで取得する。
 - production bundle sizeは上記budgetで継続監視する。
 
-localのwall-clock時間はCloudflareのCPU timeと同一ではないため、実測済みのCPU timeとは記録しない。Phase 9の限定deploy許可後、Workers LogsまたはCloudflare dashboardでapp Workerとmetadata-fetcherのCPU timeを確認する。
+localのwall-clock時間はCloudflareのCPU timeと同一ではないため、実測済みのCPU timeとは記録しない。Phase 9の既存版はWorkers Logsで確認済みだが、Phase 19〜24の統合版、特に3年分Daymark backupのparse・検証・mergeはPhase 25の限定deploy許可後に再確認する。
 
 通常処理はFreeプランの10 ms/invocation以下を基準とする。`jose`のJWKS取得とJWT検証を初めて行うコールドリクエストだけは、Cloudflare公式のbuilt-in flexibilityを踏まえ、まれな発生、25 ms以下、`outcome: ok`、Error 1102と`exceededCpu`なしの場合に限り許容する。10 ms超過が3リクエスト以上連続する場合、通常処理で反復する場合、またはCPU起因の失敗が1件でもあればPhase 9を完了扱いにしない。詳細は[ADR-0004](decisions/0004-workers-free-cpu-gate.md)を参照する。
 

@@ -156,7 +156,7 @@ const stopWorker = async () => {
 const requestJson = async (path, init) => {
   const response = await fetch(`${baseUrl}${path}`, {
     ...init,
-    signal: AbortSignal.timeout(5_000),
+    signal: AbortSignal.timeout(15_000),
   });
   const responseText = await response.text();
   let body;
@@ -437,6 +437,7 @@ try {
     createdAt: restoreTimestamp,
     updatedAt: restoreTimestamp,
   }));
+  const longTermRecordCount = 10_950;
   const longTermBackup = {
     product: "daymark",
     schemaVersion: 1,
@@ -454,7 +455,7 @@ try {
       createdAt: restoreTimestamp,
       updatedAt: restoreTimestamp,
     })),
-    records: Array.from({ length: 3_650 }, (_, index) => ({
+    records: Array.from({ length: longTermRecordCount }, (_, index) => ({
       id: `long-term-record-${index}`,
       habitId: longTermHabits[index % longTermHabits.length].id,
       recordDate: new Date(Date.UTC(2020, 0, 1 + Math.floor(index / longTermHabits.length)))
@@ -475,7 +476,7 @@ try {
   });
   assert.equal(longTermPreview.response.status, 200);
   assert.equal(longTermPreview.body.summary.changes.habitsCreated, 10);
-  assert.equal(longTermPreview.body.summary.changes.recordsCreated, 3_650);
+  assert.equal(longTermPreview.body.summary.changes.recordsCreated, longTermRecordCount);
   const longTermImported = await requestJson("/api/v1/daymark/import", {
     method: "POST",
     headers: mutationHeaders,
@@ -483,7 +484,15 @@ try {
   });
   assert.equal(longTermImported.response.status, 200);
   assert.equal(longTermImported.body.summary.changes.habitVersionsCreated, 10);
-  assert.equal(longTermImported.body.summary.changes.recordsCreated, 3_650);
+  assert.equal(longTermImported.body.summary.changes.recordsCreated, longTermRecordCount);
+  const repeatedLongTermPreview = await requestJson("/api/v1/daymark/import/preview", {
+    method: "POST",
+    headers: mutationHeaders,
+    body: JSON.stringify({ backup: longTermBackup }),
+  });
+  assert.equal(repeatedLongTermPreview.response.status, 200);
+  assert.equal(repeatedLongTermPreview.body.summary.hasChanges, false);
+  assert.equal(repeatedLongTermPreview.body.summary.changes.recordsMatched, longTermRecordCount);
 
   const articlesAfterDaymarkRestore = await requestJson("/api/v1/export");
   const { exportedAt: _beforeExportedAt, ...articleDataBefore } = articlesBeforeDaymarkRestore.body;

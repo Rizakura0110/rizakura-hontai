@@ -1,6 +1,6 @@
 # Operations
 
-最終更新: 2026-09-01
+最終更新: 2026-09-02
 
 ## Phase 19以降の未反映変更
 
@@ -57,10 +57,14 @@ Daymarkの「設定」では、`product: "daymark"`・schema version 1のJSONを
 - 現在の習慣名、設定値、日次記録を更新・削除しない
 - 互換な同一習慣は既存recordへ対応付け、異なるrecordとのID衝突だけを未使用IDへ割り当て直す
 - 同じ習慣・日付の設定履歴または記録が同値なら一致、値が異なれば現在値を残して競合skipする
-- 確定時に最新D1状態から計画を再計算し、追加分を習慣・設定履歴・記録の3 SQL statementにまとめた単一batchで適用する
+- 確定時に最新D1状態から計画を再計算し、追加分をUTF-8で1,000,000 bytes以下のJSONへ分割する。習慣・設定履歴・記録の順を保った単一batchで適用し、snapshot取得3 queryと合わせて50 query以内にする
 - Tech Inboxのtableは読み書きせず、同じbackupの再実行でも重複を作らない
 
 初期版の上限は習慣200件、設定履歴2,000件、日次記録20,000件、pretty JSON 4 MiBです。代表的な10習慣の記録では1年3,650件が1.12 MiB、3年10,950件が3.36 MiB、4 MiB境界が約13,046件でした。上限超過時は記録を切り捨てず、書き出しを停止して画面にerrorを表示します。期間分割exportはまだありません。Daymark JSONも習慣名・実績値を含むprivate dataとして扱い、公開場所へ置かないでください。
+
+最大件数を新規追加する復元は、D1がtable行とindex entryを数える前提で最大88,600 rows writtenと見積もります。Freeの100,000 rows written/dayに近いため、大容量復元は1 UTC日につき1回までとし、同日にTech Inboxの大容量復元や大量更新を重ねません。実行前後にD1 dashboardのrows writtenとdatabase sizeを確認し、上限へ近い場合はUTC 00:00のreset後まで延期します。上限超過を理由にPaidへ変更しません。
+
+共有D1はFreeで1 database 500 MBです。Tech Inbox全体には件数上限がないため、backup file上限からDBの将来容量を推測しません。Phase 25の反映前に現在のdatabase sizeを確認し、400 MB以上ならmigration・大量import・deployを停止します。通常運用でも400 MBを警告・停止閾値とし、不要データ整理や期間分割の設計を先に行います。
 
 ### Queueとmetadata
 
@@ -101,6 +105,8 @@ pnpm --dir apps/web exec wrangler tail tech-inbox-metadata-fetcher --format json
 ```
 
 通常requestは10 ms CPU以下を基準とします。JWKS取得を伴うまれなcold requestだけは、25 ms以下、`outcome: ok`、Error 1102・`exceededCpu`・例外なしの場合に許容します。通常処理で10 ms超過が反復する場合は、polling、metadata再試行、Queue投入、取得項目を先に削減します。
+
+Phase 25の統合版初回反映では、3年分10,950記録の生成fixtureを使い、書き込みを行わないDaymark復元previewを本番で確認します。localの処理時間をCloudflare CPU timeとして扱いません。Workers Logsで通常処理の10 ms超過が3回以上連続する、反復する、またはError 1102・`exceededCpu`・例外が1件でも出た場合はそこで停止し、確定復元や公開完了へ進みません。
 
 logへURL、query/body、JWT、email、secretを追加しません。調査結果を共有する前にもredactを確認します。
 

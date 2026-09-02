@@ -21,7 +21,7 @@
 |---|---|---|---|
 | Workers | 100,000 requests/day、10 ms CPU/invocation | 2 Worker構成で使用 | [Pricing](https://developers.cloudflare.com/workers/platform/pricing/) |
 | Static Assets | Workers Freeの制限内で利用可能 | React SPAをapp Workerと同一originで配信 | [Limits](https://developers.cloudflare.com/workers/platform/limits/) |
-| D1 | 5 million rows read/day、100,000 rows written/day | 1人用記事DBとして使用 | [Pricing](https://developers.cloudflare.com/workers/platform/pricing/#d1) |
+| D1 | 5 million rows read/day、100,000 rows written/day | 1人用記事DBとして使用 | [Pricing](https://developers.cloudflare.com/d1/platform/pricing/) |
 | Queues | 10,000 operations/day、Freeのretentionは24時間 | metadata処理とDLQに使用 | [Pricing](https://developers.cloudflare.com/queues/platform/pricing/) |
 | Cloudflare Access | Freeは50 usersまで | 許可メールアドレス1件だけ | [Zero Trust pricing](https://www.cloudflare.com/plans/zero-trust-services/) |
 | Service Bindings | Worker間呼び出しとして公式サポート。subrequestに算入 | fetcherを非公開で呼ぶ | [Service Bindings](https://developers.cloudflare.com/workers/runtime-apis/bindings/service-bindings/) |
@@ -47,6 +47,22 @@
 | Queues | 10,000 operations/day、retention 24時間 | Paidへの変更、retention延長を求める課金表示 | [Pricing](https://developers.cloudflare.com/queues/platform/pricing/)、[Limits](https://developers.cloudflare.com/queues/platform/limits/) |
 | Access | 所有者のemail 1件だけを許可する | Everyone、domain全体、bypass、想定外のidentity providerを必要とする構成 | [Workers向けAccess](https://developers.cloudflare.com/workers/configuration/cloudflare-access/)、[Zero Trust pricing](https://www.cloudflare.com/plans/zero-trust-services/) |
 | Worker Rate Limiting API | 現行のWorkers bindingとして公式サポートされ、Wrangler 4.36.0以上が必要。本repositoryは4.124.0 | dashboardまたはdeploy時に追加料金・Paid必須の表示 | [Rate Limiting](https://developers.cloudflare.com/workers/runtime-apis/bindings/rate-limit/) |
+
+## Phase 24 integrated Free-plan gate（production未反映）
+
+確認日: 2026-09-02
+
+Phase 19〜24の統合版について公式上限を再確認した。`scripts/phase24-platform-budget.test.mjs`は現在のWrangler設定とアプリ上限を次の基準へ照合する。この確認とtestはCloudflareへの接続、課金変更、resource作成、migration、deployを行わない。
+
+| 製品・機能 | 確認したFree境界 | 統合版の設計 | 公式情報 |
+|---|---|---|---|
+| Workers | 100,000 requests/day、10 ms CPU/invocation、128 MB、3 MB Worker、100 Worker、50 subrequests/invocation。Free accountのrequest bodyは100 MB | appと非公開metadata-fetcherの2 Worker。通常CPUは10 ms以下を基準にし、Phase 25で3年backupのpreview-only本番観測を必須にする | [Pricing](https://developers.cloudflare.com/workers/platform/pricing/)、[Limits](https://developers.cloudflare.com/workers/platform/limits/) |
+| Static Assets / Service Bindings | Static Assets requestは無料・無制限。Service Bindingは追加のrequest chargeを発生させないが、呼出し全体のCPUは合算 | 3 HTML entryと共有assetをapp Workerで配信し、metadata-fetcherだけをService Bindingで呼ぶ | [Pricing](https://developers.cloudflare.com/workers/platform/pricing/)、[Service Bindings](https://developers.cloudflare.com/workers/runtime-apis/bindings/service-bindings/) |
+| D1 | 5 million rows read/day、100,000 rows written/day、500 MB/database、合計5 GB、10 database/account、7日Time Travel、50 query/Worker invocation、string/BLOB/row 2,000,000 bytes、100 bound parameters | 既存1 DBを共有。Daymark復元は1 bound valueを1,000,000 bytes以下、snapshot 3 query＋write最大47に制限する。最大復元のtable/index書込見積りは88,600 rows | [Pricing](https://developers.cloudflare.com/d1/platform/pricing/)、[Limits](https://developers.cloudflare.com/d1/platform/limits/) |
+| Queues | 10,000 operations/day、通常の正常配送は3 operations/message、24時間retention、128 KB/message、batch 100、retry 100、10,000 queues/account | metadata Queue＋DLQの2つ。batch 1、native retry 3。最大URLを含むmessageも128 KB未満 | [Pricing](https://developers.cloudflare.com/queues/platform/pricing/)、[Limits](https://developers.cloudflare.com/queues/platform/limits/) |
+| Access | Freeは50 usersまで | Allowは所有者email 1件のみを維持する | [Zero Trust pricing](https://www.cloudflare.com/plans/zero-trust-services/) |
+
+D1 Freeの日次read/write上限は強制され、超過時は追加課金ではなくUTC 00:00のresetまでqueryが失敗する。最大Daymark復元はwrite枠の大半を使うため、同じUTC日に別の大容量復元を行わない。Tech Inbox全体には件数上限がなく将来容量を静的に保証できないため、共有DBの実容量はdashboardを正とし、500 MBの80%にあたる400 MBを停止閾値にする。当日rows read/writeとWorkers CPUもdashboard/Logsを判断値とし、local見積もりだけで本番合格にしない。詳細は[ADR-0015](decisions/0015-free-tier-release-gates.md)を参照する。
 
 ### Remote authorization prerequisites
 

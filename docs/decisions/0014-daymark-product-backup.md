@@ -1,7 +1,7 @@
 # ADR-0014: Daymarkを製品別JSONで非破壊復元する
 
 日付: 2026-09-01
-状態: 採用
+状態: 採用（D1への書き込み分割はPhase 24の[ADR-0015](0015-free-tier-release-gates.md)で改訂）
 
 ## Context
 
@@ -15,7 +15,7 @@ Daymarkは習慣、適用日付き設定履歴、日次記録の参照関係を�
 - import前にIDの一意性、習慣への参照、種類、作成日・適用日・記録日の関係を検証する。
 - 既存データは更新・削除しない。互換な同一習慣を対応付け、ID衝突は再割り当てする。同じ習慣と日付の設定履歴・記録は同値なら一致、異値なら現在値を残して競合skipする。
 - previewと確定は同じmerge計画を使う。確定時は最新snapshotから再計算し、同じbackupの再実行をno-opにする。
-- D1への追加はtableごとのJSON配列を`json_each`で展開し、習慣、設定履歴、記録の最大3 statementを単一batchへ渡す。失敗時に部分retryしない。
+- D1への追加はtableごとのJSON配列を`json_each`で展開し、単一batchへ渡す。Phase 23時点ではtableごとに最大3 statementとしていたが、D1の1 string/BLOB 2,000,000 bytes制限をPhase 24で確認したため、1,000,000 bytes以下の複数statementへ分割する。失敗時に部分retryしない。
 - 初期上限は習慣200、設定履歴2,000、日次記録20,000、pretty JSON 4 MiBとする。書き出し・読み込みを同じfile上限にし、超過や不整合は切り捨てず明示errorで停止する。
 - 認証情報、Cloudflare設定、Tech Inboxのデータは含めない。responseとlogには習慣名、実績値、backup本文を含めない。
 

@@ -1,7 +1,7 @@
 # rizakura-hontai: 共通基盤とDaymarkの設計
 
 最終更新: 2026-09-01
-状態: Phase 23完了。Daymarkの契約・domain・DB schema・保護API、日・週・月・習慣管理画面、独立PWA、製品別JSON backup・非破壊復元をlocal実装・検証した。production反映は未実施。本書の後続計画は実装・公開済みを意味しない。
+状態: Phase 24完了。Daymarkの契約・domain・DB schema・保護API、日・週・月・習慣管理画面、独立PWA、製品別JSON backup・非破壊復元に加え、3年分データとCloudflare Free境界をlocal実装・検証した。production反映と統合版の本番CPU観測は未実施。本書の後続計画は実装・公開済みを意味しない。
 
 2026-08-31の所有者指示で、当初の基盤名rizakura-meをrizakura-hontaiへ変更した。既存の`Rizakura0110/rizakura-me`は別repositoryとしてそのまま残し、今回の基盤には使わない。Phase 18/19の実行記録とADRは当時の名称を保持する。
 
@@ -138,7 +138,7 @@ manifest linkの`crossorigin="use-credentials"`を維持する。Service Worker�
 - Tech InboxへのimportはDaymark tableを操作せず、Daymarkへのimportは記事tableを操作しない。
 - 習慣は互換な同一IDまたは一意な完全fingerprintへ対応付け、ID衝突時は再割り当てする。設定履歴は習慣IDと適用日、記録は習慣IDと記録日を自然keyとし、同値なら一致、異なる既存値は上書きせず競合skipとして表示する。同じbackupの再実行は重複を作らない。
 - Daymarkは習慣200、設定履歴2,000、記録20,000とpretty JSON 4 MiBを上限にする。書き出しと読み込みを同じfile上限に揃え、超過・参照不整合は明示errorで停止し、黙った切り捨てをしない。代表的な10習慣では1年3,650記録が1.12 MiB、3年10,950記録が3.36 MiB、4 MiB境界が約13,046記録だった。
-- D1復元は各tableの追加行をJSON配列から展開する3 SQL statementへまとめ、習慣、設定履歴、記録の順で単一batchへ渡す。行数に比例したD1 statementを発行せず、失敗時に部分retryしない。preview後の確定時は最新snapshotから計画を再計算する。
+- D1復元は各tableの追加行をJSON配列から展開する。D1の1 string/BLOB 2,000,000 bytes制限に対して各bound valueをUTF-8で1,000,000 bytes以下へ分割し、習慣、設定履歴、記録の順で単一batchへ渡す。snapshot取得3 queryを含む50 query/invocation以内にするためwriteは最大47 statementとし、失敗時に部分retryしない。preview後の確定時は最新snapshotから計画を再計算する。
 - 初期版では両製品を一括上書きする復元を作らない。data migration前には両製品のbackupまたはDB全体の復元手段を確保する。
 
 ## 7. rizakura-hontaiへの命名移行
@@ -164,7 +164,8 @@ D1の物理名変更は安全なin-place変更が可能かを実行時に確認�
 2. Phase 21の機能・PC画面設計は所有者と合意し、データ・APIのlocal実装まで完了した。
 3. Phase 22で合意した画面とDaymark専用PWAをlocal実装・検証した。
 4. Phase 23でDaymarkのbackup・復元をlocal実装・検証した。
-5. Phase 25でproduction DB更新・deploy・リソース名/URL移行の承認を得る。
+5. Phase 24で3年分fixture、統合互換、D1 bound/query/write、構成・PWA・bundle・Free境界をlocal検証した。
+6. Phase 25でproduction DB更新・deploy・リソース名/URL移行の承認を得て、統合版の本番CPUをpreview-onlyで確認する。
 
 Phase 21〜23の完了はlocal実装と検証を対象とし、本番D1へのmigrationやdeploy承認には読み替えない。
 

@@ -16,7 +16,7 @@ Phase 17までのTech Inboxは完了済み。以下は所有者と合意した�
 | 21 | 完了（未デプロイ） | 習慣の機能/UI設計、その後にデータ・API | 所有者と機能・UIを合意し、DB/APIをlocal D1・実HTTPで検証。既存記事への影響がない |
 | 22 | 完了（未デプロイ） | 合意した習慣画面と独立PWA | Phase 21で合意した機能UI、入口との往復、Daymark専用manifestが動作する |
 | 23 | 完了（未デプロイ） | 製品別backup・復元 | 記事v1/v2を維持し、Daymarkを参照整合・競合表示付きで復元できる。他製品を変更しない |
-| 24 | 未着手 | 統合品質・互換性・無料枠内設計の検証 | 各repositoryと組み合わせのgate、旧記事・既存PWA移行、2 manifest、認証、migration、容量の検証が通る |
+| 24 | 完了（未デプロイ） | 統合品質・互換性・無料枠内設計の検証 | 各repositoryと組み合わせのgate、旧記事・既存PWA移行、2 manifest、認証、migration、容量の検証が通る |
 | 25 | 未着手 | 承認後のproduction反映と実機確認 | backup後のDB更新・deploy、Access、記事/習慣、iPhoneの2 PWAを確認し、運用と移行結果を記録する |
 
 ## 共通ルール
@@ -61,12 +61,15 @@ Phase 17までのTech Inboxは完了済み。以下は所有者と合意した�
 - Phase 21: 習慣作成・名称/設定変更・記録作成/修正/削除・日/週/月取得を共通認証とRate Limit配下へ組み込み、実HTTPで検証した。production migration/deployは行っていない。
 - Phase 22: 同じDB/APIを使う日・週・月・習慣管理のresponsive画面を組み込み、専用icon・HTML・manifest・scopeを配信した。入口からの往復、製品metadataの分離、記録・追加・編集をcomponent testとdesktop/mobile E2Eで確認した。production deployは行っていない。
 - Phase 23: Daymark専用schema v1のexport/import、参照整合、非破壊merge、競合skip、ID再割り当て、冪等性を実装した。旧Tech Inbox JSON v1/v2は維持し、両製品のimportが相手のtableを変更しないことをtestした。
-- Phase 23: 代表的な10習慣の記録では1年3,650件が1.12 MiB、3年10,950件が3.36 MiB、4 MiB境界が約13,046件だった。初期版は習慣200、設定履歴2,000、記録20,000とpretty JSON 4 MiBを上限にし、超過時は黙って分割・切り捨てず書き出しを停止する。D1適用はJSON配列を3 SQL statementへまとめ、table数に比例する単一transactional batchとした。
+- Phase 23: 代表的な10習慣の記録では1年3,650件が1.12 MiB、3年10,950件が3.36 MiB、4 MiB境界が約13,046件だった。初期版は習慣200、設定履歴2,000、記録20,000とpretty JSON 4 MiBを上限にし、超過時は黙って分割・切り捨てず書き出しを停止する。当時のD1適用はJSON配列を3 SQL statementへまとめていたが、Phase 24でD1 bound value上限に合わせた分割へ改訂した。
 
 ## Phase 24〜25: リリース
 
 - Phase 24: 両機能・入口のdesktop/mobile E2E、deep link、未知path/asset、2 manifest、直接API、旧URL、旧backup、Daymarkの保存・修正を検証する。
 - Phase 24: query数、DB scan範囲、client/Worker bundle、CPUリスク、無料枠・CI利用条件を再確認する。未確認の本番値をlocal testの成功で代替しない。
+- Phase 24: 3年分10,950記録のDaymark preview・確定・再preview no-opを実HTTPで検証した。D1への各JSON bound valueを1,000,000 bytes以下、write最大47 statementへ分割し、snapshot取得と合わせて50 query/invocation以内にした。
+- Phase 24: Cloudflare FreeのWorker/D1/Queue数、request/message、D1 read/write/query/value、2つのPWA identity、未採用bindingを静的budget testへ固定した。最大Daymark復元はtable/index込み88,600 rows writtenと見積もり、同じUTC日の大容量復元を重ねない。DB容量は本番値をPhase 25で確認し、400 MBを停止閾値にする。
+- Phase 24: localの処理時間を本番CPUとみなさない。3年fixtureのpreview-only本番CPU観測と、Error 1102・`exceededCpu`・反復超過の停止判定をPhase 25へ残した。
 - Phase 25: remote migration/deployの対象とbackupを提示し、明示承認後に実行する。DBのrename/recreationをmigrationに紛れ込ませない。
 - Phase 25: WorkerやURLのrenameは別の移行gateとしてAccess・origin・既存PWAへの影響を確認する。必要なら名称移行を切り離し、legacy識別子の残存を報告する。
 - Phase 25: ownerがiPhone Safariで入口から各機能へ進み、2つのPWAを別々に追加・直接起動し、login、記録、記事機能を確認する。既存Tech Inboxの追加し直しが必要かも確認する。Android実機は引き続きowner判断でスキップする。

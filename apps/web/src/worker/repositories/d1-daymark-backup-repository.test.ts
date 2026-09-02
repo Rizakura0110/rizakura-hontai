@@ -1,6 +1,10 @@
 import type { DaymarkBackupImportPlan, HabitRecordEntity } from "@rizakura-hontai/daymark/server";
 import { describe, expect, it, vi } from "vitest";
-import { createD1DaymarkBackupRepository } from "./d1-daymark-backup-repository";
+import {
+  createD1DaymarkBackupRepository,
+  DAYMARK_BACKUP_D1_BOUND_VALUE_BYTES,
+  DAYMARK_BACKUP_D1_MAX_WRITE_STATEMENTS,
+} from "./d1-daymark-backup-repository";
 
 const timestamp = "2026-09-01T00:00:00.000Z";
 
@@ -135,7 +139,7 @@ describe("D1DaymarkBackupRepository", () => {
     expect(queries.some((query) => /\barticles?\b/u.test(query))).toBe(false);
   });
 
-  it("inserts each Daymark table through one ordered JSON batch statement", async () => {
+  it("chunks long-term data below D1 value limits in one ordered batch", async () => {
     const statements: Array<{ query: string; values: unknown[] }> = [];
     const batch = vi.fn(async (received: D1PreparedStatement[]) => received.map(() => ({})));
     const database = {
@@ -169,16 +173,50 @@ describe("D1DaymarkBackupRepository", () => {
     await createD1DaymarkBackupRepository(database).apply(importPlan);
 
     expect(batch).toHaveBeenCalledOnce();
-    expect(batch.mock.calls[0]?.[0]).toHaveLength(3);
-    expect(statements.map(({ query }) => query.match(/INSERT INTO (daymark_\w+)/u)?.[1])).toEqual([
-      "daymark_habits",
-      "daymark_habit_versions",
-      "daymark_records",
-    ]);
+    expect(batch.mock.calls[0]?.[0]).toHaveLength(statements.length);
+    expect(statements.length).toBeGreaterThan(3);
+    expect(statements.length).toBeLessThanOrEqual(DAYMARK_BACKUP_D1_MAX_WRITE_STATEMENTS);
+    const tableNames = statements.map(
+      ({ query }) => query.match(/INSERT INTO (daymark_\w+)/u)?.[1],
+    );
+    expect(tableNames.slice(0, 2)).toEqual(["daymark_habits", "daymark_habit_versions"]);
+    expect(tableNames.slice(2).every((name) => name === "daymark_records")).toBe(true);
     expect(statements.every(({ query }) => query.includes("json_each(?)"))).toBe(true);
-    expect(JSON.parse(String(statements[2]?.values[0]))[0][4]).toBe(1);
-    expect(JSON.parse(String(statements[2]?.values[0]))[1][4]).toBeNull();
-    expect(JSON.parse(String(statements[2]?.values[0]))).toHaveLength(20_000);
+    expect(
+      statements.every(
+        ({ values }) =>
+          new TextEncoder().encode(String(values[0])).byteLength <=
+          DAYMARK_BACKUP_D1_BOUND_VALUE_BYTES,
+      ),
+    ).toBe(true);
+    const restoredRecords = statements
+      .slice(2)
+      .flatMap(({ values }) => JSON.parse(String(values[0])) as unknown[][]);
+    expect(restoredRecords[0]?.[4]).toBe(1);
+    expect(restoredRecords[1]?.[4]).toBeNull();
+    expect(restoredRecords).toHaveLength(20_000);
+  });
+
+  it("rejects a single UTF-8 row above the conservative D1 value budget", async () => {
+    const batch = vi.fn(async (received: D1PreparedStatement[]) => received.map(() => ({})));
+    const database = {
+      prepare: (query: string) => ({ bind: (...values: unknown[]) => ({ query, values }) }),
+      batch,
+    } as unknown as D1Database;
+    const basePlan = plan();
+    const habit = basePlan.habits[0];
+    if (habit === undefined) throw new Error("Expected a habit fixture.");
+    const oversized = {
+      ...basePlan,
+      habits: [{ ...habit, name: "習".repeat(340_000) }],
+      habitVersions: [],
+      records: [],
+    };
+
+    await expect(createD1DaymarkBackupRepository(database).apply(oversized)).rejects.toThrow(
+      "bound value budget",
+    );
+    expect(batch).not.toHaveBeenCalled();
   });
 
   it("skips an empty plan and surfaces an atomic batch failure without retrying", async () => {

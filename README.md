@@ -1,12 +1,12 @@
 # rizakura-hontai
 
-rizakura-hontaiは、本人限定のツールへの入口と共通基盤です。記事管理のTech Inboxを含み、習慣管理のDaymarkは別repositoryから統合します。Daymarkの日次記録・設定履歴・日/週/月集計、保護API、responsive画面、独立PWA、製品別JSONバックアップをローカル実装しました。Cloudflare Accessと既存のapp Worker・D1を共有する構成です。
+rizakura-hontaiは、本人限定のツールへの入口と共通基盤です。記事管理のTech Inboxを含み、習慣管理のDaymarkは別repositoryから統合します。Daymarkの日次記録・設定履歴・日/週/月集計、保護API、responsive画面、独立PWA、製品別JSONバックアップをローカル実装しました。Cloudflare Accessと既存のapp Worker・D1を共有し、Phase 24で3年分データとFree境界まで検証した構成です。
 
 ## 実装と本番の状態
 
 Phase 19では共通基盤と入口をローカル実装しました。`/`から`/tech-inbox/`と`/daymark/`へ進み、各製品から入口へ戻れます。記事設定は`/tech-inbox/settings`です。旧`/articles`・`/settings`はqueryを維持して移動します。Daymarkでは日次入力、週/月履歴、習慣追加・名称/目標/状態変更を操作できます。
 
-Phase 19以降の変更は未デプロイで、本番は従来のTech Inboxのままです。Daymark migration `0002`も本番D1へ未適用です。基盤名をrizakura-hontaiへ変更し、GitHub repositoryは旧webclipから[Rizakura0110/rizakura-hontai](https://github.com/Rizakura0110/rizakura-hontai)へ改名済みです。既存の別repository `rizakura-me`には触れていません。Worker・DB名・本番URL、ローカルdirectoryは維持しています。Daymarkは別public repositoryをcommit固定のGit submoduleとして取り込み、npmには公開しません。[設計書](docs/rizakura-hontai-design.md)と[Phase 18〜25の計画](docs/rizakura-hontai-roadmap.md)を参照してください。
+Phase 19〜24の変更は未デプロイで、本番は従来のTech Inboxのままです。Daymark migration `0002`も本番D1へ未適用です。基盤名をrizakura-hontaiへ変更し、GitHub repositoryは旧webclipから[Rizakura0110/rizakura-hontai](https://github.com/Rizakura0110/rizakura-hontai)へ改名済みです。既存の別repository `rizakura-me`には触れていません。Worker・DB名・本番URL、ローカルdirectoryは維持しています。Daymarkは別public repositoryをcommit固定のGit submoduleとして取り込み、npmには公開しません。[設計書](docs/rizakura-hontai-design.md)と[Phase 18〜25の計画](docs/rizakura-hontai-roadmap.md)を参照してください。
 
 ## DaymarkのPhase 21〜23機能
 
@@ -182,6 +182,8 @@ Cloudflare API tokenもrepositoryへ保存せず、対象account・必要権限�
 ## Cost policy
 
 初期版はCloudflare Freeプラン内、月額0円を方針とします。Workers Paid、独自ドメイン、R2、Workers AI、Browser Rendering、有料monitoringなどを所有者の合意なしに有効化しません。Free枠が不足する場合は、課金より先にpolling、再試行、Queue投入、取得項目を減らします。確認日と上限は[Cloudflare setup](docs/cloudflare-setup.md)に記録しています。
+
+Phase 24では、Daymark復元のD1 bound valueをUTF-8で1,000,000 bytes以下に分割し、snapshot取得を含む50 query/invocation以内へ制限しました。最大復元はD1の日次write枠に近いため、同じUTC日の大容量復元を重ねません。3年分backupの本番CPUだけはlocalで代替せず、Phase 25の明示承認後に書き込みなしのpreviewで確認します。
 
 ## 初期版で対応しないもの
 

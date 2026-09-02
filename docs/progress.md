@@ -1584,3 +1584,33 @@
 - production D1 migration、Cloudflare deploy、resource・Access・課金設定変更は実施していない。本番は従来のTech Inboxのまま。
 - 期間分割exportは初期版へ追加していない。上限超過時は明示停止し、Phase 24でquery/CPU・無料枠・全体互換性を再確認する。
 - 次はPhase 24の統合品質・互換性・無料枠内設計の検証。Phase 25の本番反映は引き続き所有者の明示承認後に行う。
+
+## Phase 24: 統合品質・互換性・Cloudflare Free境界
+
+状態: 完了（2026-09-02、未デプロイ）。入口、Tech Inbox、Daymarkの既存統合gateを維持しながら、3年分のDaymark復元、D1のbound/query/write境界、2つのPWA、Cloudflare Free構成を再検証した。
+
+### 実装内容・判断
+
+- Phase 23のDaymark復元は最大4 MiBのJSONをtableごとに1つのD1 stringへbindしており、D1のstring/BLOB 2,000,000 bytes上限を超える可能性があった。各bound valueをUTF-8で1,000,000 bytes以下へ分割した。
+- 習慣、設定履歴、日次記録の順を保った1回のtransactional batchと非retryを維持した。確定requestのsnapshot取得3 queryを予約し、writeを最大47 statement、合計50 query/invocation以内にした。
+- repository unit testを20,000記録まで拡張し、複数chunkの順序、全bound bytes、boolean/null変換、全件保持、単一行超過時のbatch前停止を確認した。
+- 実HTTPの長期fixtureを10習慣・10設定履歴・1年3,650記録から3年10,950記録へ変更し、preview、確定、再preview no-opとTech Inbox export不変をfresh local D1で確認した。
+- `scripts/phase24-platform-budget.test.mjs`を追加し、Worker/D1/Queue数、未採用binding、Queue message/batch/retry、2つのPWA identity、backup body、D1 bound/query/read/write/databaseの設計予算を固定した。
+- 最大Daymark復元はtable行とindex entryを含め88,600 rows written、snapshotは論理22,200行をtable/index分で2倍にした44,400 rows readの保守的予算とした。Freeの日次write上限に近いため、同じUTC日に大容量復元を重ねない運用とした。
+- D1は500 MB/databaseだが、Tech Inbox全体には件数上限がないため、静的な将来容量を偽って保証しない。Phase 25でproductionの現在値を確認し、80%の400 MBを停止閾値にする。
+- local Nodeの時間をWorkers CPU timeとみなさない。3年fixtureの書き込みなしpreviewをPhase 25の本番観測へ残し、通常処理の10 ms超過が3回以上連続または反復する場合、Error 1102、`exceededCpu`、例外が1件でも出る場合を停止条件にした。判断は[ADR-0015](decisions/0015-free-tier-release-gates.md)へ記録した。
+
+### 最終検証結果
+
+- `pnpm check`が成功。Daymark単体、format、lint、Cloudflare生成型、全TypeScript、unit/component/integration test、coverage、fresh local D1、3年fixtureの実HTTP、production/dry-run build、artifact budget、desktop/mobile E2E、dependency auditを通過した。
+- Daymark単体は8 files・64 testsがpassし、domain・契約・日付・backup処理のstatements/branches/functions/linesはすべて100%。宣言付きbuildとauditもpassし、既知脆弱性0件だった。
+- 基盤Vitestは43 files・440 testsがpass。coverageはstatements 87.80%、branches 83.67%、functions 87.94%、lines 89.31%で既存threshold内だった。
+- fresh local D1のmigration・制約・再適用がpass。実HTTPでは10,950記録のpreview・確定・再preview no-op、既存記事不変を確認した。
+- production/dry-run buildとartifact budgetはpass。app Worker raw 501.2 KiB・gzip 106.5 KiB、metadata-fetcher raw 585.6 KiB・gzip 88.8 KiB、client JavaScript raw 411.4 KiB・gzip 118.3 KiB、CSS raw 34.0 KiB・gzip 7.1 KiBだった。
+- Playwrightはdesktop/mobile 31 testsがpassし、desktop専用sidebar testのmobile 1件だけを意図どおりskipした。入口と各製品、旧URL、未知path/asset、認証、記事・タグ・backup、Daymark日/週/月/管理/backup、2 manifest/iconを再確認した。
+- 基盤auditはhigh 0・critical 0。既知の開発用推移依存moderate 1件だけを継続した。build時のproduction Secrets不足warningには値を補充せず、本番credentialを使用していない。
+
+### 変更していないもの・次フェーズ
+
+- production D1 migration、Cloudflare deploy、resource・Access・課金設定変更、本番データの読書きは実施していない。本番は従来のTech Inboxのまま。
+- Phase 25は所有者の明示承認後に、preflight、backup、remote migration `0002`、deploy、Access/旧URL/2 PWA/実機、3年preview-only CPUを段階確認する。CPU停止条件に触れた場合は確定復元や公開完了へ進まない。
