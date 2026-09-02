@@ -6,6 +6,10 @@ import type {
   MonthResponse,
   WeekResponse,
 } from "@rizakura-hontai/daymark/contracts";
+import {
+  DAYMARK_BACKUP_IMPORT_RECORD_BATCH_SIZE,
+  daymarkBackupImportRequestSchema,
+} from "@rizakura-hontai/daymark/contracts";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { daymarkClient } from "./daymark";
 
@@ -223,5 +227,70 @@ describe("Daymark API client", () => {
       vi.fn(async () => jsonResponse({ habits: "invalid" })),
     );
     await expect(daymarkClient.listHabits()).rejects.toMatchObject({ name: "ZodError" });
+  });
+
+  it("splits long restores into bounded requests and returns one aggregate summary", async () => {
+    const records = Array.from(
+      { length: DAYMARK_BACKUP_IMPORT_RECORD_BATCH_SIZE + 1 },
+      (_, index) => ({
+        id: `record-${index}`,
+        habitId: habit.id,
+        recordDate: new Date(Date.UTC(2026, 8, 1 + index)).toISOString().slice(0, 10),
+        kind: "check" as const,
+        checked: true,
+        valueMilli: null,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      }),
+    );
+    const longBackup = { ...backup, records };
+    const requests: DaymarkBackupSnapshot[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_input: string | URL | Request, init?: RequestInit) => {
+        const request = daymarkBackupImportRequestSchema.parse(JSON.parse(String(init?.body)));
+        requests.push(request.backup);
+        const metadata = request.backup.records.length === 0;
+        const summary: DaymarkBackupImportSummary = {
+          source: {
+            schemaVersion: 1,
+            exportedAt: timestamp,
+            habits: request.backup.habits.length,
+            habitVersions: request.backup.habitVersions.length,
+            records: request.backup.records.length,
+          },
+          changes: {
+            ...backupSummary.changes,
+            habitsCreated: metadata ? 1 : 0,
+            habitVersionsCreated: metadata ? 1 : 0,
+            recordsCreated: request.backup.records.length,
+          },
+          hasChanges: true,
+        };
+        return jsonResponse({
+          result: String(_input).endsWith("/preview") ? "preview" : "imported",
+          summary,
+        });
+      }),
+    );
+
+    await expect(daymarkClient.previewBackup(longBackup)).resolves.toMatchObject({
+      result: "preview",
+      summary: {
+        source: { habits: 1, habitVersions: 1, records: records.length },
+        changes: { habitsCreated: 1, habitVersionsCreated: 1, recordsCreated: records.length },
+      },
+    });
+    await expect(daymarkClient.importBackup(longBackup)).resolves.toMatchObject({
+      result: "imported",
+      summary: {
+        source: { habits: 1, habitVersions: 1, records: records.length },
+        changes: { habitsCreated: 1, habitVersionsCreated: 1, recordsCreated: records.length },
+      },
+    });
+
+    expect(requests).toHaveLength(6);
+    expect(requests.map(({ records }) => records.length)).toEqual([0, 400, 1, 0, 400, 1]);
+    expect(requests.every((request) => request.records.length <= 400)).toBe(true);
   });
 });

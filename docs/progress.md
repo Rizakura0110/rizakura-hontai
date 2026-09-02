@@ -1614,3 +1614,38 @@
 
 - production D1 migration、Cloudflare deploy、resource・Access・課金設定変更、本番データの読書きは実施していない。本番は従来のTech Inboxのまま。
 - Phase 25は所有者の明示承認後に、preflight、backup、remote migration `0002`、deploy、Access/旧URL/2 PWA/実機、3年preview-only CPUを段階確認する。CPU停止条件に触れた場合は確定復元や公開完了へ進まない。
+
+## Phase 25: production反映と実機確認
+
+状態: 完了（2026-09-02）。production migrationと統合版deploy、Access・route・本番CPU・データ非変更を確認し、iPhoneでTech InboxとDaymarkの独立PWA、記事表示、日・週・月への記録反映まで確認した。
+
+### 本番反映
+
+- Cloudflare read-only preflightで既存D1 1個、app/metadataの2 Worker、metadata Queue/DLQ、app Access applicationを確認した。Accessは所有者email完全一致1件、session 7日、launcher非表示を維持する。appはworkers.dev有効・preview無効、metadata-fetcherはworkers.dev/previewとも無効である。
+- production D1は反映前360,448 bytesで400 MB停止閾値を十分下回っていた。Time Travelの復旧点を取得し、既存記事系件数と外部キー整合を確認してから、追加だけのmigration `0002_mature_iron_monger.sql`を適用した。
+- migration後は既存記事系件数を維持し、Daymark 3 tableを0件で追加、外部キー違反0、pending migration 0となった。DB名・ID、Worker名、URL、Access、Queue、課金設定は変更していない。
+- app Workerと静的assetだけをdeployした。metadata-fetcherは再deployせず、既存D1、Queue、Service Binding、5つのRate Limit、Secretsを維持した。未認証の入口、記事API、2 manifest、Daymark routeはすべてAccessへ302となった。
+
+### 3年preview CPU停止と改善
+
+- 10習慣・10設定履歴・10,950日次記録の3年fixtureを、復元確定しないpreview専用fileとして生成した。初回版は2回ともstatus 200・`outcome: ok`・例外0だったがCPU 139 ms、197 msとなり、ADR-0015の反復超過停止条件を適用した。preview後の本番Daymark tableは0件だった。
+- 原因は最大4 MiBのfileを1 requestでparse・Zod検証・sortし、D1から全日次記録snapshotを読む構成だった。追加resourceやPaidへ変更せず、metadata 1 requestと最大400記録のbatchへbrowser内で分け、APIも400件超を拒否するようにした。
+- record batchは参照する習慣と初期設定だけを含み、単体でschema整合を満たす。previewはmetadata変更を1回、record変更を全batchから集計して元file全体のsummaryを返す。D1は対象の自然key・IDに一致するrecordだけを読む。確定はrequest単位のtransactionで、途中失敗時は同じfileを再実行して一致済みを重複させず続行する。
+- 最大20,000記録はmetadata込み51 requestとなり、preview read 120/min、確定 mutate 60/min以内である。保守的rows readは304,400、最大rows writtenは従来どおり88,600でFreeの日次枠内に収まる。
+- 改善版を再deployし、同じfixtureのpreviewで想定どおり29 requestをLive Tailで確認した。全件status 200・`outcome: ok`・例外0、Workers Analyticsは開始直後のコールド最大約12.3 ms、ウォーム後P99約9.1 msだった。コールド25 ms以内、通常10 ms以内のgateを通過した。
+- 最終read-only確認でDaymark 3 tableは0件、外部キー違反0、D1書き込み0、DB 413,696 bytesだった。記事系の現在値は記事118、URL alias 124、タグ10、タグ付け122である。通常Queue backlog 0、新規DLQ/fail 0、app/metadata-fetcher error 0を確認した。歴史的DLQ 7件・851 bytesは本文を読まず変更していない。
+
+### 改善版のlocal品質gate
+
+- Daymark単体は9 files・69 tests、domain・契約・backup処理のstatements/branches/functions/linesすべて100%。format、lint、TypeScript、宣言付きbuild、auditもpassし、既知脆弱性0件だった。
+- 基盤は44 files・449 testsがpass。coverageはstatements 87.89%、branches 83.67%、functions 88.02%、lines 89.38%で既存threshold内だった。
+- fresh local D1のmigration・制約・再適用と、実HTTPで10,950記録の分割preview・確定・再preview no-op、Tech Inbox export不変を確認した。
+- production/dry-run buildとartifact budgetはpass。app Worker raw 502.9 KiB・gzip 106.8 KiB、metadata-fetcher raw 585.6 KiB・gzip 88.8 KiB、client JavaScript raw 412.7 KiB・gzip 118.9 KiB、CSS raw 34.0 KiB・gzip 7.1 KiBだった。
+- Playwrightはdesktop/mobile 31 testsがpassし、desktop専用sidebar testのmobile 1件だけを意図どおりskipした。基盤auditはhigh 0・critical 0、既知の開発用推移依存moderate 1件だけを継続した。
+
+### 実機確認と完了処理
+
+- repository ownerがiPhone Safariでproduction入口からTech InboxとDaymarkへ進み、2つのPWAを別々に直接起動できることを確認した。既存Tech Inboxの追加し直しは不要だった。
+- Tech Inboxの既存記事を表示し、Daymarkで習慣と今日の記録を保存して、日・週・月画面へ反映されることを確認した。機種、OS・Safari version、画面の向きは未記録。Androidは所有者判断でskipした。
+- 実機操作で作成したDaymarkデータは通常の所有者データであり、直前のpreview-only検証時点で0件だった記録と区別する。3年fixtureの確定復元は行っていない。
+- 最終差分・ignore・secret scanと全品質gateの後、Daymarkを先にcommit/pushし、基盤gitlinkとPhase 25変更をcommit/pushする。

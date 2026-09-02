@@ -1,6 +1,6 @@
 # Cloudflare setup
 
-## Phase 19 local configuration（production未反映）
+## Phase 19 local configuration（Phase 25でproduction反映済み）
 
 - app Worker名、D1名・ID、Access・origin、Queue/Service/Rate Limitのremote設定は維持する。
 - Viteのclient buildに入口`index.html`と記事`tech-inbox/index.html`を指定する。
@@ -48,7 +48,7 @@
 | Access | 所有者のemail 1件だけを許可する | Everyone、domain全体、bypass、想定外のidentity providerを必要とする構成 | [Workers向けAccess](https://developers.cloudflare.com/workers/configuration/cloudflare-access/)、[Zero Trust pricing](https://www.cloudflare.com/plans/zero-trust-services/) |
 | Worker Rate Limiting API | 現行のWorkers bindingとして公式サポートされ、Wrangler 4.36.0以上が必要。本repositoryは4.124.0 | dashboardまたはdeploy時に追加料金・Paid必須の表示 | [Rate Limiting](https://developers.cloudflare.com/workers/runtime-apis/bindings/rate-limit/) |
 
-## Phase 24 integrated Free-plan gate（production未反映）
+## Phase 24 integrated Free-plan gate（Phase 25でproduction確認済み）
 
 確認日: 2026-09-02
 
@@ -58,7 +58,7 @@ Phase 19〜24の統合版について公式上限を再確認した。`scripts/p
 |---|---|---|---|
 | Workers | 100,000 requests/day、10 ms CPU/invocation、128 MB、3 MB Worker、100 Worker、50 subrequests/invocation。Free accountのrequest bodyは100 MB | appと非公開metadata-fetcherの2 Worker。通常CPUは10 ms以下を基準にし、Phase 25で3年backupのpreview-only本番観測を必須にする | [Pricing](https://developers.cloudflare.com/workers/platform/pricing/)、[Limits](https://developers.cloudflare.com/workers/platform/limits/) |
 | Static Assets / Service Bindings | Static Assets requestは無料・無制限。Service Bindingは追加のrequest chargeを発生させないが、呼出し全体のCPUは合算 | 3 HTML entryと共有assetをapp Workerで配信し、metadata-fetcherだけをService Bindingで呼ぶ | [Pricing](https://developers.cloudflare.com/workers/platform/pricing/)、[Service Bindings](https://developers.cloudflare.com/workers/runtime-apis/bindings/service-bindings/) |
-| D1 | 5 million rows read/day、100,000 rows written/day、500 MB/database、合計5 GB、10 database/account、7日Time Travel、50 query/Worker invocation、string/BLOB/row 2,000,000 bytes、100 bound parameters | 既存1 DBを共有。Daymark復元は1 bound valueを1,000,000 bytes以下、snapshot 3 query＋write最大47に制限する。最大復元のtable/index書込見積りは88,600 rows | [Pricing](https://developers.cloudflare.com/d1/platform/pricing/)、[Limits](https://developers.cloudflare.com/d1/platform/limits/) |
+| D1 | 5 million rows read/day、100,000 rows written/day、500 MB/database、合計5 GB、10 database/account、7日Time Travel、50 query/Worker invocation、string/BLOB/row 2,000,000 bytes、100 bound parameters | 既存1 DBを共有。Daymark復元は最大400記録/request、1 bound value 1,000,000 bytes以下、各requestのsnapshot 3 query＋write最大47に制限する。最大復元の保守的読取304,400 rows、table/index書込88,600 rows | [Pricing](https://developers.cloudflare.com/d1/platform/pricing/)、[Limits](https://developers.cloudflare.com/d1/platform/limits/) |
 | Queues | 10,000 operations/day、通常の正常配送は3 operations/message、24時間retention、128 KB/message、batch 100、retry 100、10,000 queues/account | metadata Queue＋DLQの2つ。batch 1、native retry 3。最大URLを含むmessageも128 KB未満 | [Pricing](https://developers.cloudflare.com/queues/platform/pricing/)、[Limits](https://developers.cloudflare.com/queues/platform/limits/) |
 | Access | Freeは50 usersまで | Allowは所有者email 1件のみを維持する | [Zero Trust pricing](https://www.cloudflare.com/plans/zero-trust-services/) |
 
@@ -105,6 +105,7 @@ remote migrationの直前には`tech-inbox`とproduction対象であることを
 - 2026-08-28に設定画面で1件保存した際に別タグの未保存名が戻る問題を修正したcommit `a47add2`を既存app Workerへdeployした。DB migrationと新規resource作成はなく、既存bindingを維持した。deployment versionは`3e3a02bf-d6b0-40ea-9dec-8fb37b1f0e3a`で、未認証root/APIはいずれもAccessへ302となった。ownerの認証済み画面確認は後続deploymentへ引き継いだ。
 - 2026-08-28に設定画面のタグ管理から新規タグを追加できるcommit `aa9dc59`を既存app Workerへdeployした。DB migrationと新規resource作成はなく、既存bindingを維持した。deployment versionは`ce9014c2-9cd4-4a73-b59c-2fceb1a4a30f`で、未認証root/APIはいずれもAccessへ302となった。ownerが認証済み設定画面で「新しいタグ名」と「追加」フォームの表示を確認した。
 - Workers Logsでappのwarm requestは2〜7 ms、metadata-fetcherは最大4 ms、認証を伴うcold requestは14〜21 msだった。すべて`outcome: ok`で、Error 1102、`exceededCpu`、例外はなかった。判定基準は[ADR-0004](decisions/0004-workers-free-cpu-gate.md)に記録した。
+- Phase 25の3年分Daymark復元previewは、単一request版のCPU 139/197 msを検出して停止し、最大400記録へ分割した。改善版は29 requestすべて成功・例外0、コールド最大約12.3 ms、ウォーム後P99約9.1 msだった。判断は[ADR-0016](decisions/0016-batched-daymark-restore.md)に記録した。
 - Phase 9ではWorkers Paidやその他の有料製品を新たに有効化していない。API tokenにBilling Readを与えていないため、accountに以前から存在するsubscriptionの有無はrepositoryから断定せず、ownerがdashboardのBilling画面で確認する。
 
 ## Phase 1 local configuration

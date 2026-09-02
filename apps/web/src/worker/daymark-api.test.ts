@@ -167,7 +167,7 @@ describe("Daymark shared protection and routing", () => {
     });
     expect(daymarkRoutePolicy("POST", "/api/v1/daymark/import/preview")).toEqual({
       name: "daymark.import.preview",
-      rateLimit: "export",
+      rateLimit: "read",
     });
     expect(daymarkRoutePolicy("POST", "/api/v1/daymark/import")).toEqual({
       name: "daymark.import.apply",
@@ -410,7 +410,7 @@ describe("Daymark product backup API", () => {
         hasChanges: false,
       },
     });
-    expect(target.enforceRateLimit).toHaveBeenCalledWith(bindings, principal, "export");
+    expect(target.enforceRateLimit).toHaveBeenCalledWith(bindings, principal, "read");
     expect(target.enforceRateLimit).toHaveBeenCalledWith(bindings, principal, "mutate");
   });
 

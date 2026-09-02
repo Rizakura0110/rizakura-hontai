@@ -6,6 +6,7 @@
   "scripts": {
     "daymark:check": "pnpm --dir modules/daymark install --frozen-lockfile && pnpm --dir modules/daymark check",
     "daymark:boundaries": "node scripts/check-daymark-boundaries.mjs",
+    "daymark:fixture:phase25": "node scripts/generate-phase25-daymark-fixture.mjs",
     "dev": "pnpm --dir apps/web dev",
     "build": "pnpm daymark:boundaries && pnpm --dir apps/web build && pnpm metadata-fetcher:build",
     "metadata-fetcher:build": "pnpm --dir apps/web exec wrangler deploy --dry-run --config ../../workers/metadata-fetcher/wrangler.jsonc --outdir ../../dist/metadata-fetcher",

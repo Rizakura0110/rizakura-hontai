@@ -128,7 +128,7 @@ backupと復元手順は[Operations](operations.md)を参照してください�
 - Freeプラン上限超過時は課金される前提にせず、処理失敗や機能制限を想定する
 - Daymark確定復元はsnapshot取得を含めて50 D1 query/invocation以内、最大新規復元を88,600 rows written/day相当へ制限する。同じUTC日の大容量操作を重ねず、D1 metricsを運用判断値にする
 - Tech Inbox全体には件数上限がないため、D1の将来容量をlocal fixtureから保証しない。production database sizeが400 MB以上ならmigration・大量import・deployを停止する
-- 3年backupのparse・検証・mergeはCPU負荷が大きくなり得る。local時間で安全と断定せず、Phase 25のpreview-only本番観測でError 1102、`exceededCpu`、反復する10 ms超過を停止条件にする
+- 3年backupのparse・検証・mergeはCPU負荷が大きいため、最大400記録/requestへ分割する。Phase 25のpreview-only本番観測で29 requestの成功・例外0・コールド最大約12.3 ms・ウォーム後P99約9.1 msを確認済みだが、今後もError 1102、`exceededCpu`、反復する10 ms超過を停止条件にする
 - Android実機確認は所有者判断でスキップされており、mobile Chromium E2Eは実機成功の代替ではない
 - D1 Time Travelの保持期間外に備え、定期的なJSON exportが必要である
 

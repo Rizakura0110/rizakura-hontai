@@ -2,17 +2,17 @@
 
 最終更新: 2026-09-02
 
-## Phase 19以降の未反映変更
+## Phase 25の本番反映状況
 
 共通基盤・入口の名前はrizakura-hontaiへ整理しましたが、productionのresource名とURLは変更していません。現在の作業directoryも`/Users/ryo/dev/webclip`のままです。以下のdeploy・D1コマンドに残る`tech-inbox-app`・`tech-inbox`は実際の対象名であり、一括置換しません。
 
 GitHubは旧`Rizakura0110/webclip`を`Rizakura0110/rizakura-hontai`へ改名済みです。別repositoryの`Rizakura0110/rizakura-me`は変更していません。GitHubの命名変更はCloudflareへのdeployを伴いません。基盤codeの`@rizakura-hontai/*`は内部workspace名で、npm scopeを作成・公開した記録ではありません。
 
-- Phase 21でDaymark用の追加migration `0002`を生成しました。local D1と実HTTPでは検証済みですが、production D1には未適用です。既存記事tableの変更・削除はありません。
+- Daymark用migration `0002`はproduction D1へ適用済みです。既存記事tableの変更・削除はなく、適用前後で記事117件、URL alias 123件、タグ10件、タグ付け121件を維持し、外部キー違反はありませんでした。
 - deploy後は`/`が入口、`/tech-inbox/`が記事、`/tech-inbox/settings`が設定、`/daymark/`が習慣管理になります。旧記事・設定URLはqueryを維持して同一origin内へ移動します。
 - 入口・記事・DaymarkのHTMLはそれぞれbuildします。全pathを入口HTMLへ戻すSPA fallbackを復活させないでください。
 - app Workerの`ASSETS`は既存のStatic Assetsへアクセスするbindingで、新しいDBやWorkerの作成ではありません。
-- Accessのhost全体保護、旧PWAからの記事起動、2つのmanifest、各製品と入口の往復は承認後の本番反映時に確認します。Daymark画面/API/PWA/backupはlocal接続済みですが、本番からはまだ利用しません。
+- 統合版とDaymark復元CPU改善版はproductionへdeploy済みです。Accessの所有者限定policy、旧記事URL、入口、2製品のroute・manifestが保護下にあることを確認しました。iPhoneでTech InboxとDaymarkの独立PWA、入口からの動線、日・週・月への記録反映も確認済みです。
 - 新旧client headerを互換対応しています。rollback時は既知のapp Worker versionへ戻し、古いHTMLが残る場合は再読み込みします。旧manifest/URLは削除しません。
 
 ## 運用原則
@@ -57,8 +57,10 @@ Daymarkの「設定」では、`product: "daymark"`・schema version 1のJSONを
 - 現在の習慣名、設定値、日次記録を更新・削除しない
 - 互換な同一習慣は既存recordへ対応付け、異なるrecordとのID衝突だけを未使用IDへ割り当て直す
 - 同じ習慣・日付の設定履歴または記録が同値なら一致、値が異なれば現在値を残して競合skipする
-- 確定時に最新D1状態から計画を再計算し、追加分をUTF-8で1,000,000 bytes以下のJSONへ分割する。習慣・設定履歴・記録の順を保った単一batchで適用し、snapshot取得3 queryと合わせて50 query以内にする
+- 大きなfileはmetadata 1回と最大400日次記録ごとのrequestへ内部で分割する。各requestは最新D1状態から計画を再計算し、追加分をUTF-8で1,000,000 bytes以下のJSONへ分けたD1 batchで適用する
 - Tech Inboxのtableは読み書きせず、同じbackupの再実行でも重複を作らない
+
+file全体は単一transactionではありません。途中で通信や処理に失敗した場合は同じfileを再度選んでpreviewからやり直してください。追加済みの行は一致として扱われ、残りだけを安全に続行できます。
 
 初期版の上限は習慣200件、設定履歴2,000件、日次記録20,000件、pretty JSON 4 MiBです。代表的な10習慣の記録では1年3,650件が1.12 MiB、3年10,950件が3.36 MiB、4 MiB境界が約13,046件でした。上限超過時は記録を切り捨てず、書き出しを停止して画面にerrorを表示します。期間分割exportはまだありません。Daymark JSONも習慣名・実績値を含むprivate dataとして扱い、公開場所へ置かないでください。
 
@@ -106,7 +108,7 @@ pnpm --dir apps/web exec wrangler tail tech-inbox-metadata-fetcher --format json
 
 通常requestは10 ms CPU以下を基準とします。JWKS取得を伴うまれなcold requestだけは、25 ms以下、`outcome: ok`、Error 1102・`exceededCpu`・例外なしの場合に許容します。通常処理で10 ms超過が反復する場合は、polling、metadata再試行、Queue投入、取得項目を先に削減します。
 
-Phase 25の統合版初回反映では、3年分10,950記録の生成fixtureを使い、書き込みを行わないDaymark復元previewを本番で確認します。localの処理時間をCloudflare CPU timeとして扱いません。Workers Logsで通常処理の10 ms超過が3回以上連続する、反復する、またはError 1102・`exceededCpu`・例外が1件でも出た場合はそこで停止し、確定復元や公開完了へ進みません。
+Phase 25の統合版初回反映では、3年分10,950記録の生成fixtureを使った書き込みなしpreviewでCPU time 139 msと197 msの反復超過を確認し、確定復元と完了を停止しました。改善版は同じfileを最大400記録のrequestへ分け、日次記録も対象key・IDだけD1から読みます。改善版の本番previewは29 requestすべてstatus 200・例外0、開始直後のコールド側は最大約12.3 ms、ウォーム後P99は約9.1 msでCPU gateを通過しました。今後も通常処理の10 ms超過が反復する、またはError 1102・`exceededCpu`・例外が1件でも出た場合は停止します。localの処理時間をCloudflare CPU timeとして扱いません。
 
 logへURL、query/body、JWT、email、secretを追加しません。調査結果を共有する前にもredactを確認します。
 

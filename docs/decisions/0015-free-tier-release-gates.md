@@ -25,3 +25,7 @@ rizakura-hontaiはTech InboxとDaymarkを同じapp Worker・D1・Access配下で
 - 最大復元はFreeの日次書き込み枠内に収まるが余裕は11,400 rows written相当しかない。同日に大きなTech Inbox復元や大量更新を組み合わせない運用が必要になる。
 - D1は1 database 500 MBだが、Tech InboxにはDB全体の件数上限がないため、sourceだけで将来容量を保証できない。Phase 25で現在値を確認し、以後80%の400 MBへ達したら新機能・大量importを停止して整理または期間分割を設計する。
 - CPUだけはlocalで完了判定できない。Phase 24は未デプロイのまま完了できるが、Phase 25のpreview-only本番観測を省略して公開完了とはしない。
+
+## Phase 25での改訂
+
+本番previewでCPU time 139 msと197 msの反復超過を観測し、本ADRの停止条件を適用した。1 fileを1 invocationで扱う判断は[ADR-0016](0016-batched-daymark-restore.md)で最大400記録のrequest分割へ改訂する。Freeの費用境界、preview-onlyでの再計測、異常時に停止する原則は維持する。

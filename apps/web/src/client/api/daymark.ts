@@ -1,5 +1,9 @@
 import type { DaymarkClient } from "@rizakura-hontai/daymark/app";
 import {
+  mergeDaymarkBackupImportSummaries,
+  splitDaymarkBackupImport,
+} from "@rizakura-hontai/daymark/backup";
+import {
   daymarkBackupImportPreviewResponseSchema,
   daymarkBackupImportResponseSchema,
   type DaymarkBackupSnapshot,
@@ -25,20 +29,32 @@ export const daymarkClient: DaymarkClient = {
     return daymarkBackupSnapshotSchema.parse(await assertSuccess(response));
   },
   async previewBackup(backup: DaymarkBackupSnapshot, signal) {
-    const response = await apiFetch(
-      `${daymarkApi}/import/preview`,
-      { method: "POST", body: JSON.stringify({ backup }) },
-      signal,
-    );
-    return daymarkBackupImportPreviewResponseSchema.parse(await assertSuccess(response));
+    const summaries = [];
+    for (const batch of splitDaymarkBackupImport(backup)) {
+      const response = await apiFetch(
+        `${daymarkApi}/import/preview`,
+        { method: "POST", body: JSON.stringify({ backup: batch }) },
+        signal,
+      );
+      summaries.push(
+        daymarkBackupImportPreviewResponseSchema.parse(await assertSuccess(response)).summary,
+      );
+    }
+    return { result: "preview", summary: mergeDaymarkBackupImportSummaries(backup, summaries) };
   },
   async importBackup(backup: DaymarkBackupSnapshot, signal) {
-    const response = await apiFetch(
-      `${daymarkApi}/import`,
-      { method: "POST", body: JSON.stringify({ backup }) },
-      signal,
-    );
-    return daymarkBackupImportResponseSchema.parse(await assertSuccess(response));
+    const summaries = [];
+    for (const batch of splitDaymarkBackupImport(backup)) {
+      const response = await apiFetch(
+        `${daymarkApi}/import`,
+        { method: "POST", body: JSON.stringify({ backup: batch }) },
+        signal,
+      );
+      summaries.push(
+        daymarkBackupImportResponseSchema.parse(await assertSuccess(response)).summary,
+      );
+    }
+    return { result: "imported", summary: mergeDaymarkBackupImportSummaries(backup, summaries) };
   },
   async listHabits(signal) {
     const response = await apiFetch(`${daymarkApi}/habits`, {}, signal);

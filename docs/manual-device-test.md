@@ -1,6 +1,6 @@
 # Manual device test
 
-最終更新: 2026-09-01
+最終更新: 2026-09-02
 
 ## 現在の状態
 
@@ -11,12 +11,36 @@
 | iPhone Google Chrome | 成功 | 2026-08-27の実機共通チェックと、2026-08-28のタグ機能再確認に成功 |
 | iPhone Safari PWA | 成功 | 2026-08-31に所有者から本番でのPWA確認完了報告。範囲はPhase 17の結果を参照 |
 | Daymark desktop/mobile Chrome | 成功 | 2026-09-01に日・週・月・習慣管理・backupのlocal自動E2E。実機確認の代替ではない |
-| Daymark iPhone Safari PWA | 未実施 | Phase 23は未デプロイ。Phase 25の本番反映後に確認する |
+| Daymark iPhone Safari PWA | 成功 | 2026-09-02に入口、独立PWA、日・週・月への記録反映を本番確認 |
 | Android Google Chrome | スキップ | 所有者判断でPhase 9では実施しない。成功扱いにはしない |
 
 実機を操作していない状態を「確認済み」と記録しない。OS、Chrome、端末、向き、実施者、日時を結果に残す。個人情報や秘密値をスクリーンショット、issue、commitへ含めない。
 
-Phase 19〜23の入口・URL整理・Daymarkはまだproduction未反映です。上記の既存iPhone成功を新構成の移行成功とは扱いません。反映後は入口と両製品の往復、既存PWAが旧`/articles`から新`/tech-inbox/`へ起動できること、Daymarkを別PWAとして追加・直接起動できること、Daymark JSONをdownloadできることを確認します。復元は事前backupとpreviewを確認し、必要なtest dataだけで実施します。metadataが更新されない場合だけ追加し直しを検討します。
+Phase 19〜24の入口・URL整理・DaymarkはPhase 25でproductionへ反映済みです。上記の既存iPhone成功を新構成の移行成功とは扱いません。最後に入口と両製品の往復、既存PWAが新`/tech-inbox/`へ起動できること、Daymarkを別PWAとして追加・直接起動できることを確認します。Daymark JSONの書き出しと復元previewは本番ブラウザで確認済みです。3年fixtureはpreviewだけを行い、確定復元しません。
+
+## Phase 25: iPhone Safariで行う最終確認
+
+同じAccess loginを使い、次の最小範囲を確認する。Android実機は所有者判断でスキップする。
+
+| # | 操作 | 期待結果 | 結果 |
+|---:|---|---|---|
+| 1 | Safariでproductionの入口を開く | rizakura-hontai入口が表示され、Tech InboxとDaymarkの両方へ移動できる | 成功 |
+| 2 | 既存のTech Inboxホーム画面アイコンを開く | URL barのないTech Inbox画面が開き、既存記事を表示できる | 成功 |
+| 3 | 期待と違う画面が開く場合だけ、SafariのTech Inbox画面からホーム画面へ追加し直す | 新しいアイコンからTech Inboxへ直接起動できる | 再追加不要 |
+| 4 | SafariでDaymarkを開き、共有メニューから「ホーム画面に追加」する | Tech Inboxとは別のDaymarkアイコンが追加される | 成功 |
+| 5 | Daymarkアイコンから起動する | URL barのないDaymark画面が直接開き、日・週・月・習慣管理へ移動できる | 成功 |
+| 6 | 実際に使う習慣、または後で削除できる確認用習慣を1件作り、今日の記録を保存する | 日画面へ反映され、週・月画面でも当日の状態を確認できる | 成功 |
+
+確認結果は端末・OS versionを提供できる範囲で記録し、確認用データを作った場合は不要になった時点で削除する。
+
+### Phase 25実施結果
+
+- 報告受領日: 2026-09-02（JST。実際の操作時刻は未提供）
+- 実施者: repository owner
+- 対象: iPhone Safari。機種、OS・Safari version、画面の向きは未記録
+- 接続環境: production、Cloudflare Access保護済みURL
+- 結果: pass。所有者から上記6項目がすべて正常との報告を受領した
+- Android: 所有者判断によりskip。自動mobile E2Eを実機passとは扱わない
 
 ## 実施前提
 

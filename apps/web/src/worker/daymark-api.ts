@@ -69,7 +69,7 @@ export function daymarkRoutePolicy(method: string, pathname: string): ApiRoutePo
     return { name: "daymark.export.get", rateLimit: "export" };
   }
   if (normalizedMethod === "POST" && pathname === "/api/v1/daymark/import/preview") {
-    return { name: "daymark.import.preview", rateLimit: "export" };
+    return { name: "daymark.import.preview", rateLimit: "read" };
   }
   if (normalizedMethod === "POST" && pathname === "/api/v1/daymark/import") {
     return { name: "daymark.import.apply", rateLimit: "mutate" };

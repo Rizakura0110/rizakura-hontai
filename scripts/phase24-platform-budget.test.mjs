@@ -3,6 +3,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
+  DAYMARK_BACKUP_IMPORT_RECORD_BATCH_SIZE,
   DAYMARK_BACKUP_LIMITS,
   MAX_DAYMARK_BACKUP_FILE_BYTES,
 } from "../modules/daymark/src/contracts";
@@ -118,6 +119,17 @@ describe("Phase 24 Cloudflare Free-plan boundaries", () => {
     );
   });
 
+  it("keeps a maximum Daymark restore within per-minute request limits", () => {
+    const restoreRequests =
+      1 + Math.ceil(DAYMARK_BACKUP_LIMITS.records / DAYMARK_BACKUP_IMPORT_RECORD_BATCH_SIZE);
+    const readLimit = appConfig.ratelimits.find(({ name }) => name === "RATE_LIMIT_READ");
+    const mutateLimit = appConfig.ratelimits.find(({ name }) => name === "RATE_LIMIT_MUTATE");
+
+    expect(restoreRequests).toBe(51);
+    expect(restoreRequests).toBeLessThanOrEqual(readLimit.simple.limit);
+    expect(restoreRequests).toBeLessThanOrEqual(mutateLimit.simple.limit);
+  });
+
   it("keeps a maximum Daymark restore below the daily D1 write allowance", () => {
     // D1 counts the table row plus every index entry as rows written.
     const daymarkRowsWritten =
@@ -127,13 +139,14 @@ describe("Phase 24 Cloudflare Free-plan boundaries", () => {
     expect(daymarkRowsWritten).toBe(88_600);
     expect(daymarkRowsWritten).toBeLessThan(freePlan.d1RowsWrittenPerDay);
 
-    const logicalSnapshotRows =
-      DAYMARK_BACKUP_LIMITS.habits +
-      DAYMARK_BACKUP_LIMITS.habitVersions +
-      DAYMARK_BACKUP_LIMITS.records;
-    const conservativeRowsRead = logicalSnapshotRows * 2;
-    expect(logicalSnapshotRows).toBe(22_200);
-    expect(conservativeRowsRead).toBe(44_400);
+    const recordBatches = Math.ceil(
+      DAYMARK_BACKUP_LIMITS.records / DAYMARK_BACKUP_IMPORT_RECORD_BATCH_SIZE,
+    );
+    const restoreRequests = 1 + recordBatches;
+    const metadataRows = DAYMARK_BACKUP_LIMITS.habits + DAYMARK_BACKUP_LIMITS.habitVersions;
+    const scopedRecordRows = DAYMARK_BACKUP_LIMITS.records * 2;
+    const conservativeRowsRead = (metadataRows * restoreRequests + scopedRecordRows) * 2;
+    expect(conservativeRowsRead).toBe(304_400);
     expect(conservativeRowsRead).toBeLessThan(freePlan.d1RowsReadPerDay);
   });
 });

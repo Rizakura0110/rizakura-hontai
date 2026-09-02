@@ -1,3 +1,4 @@
+import type { DaymarkBackupSnapshot } from "@rizakura-hontai/daymark/contracts";
 import type { DaymarkBackupImportPlan, HabitRecordEntity } from "@rizakura-hontai/daymark/server";
 import { describe, expect, it, vi } from "vitest";
 import {
@@ -137,6 +138,111 @@ describe("D1DaymarkBackupRepository", () => {
     expect(queries).toHaveLength(3);
     expect(queries.every((query) => query.includes("daymark_"))).toBe(true);
     expect(queries.some((query) => /\barticles?\b/u.test(query))).toBe(false);
+  });
+
+  it("loads only records matching scoped natural keys or occupied IDs", async () => {
+    const statements: Array<{ query: string; values: unknown[] }> = [];
+    const database = {
+      prepare(query: string) {
+        if (query.includes("FROM daymark_habits ")) return { all: async () => ({ results: [] }) };
+        if (query.includes("FROM daymark_habit_versions")) {
+          return { all: async () => ({ results: [] }) };
+        }
+        return {
+          bind: (...values: unknown[]) => {
+            statements.push({ query, values });
+            return {
+              all: async () => ({
+                results: [
+                  {
+                    id: "occupied-record-id",
+                    habit_id: "other-habit",
+                    record_date: "2026-08-31",
+                    kind: "check",
+                    checked: 0,
+                    value_milli: null,
+                    created_at: timestamp,
+                    updated_at: timestamp,
+                  },
+                  {
+                    id: "record-check",
+                    habit_id: "habit-check",
+                    record_date: "2026-09-01",
+                    kind: "check",
+                    checked: 1,
+                    value_milli: null,
+                    created_at: timestamp,
+                    updated_at: timestamp,
+                  },
+                ],
+              }),
+            };
+          },
+        };
+      },
+    } as unknown as D1Database;
+    const scope: DaymarkBackupSnapshot = {
+      product: "daymark",
+      schemaVersion: 1,
+      exportedAt: timestamp,
+      habits: [],
+      habitVersions: [],
+      records: [
+        {
+          id: "record-check",
+          habitId: "habit-check",
+          recordDate: "2026-09-01",
+          kind: "check",
+          checked: true,
+          valueMilli: null,
+          createdAt: timestamp,
+          updatedAt: timestamp,
+        },
+      ],
+    };
+
+    const snapshot = await createD1DaymarkBackupRepository(database).loadSnapshot(scope);
+
+    expect(snapshot.records).toEqual([
+      {
+        id: "occupied-record-id",
+        habitId: "other-habit",
+        recordDate: "2026-08-31",
+        kind: "check",
+        checked: false,
+        valueMilli: null,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      },
+      plan().records[0],
+    ]);
+    expect(statements).toHaveLength(1);
+    expect(statements[0]?.query).toContain("FROM requested");
+    expect(statements[0]?.query).toContain("FROM requested_ids");
+    expect(statements[0]?.values).toEqual(['[["habit-check","2026-09-01"]]', '["record-check"]']);
+  });
+
+  it("does not read the records table for a metadata-only scope", async () => {
+    const queries: string[] = [];
+    const database = {
+      prepare(query: string) {
+        queries.push(query);
+        return { all: async () => ({ results: [] }) };
+      },
+    } as unknown as D1Database;
+    const scope: DaymarkBackupSnapshot = {
+      product: "daymark",
+      schemaVersion: 1,
+      exportedAt: timestamp,
+      habits: [],
+      habitVersions: [],
+      records: [],
+    };
+
+    await createD1DaymarkBackupRepository(database).loadSnapshot(scope);
+
+    expect(queries).toHaveLength(2);
+    expect(queries.every((query) => !query.includes("daymark_records"))).toBe(true);
   });
 
   it("chunks long-term data below D1 value limits in one ordered batch", async () => {

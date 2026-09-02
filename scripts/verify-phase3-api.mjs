@@ -1,3 +1,4 @@
+import assert from "node:assert/strict";
 import { spawn, spawnSync } from "node:child_process";
 import {
   existsSync,
@@ -10,7 +11,11 @@ import {
 } from "node:fs";
 import { dirname, isAbsolute, join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
-import assert from "node:assert/strict";
+import { DAYMARK_BACKUP_IMPORT_RECORD_BATCH_SIZE } from "../modules/daymark/src/contracts.ts";
+import {
+  buildLongTermDaymarkBackup,
+  PHASE25_DAYMARK_RECORD_COUNT,
+} from "./daymark-long-term-fixture.mjs";
 
 const projectRoot = realpathSync(dirname(dirname(fileURLToPath(import.meta.url))));
 
@@ -171,6 +176,61 @@ const requestJson = async (path, init) => {
   assert.equal(response.headers.get("cache-control"), "no-store");
   assert.match(response.headers.get("x-request-id") ?? "", /^[0-9a-f-]{36}$/u);
   return { response, body };
+};
+
+const requestDaymarkBackupBatches = async (path, backup) => {
+  const summaries = [];
+  const batches = [{ ...backup, records: [] }];
+  for (
+    let offset = 0;
+    offset < backup.records.length;
+    offset += DAYMARK_BACKUP_IMPORT_RECORD_BATCH_SIZE
+  ) {
+    batches.push({
+      ...backup,
+      records: backup.records.slice(offset, offset + DAYMARK_BACKUP_IMPORT_RECORD_BATCH_SIZE),
+    });
+  }
+  for (const batch of batches) {
+    const result = await requestJson(path, {
+      method: "POST",
+      headers: mutationHeaders,
+      body: JSON.stringify({ backup: batch }),
+    });
+    assert.equal(result.response.status, 200);
+    summaries.push(result.body.summary);
+  }
+  const [metadata, ...recordSummaries] = summaries;
+  assert.ok(metadata);
+  return {
+    source: {
+      schemaVersion: backup.schemaVersion,
+      exportedAt: backup.exportedAt,
+      habits: backup.habits.length,
+      habitVersions: backup.habitVersions.length,
+      records: backup.records.length,
+    },
+    changes: {
+      ...metadata.changes,
+      recordsCreated: recordSummaries.reduce(
+        (total, summary) => total + summary.changes.recordsCreated,
+        0,
+      ),
+      recordsMatched: recordSummaries.reduce(
+        (total, summary) => total + summary.changes.recordsMatched,
+        0,
+      ),
+      recordsSkipped: recordSummaries.reduce(
+        (total, summary) => total + summary.changes.recordsSkipped,
+        0,
+      ),
+      recordIdsRemapped: recordSummaries.reduce(
+        (total, summary) => total + summary.changes.recordIdsRemapped,
+        0,
+      ),
+    },
+    hasChanges: summaries.some((summary) => summary.hasChanges),
+  };
 };
 
 const createArticle = async (url, tagIds = []) =>
@@ -429,70 +489,27 @@ try {
   assert.equal(repeatedDaymarkPreview.body.summary.hasChanges, false);
   assert.equal(repeatedDaymarkPreview.body.summary.changes.habitsMatched, 2);
 
-  const longTermHabits = Array.from({ length: 10 }, (_, index) => ({
-    id: `long-term-habit-${index}`,
-    name: `Long-term ${index}`,
-    kind: "check",
-    createdOn: "2020-01-01",
-    createdAt: restoreTimestamp,
-    updatedAt: restoreTimestamp,
-  }));
-  const longTermRecordCount = 10_950;
-  const longTermBackup = {
-    product: "daymark",
-    schemaVersion: 1,
-    exportedAt: restoreTimestamp,
-    habits: longTermHabits,
-    habitVersions: longTermHabits.map((habit, index) => ({
-      id: `long-term-version-${index}`,
-      habitId: habit.id,
-      effectiveFrom: habit.createdOn,
-      kind: "check",
-      status: "active",
-      targetMilli: null,
-      unit: null,
-      comparison: null,
-      createdAt: restoreTimestamp,
-      updatedAt: restoreTimestamp,
-    })),
-    records: Array.from({ length: longTermRecordCount }, (_, index) => ({
-      id: `long-term-record-${index}`,
-      habitId: longTermHabits[index % longTermHabits.length].id,
-      recordDate: new Date(Date.UTC(2020, 0, 1 + Math.floor(index / longTermHabits.length)))
-        .toISOString()
-        .slice(0, 10),
-      kind: "check",
-      checked: true,
-      valueMilli: null,
-      createdAt: restoreTimestamp,
-      updatedAt: restoreTimestamp,
-    })),
-  };
+  const longTermRecordCount = PHASE25_DAYMARK_RECORD_COUNT;
+  const longTermBackup = buildLongTermDaymarkBackup({ exportedAt: restoreTimestamp });
   assert.ok(Buffer.byteLength(`${JSON.stringify(longTermBackup, null, 2)}\n`) < 4 * 1024 * 1024);
-  const longTermPreview = await requestJson("/api/v1/daymark/import/preview", {
-    method: "POST",
-    headers: mutationHeaders,
-    body: JSON.stringify({ backup: longTermBackup }),
-  });
-  assert.equal(longTermPreview.response.status, 200);
-  assert.equal(longTermPreview.body.summary.changes.habitsCreated, 10);
-  assert.equal(longTermPreview.body.summary.changes.recordsCreated, longTermRecordCount);
-  const longTermImported = await requestJson("/api/v1/daymark/import", {
-    method: "POST",
-    headers: mutationHeaders,
-    body: JSON.stringify({ backup: longTermBackup }),
-  });
-  assert.equal(longTermImported.response.status, 200);
-  assert.equal(longTermImported.body.summary.changes.habitVersionsCreated, 10);
-  assert.equal(longTermImported.body.summary.changes.recordsCreated, longTermRecordCount);
-  const repeatedLongTermPreview = await requestJson("/api/v1/daymark/import/preview", {
-    method: "POST",
-    headers: mutationHeaders,
-    body: JSON.stringify({ backup: longTermBackup }),
-  });
-  assert.equal(repeatedLongTermPreview.response.status, 200);
-  assert.equal(repeatedLongTermPreview.body.summary.hasChanges, false);
-  assert.equal(repeatedLongTermPreview.body.summary.changes.recordsMatched, longTermRecordCount);
+  const longTermPreview = await requestDaymarkBackupBatches(
+    "/api/v1/daymark/import/preview",
+    longTermBackup,
+  );
+  assert.equal(longTermPreview.changes.habitsCreated, 10);
+  assert.equal(longTermPreview.changes.recordsCreated, longTermRecordCount);
+  const longTermImported = await requestDaymarkBackupBatches(
+    "/api/v1/daymark/import",
+    longTermBackup,
+  );
+  assert.equal(longTermImported.changes.habitVersionsCreated, 10);
+  assert.equal(longTermImported.changes.recordsCreated, longTermRecordCount);
+  const repeatedLongTermPreview = await requestDaymarkBackupBatches(
+    "/api/v1/daymark/import/preview",
+    longTermBackup,
+  );
+  assert.equal(repeatedLongTermPreview.hasChanges, false);
+  assert.equal(repeatedLongTermPreview.changes.recordsMatched, longTermRecordCount);
 
   const articlesAfterDaymarkRestore = await requestJson("/api/v1/export");
   const { exportedAt: _beforeExportedAt, ...articleDataBefore } = articlesBeforeDaymarkRestore.body;
