@@ -1,6 +1,6 @@
 # rizakura-hontai / Daymark フェーズ計画
 
-最終更新: 2026-09-02
+最終更新: 2026-09-11
 
 Phase 17までのTech Inboxは完了済み。以下は所有者と合意した次期計画であり、未実装の機能を本番提供済みとは扱わない。詳細は[設計書](rizakura-hontai-design.md)、実行結果は[Progress](progress.md)へ記録する。
 
@@ -18,6 +18,9 @@ Phase 17までのTech Inboxは完了済み。以下は所有者と合意した�
 | 23 | 完了（Phase 25で反映済み） | 製品別backup・復元 | 記事v1/v2を維持し、Daymarkを参照整合・競合表示付きで復元できる。他製品を変更しない |
 | 24 | 完了（Phase 25で反映済み） | 統合品質・互換性・無料枠内設計の検証 | 各repositoryと組み合わせのgate、旧記事・既存PWA移行、2 manifest、認証、migration、容量の検証が通る |
 | 25 | 完了 | 承認後のproduction反映と実機確認 | backup後のDB更新・deploy、Access、記事/習慣、iPhoneの2 PWAを確認し、運用と移行結果を記録する |
+| 26 | 完了（未デプロイ） | Tech Inbox既読活動の集計API | 現在の既読状態を日本時間の日別に集計し、365日・全期間・今月・連続日数を保護APIで返す。DB migrationは行わない |
+| 27 | 未着手 | Tech Inbox活動画面 | `/tech-inbox/activity`に年間gridと要約を追加し、desktop/mobile・キーボード・読み上げで確認できる |
+| 28 | 未着手 | 統合確認とproduction反映 | 既存機能の回帰確認後、承認を得てdeployし、PC・iPhoneで既読・未読操作と活動表示を確認する |
 
 ## 共通ルール
 
@@ -74,6 +77,14 @@ Phase 17までのTech Inboxは完了済み。以下は所有者と合意した�
 - Phase 25: migration `0002`と統合版初回deployは完了した。3年previewはstatus 200・例外なし・DB変更なしだったがCPU 139/197 msで停止条件に達したため、最大400記録のrequest分割へ改訂した。改善版は29 requestすべて成功し、コールド最大約12.3 ms、ウォーム後P99約9.1 msでCPU gateを通過した。
 - Phase 25: WorkerやURLのrenameは別の移行gateとしてAccess・origin・既存PWAへの影響を確認する。必要なら名称移行を切り離し、legacy識別子の残存を報告する。
 - Phase 25: ownerがiPhone Safariで入口から各機能へ進み、2つのPWAを別々に直接起動し、記事表示とDaymarkの日・週・月への記録反映を確認した。既存Tech Inboxの追加し直しは不要だった。Android実機はowner判断でスキップした。
+
+## Phase 26〜28: Tech Inbox既読活動
+
+- Phase 26: 現在`read`の各記事を`read_at`の日本時間日付で数える。未読へ戻すと除外し、再び既読にすると新しい日へ移し、削除した記事も除外する。永続event tableは作らない。
+- Phase 26: 今日を含む365日を0件の日も含めて返し、全期間の現在既読数、今月の既読数、連続日数を同じresponseへ含める。詳細は[ADR-0017](decisions/0017-current-read-activity.md)に記録する。
+- Phase 27: Tech Inboxの製品内navigationへ「活動」を追加し、年間grid、日別件数、全期間・今月・連続日数をresponsiveかつaccessibilityを維持して表示する。
+- Phase 28: 自動品質gateと既存記事・タグ・backup・Daymarkの回帰を確認する。本番deployはGit pushと分けて所有者承認後に行い、既読、未読へ戻す、再既読の反映をPCとiPhoneで確認する。
+- Cloudflare resourceの名称移行はこの機能へ混ぜず、Phase 28完了後の別計画として扱う。
 
 ## 所有者に必要な確認
 

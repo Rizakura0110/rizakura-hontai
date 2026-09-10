@@ -3,6 +3,8 @@ import { techInboxRoutePolicy } from "./tech-inbox-api";
 
 describe("Tech Inbox route policies", () => {
   it.each([
+    ["GET", "/activity", "activity.get", "read"],
+    ["HEAD", "/activity", "activity.get", "read"],
     ["GET", "/articles", "articles.list", "read"],
     ["HEAD", "/articles", "articles.list", "read"],
     ["POST", "/articles", "articles.create", "create"],
@@ -27,6 +29,7 @@ describe("Tech Inbox route policies", () => {
     ["GET", "/health"],
     ["POST", "/health"],
     ["GET", "/daymark/future"],
+    ["POST", "/activity"],
     ["PUT", "/articles"],
     ["DELETE", "/tags"],
     ["POST", "/tags/private-id"],

@@ -1,4 +1,5 @@
 import {
+  type ArticleActivityResponse,
   type ArticleTagsResponse,
   type ArticleResponse,
   articleIdParamsSchema,
@@ -25,6 +26,7 @@ import {
   updateTagRequestSchema,
 } from "@rizakura-hontai/contracts";
 import { Hono, type Context } from "hono";
+import { ActivityService } from "./activity-service";
 import type { AppBindings } from "./bindings";
 import type { ApiEnvironment, ApiRoutePolicy } from "./platform/api";
 import { ArticleService, type Clock, type IdGenerator } from "./article-service";
@@ -32,6 +34,8 @@ import { BackupService } from "./backup-service";
 import { toArticleDto } from "./article-dto";
 import { createMetadataQueueProducer, type MetadataQueueProducer } from "./metadata-queue";
 import { parseQuery, parseWithSchema, readJsonBody } from "./platform/request-validation";
+import type { ActivityRepository } from "./repositories/activity-repository";
+import { createD1ActivityRepository } from "./repositories/d1-activity-repository";
 import { createD1ArticleRepository } from "./repositories/d1-article-repository";
 import { createD1TagRepository } from "./repositories/d1-tag-repository";
 import type { ArticleRepository } from "./repositories/article-repository";
@@ -43,6 +47,7 @@ import { TagService } from "./tag-service";
 type AppEnvironment = ApiEnvironment<AppBindings>;
 
 export type TechInboxDependencies = {
+  readonly activityRepositoryFactory: (bindings: AppBindings) => ActivityRepository;
   readonly repositoryFactory: (bindings: AppBindings) => ArticleRepository;
   readonly tagRepositoryFactory: (bindings: AppBindings) => TagRepository;
   readonly backupRepositoryFactory: (bindings: AppBindings) => BackupRepository;
@@ -52,6 +57,7 @@ export type TechInboxDependencies = {
 };
 
 function safeRouteName(method: string, pathname: string): string {
+  if (method === "GET" && pathname === "/api/v1/activity") return "activity.get";
   if (method === "GET" && pathname === "/api/v1/export") return "export.get";
   if (method === "POST" && pathname === "/api/v1/import/preview") return "import.preview";
   if (method === "POST" && pathname === "/api/v1/import") return "import.apply";
@@ -102,6 +108,7 @@ function categoryForRoute(routeName: string): ApiRoutePolicy["rateLimit"] | unde
     return "mutate";
   }
   if (
+    routeName === "activity.get" ||
     routeName === "articles.list" ||
     routeName === "articles.get" ||
     routeName === "tags.list" ||
@@ -128,6 +135,13 @@ function articleService(context: Context<AppEnvironment>, dependencies: TechInbo
   );
 }
 
+function activityService(context: Context<AppEnvironment>, dependencies: TechInboxDependencies) {
+  return new ActivityService(
+    dependencies.activityRepositoryFactory(context.env),
+    dependencies.clock,
+  );
+}
+
 function tagService(context: Context<AppEnvironment>, dependencies: TechInboxDependencies) {
   return new TagService(
     dependencies.tagRepositoryFactory(context.env),
@@ -145,6 +159,7 @@ function backupService(context: Context<AppEnvironment>, dependencies: TechInbox
 }
 
 export const defaultTechInboxDependencies: TechInboxDependencies = {
+  activityRepositoryFactory: (bindings) => createD1ActivityRepository(bindings.DB),
   repositoryFactory: (bindings) => createD1ArticleRepository(bindings.DB),
   tagRepositoryFactory: (bindings) => createD1TagRepository(bindings.DB),
   backupRepositoryFactory: (bindings) => createD1BackupRepository(bindings.DB),
@@ -155,6 +170,13 @@ export const defaultTechInboxDependencies: TechInboxDependencies = {
 
 export function createTechInboxApi(dependencies: TechInboxDependencies) {
   const app = new Hono<AppEnvironment>();
+  app.get("/v1/activity", async (context) => {
+    context.set("routeName", "activity.get");
+    return context.json<ArticleActivityResponse>(
+      await activityService(context, dependencies).get(),
+    );
+  });
+
   app.get("/v1/export", async (context) => {
     context.set("routeName", "export.get");
     const response = await articleService(context, dependencies).exportAll();

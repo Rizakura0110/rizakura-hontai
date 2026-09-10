@@ -756,6 +756,27 @@ try {
     readOnly.body.articles.map(({ id }) => id),
     [first.body.article.id],
   );
+  const activityAfterRead = await requestJson("/api/v1/activity");
+  assert.equal(activityAfterRead.response.status, 200);
+  assert.equal(activityAfterRead.body.timeZone, "Asia/Tokyo");
+  assert.equal(activityAfterRead.body.endDate, today);
+  assert.equal(activityAfterRead.body.days.length, 365);
+  assert.equal(activityAfterRead.body.totalReadCount, 1);
+  assert.equal(activityAfterRead.body.days.find(({ date }) => date === today)?.count, 1);
+  const unreadAgain = await requestJson(`/api/v1/articles/${first.body.article.id}`, {
+    method: "PATCH",
+    headers: mutationHeaders,
+    body: JSON.stringify({ status: "unread" }),
+  });
+  assert.equal(unreadAgain.body.article.readAt, null);
+  assert.equal((await requestJson("/api/v1/activity")).body.totalReadCount, 0);
+  const readAgain = await requestJson(`/api/v1/articles/${first.body.article.id}`, {
+    method: "PATCH",
+    headers: mutationHeaders,
+    body: JSON.stringify({ status: "read" }),
+  });
+  assert.equal(readAgain.body.article.status, "read");
+  assert.equal((await requestJson("/api/v1/activity")).body.totalReadCount, 1);
   const siteOnly = await requestJson(`/api/v1/articles?site=${encodeURIComponent("Example Site")}`);
   assert.deepEqual(
     siteOnly.body.articles.map(({ id }) => id),
@@ -837,6 +858,9 @@ try {
   });
   assert.equal(deleted.response.status, 200);
   assert.equal(deleted.body.result, "deleted");
+  const activityAfterDelete = await requestJson("/api/v1/activity");
+  assert.equal(activityAfterDelete.body.totalReadCount, 0);
+  assert.equal(activityAfterDelete.body.days.find(({ date }) => date === today)?.count, 0);
   assertApiError(await requestJson(`/api/v1/articles/${first.body.article.id}`), 404, "NOT_FOUND");
   assert.equal((await createArticle("https://example.com/first")).response.status, 201);
   assertApiError(

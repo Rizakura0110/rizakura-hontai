@@ -1,6 +1,6 @@
 # Dependency baseline
 
-確認日: 2026-08-28
+確認日: 2026-09-11
 対象環境: macOS arm64 / Cloudflare Workers / Node.js 24 LTS / pnpm 11
 
 ## 選定ルール
@@ -32,7 +32,7 @@ pnpm公式npm tarballは、npm metadataのintegrity
 | react | 19.2.8 | 2026-07-21 | 19.2系Stable | [npm metadata](https://registry.npmjs.org/react/19.2.8) |
 | react-dom | 19.2.8 | 2026-07-21 | Reactと同一パッチ。peer `react ^19.2.8`を満たす | [npm metadata](https://registry.npmjs.org/react-dom/19.2.8) |
 | react-router | 8.3.0 | 2026-07-22 | v8 Stable。React 19.2.8とNode 24がpeer/engineを満たす | [npm metadata](https://registry.npmjs.org/react-router/8.3.0) |
-| hono | 4.13.3 | 2026-08-18 | Workers対応Stable。4.13.4以降は7日未満 | [npm metadata](https://registry.npmjs.org/hono/4.13.3) |
+| hono | 4.13.5 | 2026-08-26 | Workers対応Stable。既知のpath traversal、DoS、query解釈差分を修正済み | [npm metadata](https://registry.npmjs.org/hono/4.13.5) |
 | zod | 4.4.3 | 2026-05-04 | v4 Stable | [npm metadata](https://registry.npmjs.org/zod/4.4.3) |
 | drizzle-orm | 0.45.2 | 2026-03-27 | D1 peerを持つStable。1.0はRCのため不採用 | [npm metadata](https://registry.npmjs.org/drizzle-orm/0.45.2) |
 | jose | 6.2.9 | 2026-08-15 | Web API/Workers互換Stable。6.2.10は7日未満 | [npm metadata](https://registry.npmjs.org/jose/6.2.9) |
@@ -72,6 +72,7 @@ pnpm公式npm tarballは、npm metadataのintegrity
 - `autoInstallPeers: false`と`strictPeerDependencies: true`を設定し、暗黙のpeer追加を避ける。
 - Vite 8.2.1が許可する`rolldown ~1.2.1`は、初回解決時に一部platform bindingが7日未満となる1.2.5を選択した。7日ルールを緩和せず、同じ互換範囲で2026-08-12公開の1.2.4へconvergence overrideした。
 - Wrangler 4.124.0とCloudflare Vite plugin 1.53.0が使用するworkerdは`1.20260815.1`である。`compatibility_date`は対応日である`2026-08-15`へ固定し、判断を[ADR-0002](decisions/0002-cloudflare-compatibility-date.md)へ記録した。
+- Miniflare 5.20260815.0-alphaが固定する`sharp 0.35.2`にはhigh advisoryがあるため、同一minorの修正版`0.35.4`へ親version限定でoverrideする。両版とも公開後7日以上が経過しており、判断は[ADR-0018](decisions/0018-security-patch-transitive-sharp.md)へ記録した。
 
 ## pnpm供給網設定
 
@@ -98,6 +99,7 @@ Phase 1の初回installで報告されたbuild scriptを確認し、次だけを
 
 ## Lockfileと監査結果
 
+- 2026-09-11のPhase 26監査で、Miniflareが固定する`sharp 0.35.2`にhigh advisory [GHSA-rgj7-g3m4-5g8c](https://github.com/advisories/GHSA-rgj7-g3m4-5g8c)が検出された。親version限定overrideで修正版`sharp 0.35.4`へ更新し、同時にruntime direct dependencyのHonoを既知moderate advisory修正版`4.13.5`へ更新した。更新後はhigh 0・critical 0で、既知の開発用推移依存moderate 1件だけを継続する。
 - 2026-09-01のPhase 23最終監査でも`pnpm audit --audit-level high`は成功し、高0件・重大0件だった。Phase 23では第三者dependencyとlockfileを変更していない。既知の開発専用・中程度1件は下記baselineから不変。
 - Phase 22のDaymark画面は基盤と同じReact 19.2.8をpeerとして使用し、単体component testへ既存baselineのReact DOM、Testing Library、jsdom、React型定義を追加した。新しいversion・install script例外・runtime network依存は導入せず、Daymark単体と基盤のlockfileで同じ完全versionを固定した。
 

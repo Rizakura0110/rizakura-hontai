@@ -1649,3 +1649,37 @@
 - Tech Inboxの既存記事を表示し、Daymarkで習慣と今日の記録を保存して、日・週・月画面へ反映されることを確認した。機種、OS・Safari version、画面の向きは未記録。Androidは所有者判断でskipした。
 - 実機操作で作成したDaymarkデータは通常の所有者データであり、直前のpreview-only検証時点で0件だった記録と区別する。3年fixtureの確定復元は行っていない。
 - 最終差分・ignore・secret scanと全品質gateの後、Daymarkを先にcommit/pushし、基盤gitlinkとPhase 25変更をcommit/pushする。
+
+## Phase 26: Tech Inbox既読活動の集計API
+
+状態: 完了（2026-09-11、未デプロイ）。現在既読の記事を日本時間の日別に集計し、年間grid用365日と要約を既存の保護APIから返せるようにした。画面表示はPhase 27へ残した。
+
+### 実装内容・判断
+
+- 活動量は`status = 'read'`かつ`read_at IS NOT NULL`の現在の記事だけを、1記事最大1件として数える。既存の既読記事も含む。
+- 未読へ戻すと元の日から除外し、再び既読にすると新しい既読日へ移す。既読記事を削除した場合も除外する。永続的な読了event tableは追加しない。
+- 日本時間の今日を含む直近365日を0件の日も含めて返し、全期間の現在既読数、今月の既読数、現在の連続日数を要約する。今日が0件でも昨日までの連続は当日中維持し、365日より前の連続は初期版では数えない。
+- `GET /api/v1/activity`を既存のCloudflare Access認証、read Rate Limit、`Cache-Control: no-store`配下へ追加した。responseには日付と件数だけを含め、記事URL、title、tag、所有者情報は返さない。
+- D1 adapterは全期間件数とUTC範囲で絞った日別件数を1回のbatchで取得し、日本時間へ変換する。既存indexを利用し、新しいtable、migration、Queue、Cloudflare resource、JSON backup形式は追加していない。
+- 集計仕様は[ADR-0017](decisions/0017-current-read-activity.md)へ記録した。
+
+### 依存関係監査への対応
+
+- 最終gate中に、Cloudflare toolchainのMiniflareが固定する`sharp 0.35.2`へhigh advisoryが新たに登録されたことを検出した。
+- 7日経過済みのCloudflare公式toolchainはまだ脆弱版を固定していたため、親Miniflare versionを限定し、同一minorで2026-08-26公開の修正版`sharp 0.35.4`へoverrideした。供給網の7日ルールや完全version固定は緩和していない。
+- 同時に判明したHonoのruntime moderate advisoryは、公開後7日以上のStable修正版`4.13.5`へ更新した。判断と解除条件は[ADR-0018](decisions/0018-security-patch-transitive-sharp.md)に記録した。
+- 更新後の監査はhigh 0・critical 0。従来から記録済みのDrizzle Kit配下の開発用moderate 1件だけを継続する。
+
+### 検証結果
+
+- 最終`pnpm check`が成功。Daymark単体、format、lint、Cloudflare生成型、全TypeScript、unit/component/integration test、coverage、fresh local D1、実HTTP、production/dry-run build、artifact budget、desktop/mobile E2E、dependency auditを通過した。
+- Daymark単体は9 files・69 tests、domain・契約・backup処理のstatements/branches/functions/linesすべて100%。宣言付きbuildとauditもpassし、既知脆弱性0件だった。
+- 基盤Vitestは49 files・467 testsがpass。coverageはstatements 88.27%、branches 84.12%、functions 88.33%、lines 89.74%で既存threshold内だった。
+- fresh local D1と実HTTPで、既読時に当日分が1件増え、未読へ戻すと0件、再既読で1件、記事削除で0件へ戻ることを確認した。
+- production/dry-run buildとartifact budgetはpass。app Worker raw 509.2 KiB・gzip 108.7 KiB、metadata-fetcher raw 587.2 KiB・gzip 88.9 KiB、client JavaScript raw 413.4 KiB・gzip 119.1 KiB、CSS raw 34.0 KiB・gzip 7.1 KiBだった。
+- Playwrightはdesktop/mobile 31 testsがpassし、desktop専用sidebar testのmobile 1件だけを意図どおりskipした。既存の入口、記事、タグ、backup、Daymark、2 PWAを回帰確認した。
+
+### 変更していないもの・次フェーズ
+
+- production D1、Cloudflare deploy、resource・Access・課金設定、本番データは変更していない。本番はPhase 25時点のままで、活動APIはまだ利用できない。
+- Phase 27でTech Inboxのnavigationと`/tech-inbox/activity`画面を追加し、年間grid、日別件数、全期間・今月・連続日数をdesktop/mobile・キーボード・読み上げで確認する。

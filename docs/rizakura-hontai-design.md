@@ -1,7 +1,7 @@
 # rizakura-hontai: 共通基盤とDaymarkの設計
 
-最終更新: 2026-09-02
-状態: Phase 25完了。production migrationと統合版を反映し、本番CPU観測で検出した3年分Daymark previewの反復超過を、最大400記録のrequest分割と対象recordだけのD1読取で解消した。改善版の29 requestは全成功し、コールド最大約12.3 ms、ウォーム後P99約9.1 msだった。iPhoneで入口、Tech InboxとDaymarkの独立PWA、日・週・月への記録反映も確認した。
+最終更新: 2026-09-11
+状態: Phase 25のproduction反映完了後、Phase 26でTech Inboxの既読活動集計APIを実装済み（未デプロイ）。現在の既読状態と`read_at`を日本時間で集計し、DB migrationを追加せず、Phase 27で年間活動画面へ接続する。
 
 2026-08-31の所有者指示で、当初の基盤名rizakura-meをrizakura-hontaiへ変更した。既存の`Rizakura0110/rizakura-me`は別repositoryとしてそのまま残し、今回の基盤には使わない。Phase 18/19の実行記録とADRは当時の名称を保持する。
 
@@ -68,8 +68,9 @@ Phase 20は読み込み・認証・build境界を検証する非機密の接続�
 | `/` | rizakura-hontaiの入口。記事・習慣の2つの導線 | 専用manifestなし |
 | `/tech-inbox/` | Tech Inboxの全記事画面 | Tech Inbox専用 |
 | `/tech-inbox/settings` | 記事のタグ管理・backup等 | Tech Inbox専用 |
+| `/tech-inbox/activity` | 直近365日の既読活動と要約（Phase 27で画面追加） | Tech Inbox専用 |
 | `/daymark/` | Daymarkの日次入力、週/月履歴、習慣管理、backup設定画面 | Daymark専用 |
-| `/api/v1/articles*`、`/api/v1/tags*`、既存export/import | 既存APIを互換維持 | 対象外 |
+| `/api/v1/articles*`、`/api/v1/tags*`、`/api/v1/activity`、既存export/import | 既存記事APIと現在の既読活動集計 | 対象外 |
 | `/api/v1/daymark/*` | 習慣・集計・Daymark専用backup API | 対象外 |
 
 - `/articles`は`/tech-inbox/`、`/settings`は`/tech-inbox/settings`へ同一origin内で互換遷移させ、queryを維持する。任意URLへのredirectは許可しない。
