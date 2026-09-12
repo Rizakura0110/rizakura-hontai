@@ -1,12 +1,12 @@
 # Quality gates
 
-最終更新: 2026-09-02
+最終更新: 2026-09-12
 
 ## 標準ゲート
 
 `pnpm check`はformat、lint、Cloudflare生成型、TypeScript、unit/component/integration test、coverage、fresh local D1、実HTTP API、production build、artifact budget、desktop/mobile Chrome E2E、dependency auditを順に実行する。
 
-2026-09-02のPhase 24最終実行では、Daymark単体8 files・64 tests、基盤Vitest 43 files・440 tests、Playwright desktop/mobile 31 testsが成功した。desktop専用sidebar testのmobile実行1件は意図どおりskipした。
+2026-09-12のPhase 27最終実行では、Daymark単体9 files・69 tests、基盤Vitest 51 files・477 tests、Playwright desktop/mobile 37 testsが成功した。desktop専用sidebar testのmobile実行1件は意図どおりskipした。
 
 個別確認には次を使う。
 
@@ -87,6 +87,7 @@ V8 unit coverageから次だけを除外する。
 | URL保存時のタグ付け | 既存タグ選択、その場でのタグ作成、保存直後の複数チップ表示 |
 | pendingからready、metadata失敗 | 画面polling後のterminal表示 |
 | 既読化、undo、未読へ戻す | 全記事一覧の状態表示と未読・既読filterの更新 |
+| 既読活動 | 既読・未読操作後の草と要約、日付選択・keyboard focus、1 tab stop、320px幅と200%文字拡大、認証errorと再試行 |
 | 検索、filter | query結果とstatus radio |
 | title編集 | 編集dialogと更新後card |
 | URL編集と競合 | 409 safe errorと元URL保持 |
@@ -102,7 +103,7 @@ V8 unit coverageから次だけを除外する。
 | Daymark習慣管理 | チェック習慣の追加、名称・状態変更、一覧の再取得 |
 | Daymark backup | 専用JSON download、4 MiB file選択、preview、明示確認、非破壊復元結果 |
 | Daymark PWA配信境界 | 専用HTML/metadata、credential付きmanifest、独立id/start/scope、専用4 icon |
-| URLとHTML互換 | 旧記事・設定pathのquery維持、直接設定URLのHTML、入口にmanifestなし、記事の既存idと専用scope |
+| URLとHTML互換 | 旧記事・設定pathのquery維持、直接設定/活動URLのHTML、活動の末尾slash正規化、入口にmanifestなし、記事の既存idと専用scope |
 | fallback境界 | 未知document・欠落assetは404、将来のAPIも未認証で401・JSON |
 
 共通API単体testでは、製品のpath登録なしで追加handlerがJWT・Origin・JSON・client header・Rate Limitを通ることを確認する。新旧client header、HEADを含む旧記事のRate Limit分類、安全なerror/logも維持する。`scripts/platform-boundaries.test.mjs`で共通client/server moduleのstatic ESM importが業務実装を参照せず、HTTP契約が記事domainに依存しないことを確認する。

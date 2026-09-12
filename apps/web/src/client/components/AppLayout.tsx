@@ -8,6 +8,7 @@ type AppLayoutProps = {
 
 const navigation = [
   { to: "/tech-inbox/", label: "すべて", glyph: "▤", end: true },
+  { to: "/tech-inbox/activity", label: "活動", glyph: "▥", end: false },
   { to: "/tech-inbox/settings", label: "設定", glyph: "⚙", end: false },
 ] as const;
 

@@ -1683,3 +1683,31 @@
 
 - production D1、Cloudflare deploy、resource・Access・課金設定、本番データは変更していない。本番はPhase 25時点のままで、活動APIはまだ利用できない。
 - Phase 27でTech Inboxのnavigationと`/tech-inbox/activity`画面を追加し、年間grid、日別件数、全期間・今月・連続日数をdesktop/mobile・キーボード・読み上げで確認する。
+
+## Phase 27: Tech Inbox活動画面
+
+状態: 完了（2026-09-12、未デプロイ）。Phase 26の保護APIを年間gridと要約へ接続し、Tech Inboxのdesktop sidebar・mobile bottom navigationへ「活動」を追加した。
+
+### 実装内容・判断
+
+- `/tech-inbox/activity`に直近365日の月曜始まりgrid、日付選択と件数詳細、全期間・今月の既読数、連続日数を表示する。日付境界はAPIの日本時間に従う。
+- 草は0件の灰色と1件・2〜3件・4〜6件・7件以上の緑4段階。凡例、日付buttonのaccessible nameと選択日詳細を備え、色だけに依存しない。
+- chart内だけを横scroll可能にし、初期位置を今日側へ寄せる。日付入力と、上下1日・左右1週・Home/Endによるkeyboard選択を用意し、tab stopを選択日の1個にする。日付と件数をlive regionへ表示する。
+- 画面への入場と明示更新でAPIを取得し、離脱時はabortする。loading、既読0件、期間外にのみ既読がある場合、safe errorと再試行を表示し、更新失敗時は古い件数を隠す。polling・追加cacheは導入しない。
+- 未読へ戻す/削除で元の日から減り、再既読で新しい日へ移ることと、今日0件でも昨日までの連続日数を当日中維持することを表示した。
+- 直接アクセスとreloadへTech Inbox HTML・manifestを返し、末尾slashの正規化はqueryを保持する。既存PWA identity、Service Worker禁止、API/欠落assetのfallback境界を維持する。
+
+### 検証結果
+
+- 最終`pnpm check`が成功。Daymark単体、format、lint、Cloudflare生成型、全TypeScript、test、coverage、fresh local D1、実HTTP、production/dry-run build、artifact budget、desktop/mobile E2E、dependency auditを通過した。
+- 基盤Vitestは51 files・477 testsがpass。coverageはstatements 88.57%、branches 84.15%、functions 88.92%、lines 90.02%。追加API clientと活動pageの正常/異常・更新・abort、365日/5段階・日付/keyboard選択とnavigationを検証した。
+- Daymark単体は9 files・69 tests、domain・契約・backup処理の全coverage指標100%、auditの既知脆弱性0件。Daymark sourceと固定commitは変更していない。
+- Playwrightはdesktop/mobile 37 testsがpassし、desktop専用sidebarのmobile 1件だけを意図どおりskipした。活動の既読→未読反映、直接URL/reloadと記事manifest、keyboard focus、320px幅・200%文字拡大時の内部scrollとcell非重複、401と再試行を追加し、既存記事・タグ・backup・Daymarkを回帰確認した。
+- 日付/件数の読み上げ用label・semantic group・live regionはcomponent/E2Eで検証したが、実screen readerでの音声確認とiPhone実機確認はこのPhaseでは行っていない。
+- fresh local D1と実HTTPの既読・未読・再既読・削除による日別増減も継続して成功した。検証は一時DBのみを使用し、通常local DBと本番データを変更していない。
+- artifact budgetはapp Worker raw 509.3 KiB・gzip 108.7 KiB、metadata-fetcher raw 587.2 KiB・gzip 88.9 KiB、client JavaScript raw 421.7 KiB・gzip 121.3 KiB、CSS raw 35.3 KiB・gzip 7.3 KiBでpass。auditはhigh 0・critical 0、既存の開発用Drizzle Kit配下moderate 1件だけを継続した。依存/lockfile/供給網policyは変更していない。
+
+### 変更していないもの・次フェーズ
+
+- Cloudflare deploy、remote DB migration、resource・Access・課金設定・本番データは変更していない。本番はPhase 25のままで、活動API/画面はまだ提供していない。
+- Phase 28で統合確認後、所有者承認を得てapp Workerへ反映し、PC・iPhoneで既読、未読へ戻す、再既読と活動表示を確認する。Cloudflareの名称移行は別計画として残す。

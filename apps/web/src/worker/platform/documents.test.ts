@@ -32,6 +32,7 @@ describe("product document routing", () => {
     ["/tech-inbox", "/tech-inbox/"],
     ["/tech-inbox/index.html", "/tech-inbox/"],
     ["/tech-inbox/settings/", "/tech-inbox/settings"],
+    ["/tech-inbox/activity/", "/tech-inbox/activity"],
     ["/daymark", "/daymark/"],
     ["/daymark/index.html", "/daymark/"],
   ])("redirects %s to a fixed same-origin destination", async (source, target) => {
@@ -46,7 +47,7 @@ describe("product document routing", () => {
     expect(response.headers.get("Cache-Control")).toBe("no-store");
     expect(bindings.ASSETS.fetch).not.toHaveBeenCalled();
   });
-  it.each(["/tech-inbox/", "/tech-inbox/settings"])(
+  it.each(["/tech-inbox/", "/tech-inbox/settings", "/tech-inbox/activity"])(
     "serves the article HTML for %s",
     async (path) => {
       const bindings = assets();
@@ -97,7 +98,12 @@ describe("product document routing", () => {
   });
   it("handles HEAD without a body and rejects document writes", async () => {
     const bindings = assets();
-    for (const path of ["/tech-inbox/settings", "/daymark/", "/not-found"]) {
+    for (const path of [
+      "/tech-inbox/settings",
+      "/tech-inbox/activity",
+      "/daymark/",
+      "/not-found",
+    ]) {
       const response = await serveDocument(
         new Request(`https://app.invalid${path}`, { method: "HEAD" }),
         bindings,

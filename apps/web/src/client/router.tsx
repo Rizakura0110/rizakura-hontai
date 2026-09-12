@@ -1,6 +1,7 @@
 import { BrowserRouter, Route, Routes } from "react-router";
 import { AppLayout } from "./components/AppLayout";
 import { ArticlesPage } from "./pages/ArticlesPage";
+import { ActivityPage } from "./pages/ActivityPage";
 import { SettingsPage } from "./pages/SettingsPage";
 
 export function AppRouter() {
@@ -9,6 +10,7 @@ export function AppRouter() {
       <AppLayout>
         <Routes>
           <Route path="/tech-inbox/" element={<ArticlesPage />} />
+          <Route path="/tech-inbox/activity" element={<ActivityPage />} />
           <Route path="/tech-inbox/settings" element={<SettingsPage />} />
           <Route
             path="*"

@@ -1,6 +1,6 @@
 # rizakura-hontai / Daymark フェーズ計画
 
-最終更新: 2026-09-11
+最終更新: 2026-09-12
 
 Phase 17までのTech Inboxは完了済み。以下は所有者と合意した次期計画であり、未実装の機能を本番提供済みとは扱わない。詳細は[設計書](rizakura-hontai-design.md)、実行結果は[Progress](progress.md)へ記録する。
 
@@ -19,7 +19,7 @@ Phase 17までのTech Inboxは完了済み。以下は所有者と合意した�
 | 24 | 完了（Phase 25で反映済み） | 統合品質・互換性・無料枠内設計の検証 | 各repositoryと組み合わせのgate、旧記事・既存PWA移行、2 manifest、認証、migration、容量の検証が通る |
 | 25 | 完了 | 承認後のproduction反映と実機確認 | backup後のDB更新・deploy、Access、記事/習慣、iPhoneの2 PWAを確認し、運用と移行結果を記録する |
 | 26 | 完了（未デプロイ） | Tech Inbox既読活動の集計API | 現在の既読状態を日本時間の日別に集計し、365日・全期間・今月・連続日数を保護APIで返す。DB migrationは行わない |
-| 27 | 未着手 | Tech Inbox活動画面 | `/tech-inbox/activity`に年間gridと要約を追加し、desktop/mobile・キーボード・読み上げで確認できる |
+| 27 | 完了（未デプロイ） | Tech Inbox活動画面 | `/tech-inbox/activity`に年間gridと要約を追加し、desktop/mobile・キーボード・読み上げで確認できる |
 | 28 | 未着手 | 統合確認とproduction反映 | 既存機能の回帰確認後、承認を得てdeployし、PC・iPhoneで既読・未読操作と活動表示を確認する |
 
 ## 共通ルール
@@ -82,7 +82,7 @@ Phase 17までのTech Inboxは完了済み。以下は所有者と合意した�
 
 - Phase 26: 現在`read`の各記事を`read_at`の日本時間日付で数える。未読へ戻すと除外し、再び既読にすると新しい日へ移し、削除した記事も除外する。永続event tableは作らない。
 - Phase 26: 今日を含む365日を0件の日も含めて返し、全期間の現在既読数、今月の既読数、連続日数を同じresponseへ含める。詳細は[ADR-0017](decisions/0017-current-read-activity.md)に記録する。
-- Phase 27: Tech Inboxの製品内navigationへ「活動」を追加し、年間grid、日別件数、全期間・今月・連続日数をresponsiveかつaccessibilityを維持して表示する。
+- Phase 27: Tech Inboxの製品内navigationへ「活動」を追加し、年間grid、日別件数、全期間・今月・連続日数を実装・検証した。日付選択、1 tab stopの矢印操作、日付と件数の読み上げ用label/live regionを備え、320px幅と200%文字拡大でもchart内の横scrollへ収める。読み上げ用属性は自動testで検証し、実screen readerでの音声確認は未実施。
 - Phase 28: 自動品質gateと既存記事・タグ・backup・Daymarkの回帰を確認する。本番deployはGit pushと分けて所有者承認後に行い、既読、未読へ戻す、再既読の反映をPCとiPhoneで確認する。
 - Cloudflare resourceの名称移行はこの機能へ混ぜず、Phase 28完了後の別計画として扱う。
 

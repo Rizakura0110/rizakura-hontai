@@ -1,7 +1,7 @@
 # rizakura-hontai: 共通基盤とDaymarkの設計
 
-最終更新: 2026-09-11
-状態: Phase 25のproduction反映完了後、Phase 26でTech Inboxの既読活動集計APIを実装済み（未デプロイ）。現在の既読状態と`read_at`を日本時間で集計し、DB migrationを追加せず、Phase 27で年間活動画面へ接続する。
+最終更新: 2026-09-12
+状態: Phase 25のproduction反映完了後、Phase 26〜27でTech Inboxの既読活動集計APIと年間活動画面を実装・検証済み（未デプロイ）。現在の既読状態と`read_at`を日本時間で集計し、DB migrationを追加せず、Phase 28で承認後に本番反映・実機確認する。
 
 2026-08-31の所有者指示で、当初の基盤名rizakura-meをrizakura-hontaiへ変更した。既存の`Rizakura0110/rizakura-me`は別repositoryとしてそのまま残し、今回の基盤には使わない。Phase 18/19の実行記録とADRは当時の名称を保持する。
 
@@ -68,7 +68,7 @@ Phase 20は読み込み・認証・build境界を検証する非機密の接続�
 | `/` | rizakura-hontaiの入口。記事・習慣の2つの導線 | 専用manifestなし |
 | `/tech-inbox/` | Tech Inboxの全記事画面 | Tech Inbox専用 |
 | `/tech-inbox/settings` | 記事のタグ管理・backup等 | Tech Inbox専用 |
-| `/tech-inbox/activity` | 直近365日の既読活動と要約（Phase 27で画面追加） | Tech Inbox専用 |
+| `/tech-inbox/activity` | 直近365日の既読活動と要約（Phase 27でローカル実装済み） | Tech Inbox専用 |
 | `/daymark/` | Daymarkの日次入力、週/月履歴、習慣管理、backup設定画面 | Daymark専用 |
 | `/api/v1/articles*`、`/api/v1/tags*`、`/api/v1/activity`、既存export/import | 既存記事APIと現在の既読活動集計 | 対象外 |
 | `/api/v1/daymark/*` | 習慣・集計・Daymark専用backup API | 対象外 |
@@ -171,3 +171,13 @@ D1の物理名変更は安全なin-place変更が可能かを実行時に確認�
 Phase 21〜23の完了はlocal実装と検証を対象とし、本番D1へのmigrationやdeploy承認には読み替えない。
 
 料金や権限の確認が必要でも、推測で有料プランや公開設定を選ばない。Phase 18ではCloudflare、GitHub repository設定、registry、依存設定を変更しない。
+
+## 9. Tech Inbox既読活動の画面
+
+- Tech Inbox専用navigationを「すべて・活動・設定」とし、活動は`/tech-inbox/activity`へ置く。直接アクセスとreloadにも記事専用HTML・manifestを返し、末尾slashはqueryを保持して正規pathへ移す。
+- 月曜始まりの年間gridに今日を含む365日を表示する。色は0件が灰色、1件・2〜3件・4〜6件・7件以上が4段階の緑で、色だけに頼らず件数の凡例と選択日詳細を示す。
+- 年間gridは横scrollを内部へ限定し、初期表示を今日側へ寄せる。日付入力からも選択でき、keyboardは上下で1日、左右で1週、Home/Endで期間の最初/今日へ移動する。日付buttonのtab stopは選択日1個だけにする。
+- 各日の日付・件数をaccessible nameへ含め、選択結果をlive regionへ表示する。chartをfieldsetへまとめる。実screen readerの音声確認は未実施で、自動testはsemantic role・label・選択・focusを検証する。
+- 要約は全期間の現在既読数、今月の既読数、連続日数（最大365日）。現在既読の記事を数え、未読へ戻す・削除・再既読時の挙動と、今日0件でも昨日までの連続を当日中維持することを画面に明記する。
+- 画面への入場時と明示的な「更新」で保護APIを取得し、polling・cache・記事情報の追加取得は行わない。離脱時はrequestをabortし、loading・空状態・認証/通信errorと再読み込みを表示する。更新失敗時は古い件数を隠す。
+- Phase 27ではDB・Cloudflare・PWA identity・backup形式・依存関係・Daymarkの固定commitを変更しない。本番deployとPC/iPhone確認はPhase 28へ分ける。

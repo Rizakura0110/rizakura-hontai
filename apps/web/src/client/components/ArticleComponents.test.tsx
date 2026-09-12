@@ -65,6 +65,19 @@ describe("AppLayout", () => {
     }
     expect(screen.queryByRole("link", { name: "未読" })).toBeNull();
   });
+  it("marks activity as the current destination in both navigations", () => {
+    render(
+      <MemoryRouter initialEntries={["/tech-inbox/activity"]}>
+        <AppLayout>
+          <p>Activity</p>
+        </AppLayout>
+      </MemoryRouter>,
+    );
+    for (const link of screen.getAllByRole("link", { name: "活動" })) {
+      expect(link.getAttribute("href")).toBe("/tech-inbox/activity");
+      expect(link.getAttribute("aria-current")).toBe("page");
+    }
+  });
 });
 
 describe("ArticleCard", () => {

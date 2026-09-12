@@ -33,6 +33,7 @@ export async function serveDocument(
     "/tech-inbox": "/tech-inbox/",
     "/tech-inbox/index.html": "/tech-inbox/",
     "/tech-inbox/settings/": "/tech-inbox/settings",
+    "/tech-inbox/activity/": "/tech-inbox/activity",
     "/daymark": "/daymark/",
     "/daymark/index.html": "/daymark/",
   };
@@ -40,7 +41,7 @@ export async function serveDocument(
   if (destination !== undefined) {
     return documentResponse(null, 302, { Location: destination + url.search });
   }
-  if (url.pathname === "/tech-inbox/" || url.pathname === "/tech-inbox/settings") {
+  if (["/tech-inbox/", "/tech-inbox/settings", "/tech-inbox/activity"].includes(url.pathname)) {
     const assetUrl = new URL("/tech-inbox/", request.url);
     // Strip client conditionals so an HTML shell is never returned as an empty 304.
     const response = await bindings.ASSETS.fetch(new Request(assetUrl, { method: request.method }));

@@ -6,6 +6,11 @@ import type {
   TagDto,
 } from "@rizakura-hontai/contracts";
 import { expect, type Page, test } from "@playwright/test";
+import {
+  activityDateInTokyo,
+  createReadActivityWindow,
+  summarizeReadActivity,
+} from "../../packages/core/src/activity";
 
 type MetadataTransition = "ready" | "failed";
 
@@ -49,6 +54,25 @@ async function mockArticleApi(page: Page) {
   let tags = [reactTag];
   const tagIdsByArticleId: Record<string, string[]> = { "article-1": [reactTag.id] };
   const metadataTransitions = new Map<string, MetadataTransition>();
+
+  await page.route("**/api/v1/activity", async (route) => {
+    const window = createReadActivityWindow(new Date("2026-09-12T03:00:00.000Z"));
+    const readArticles = articles.filter(
+      ({ status, readAt }) => status === "read" && readAt !== null,
+    );
+    const counts = new Map<string, number>();
+    for (const article of readArticles) {
+      const date = activityDateInTokyo(new Date(article.readAt as string));
+      if (date >= window.startDate && date <= window.endDate)
+        counts.set(date, (counts.get(date) ?? 0) + 1);
+    }
+    await route.fulfill({
+      json: summarizeReadActivity(window, {
+        totalReadCount: readArticles.length,
+        days: Array.from(counts, ([date, count]) => ({ date, count })),
+      }),
+    });
+  });
 
   const assignedTags = (articleId: string): TagDto[] => {
     const assignedIds = new Set(tagIdsByArticleId[articleId] ?? []);
@@ -441,7 +465,7 @@ test("legacy URLs preserve queries and direct article settings receive the artic
     "href",
     "/manifest.webmanifest",
   );
-  for (const path of ["/tech-inbox/", "/tech-inbox/settings"]) {
+  for (const path of ["/tech-inbox/", "/tech-inbox/settings", "/tech-inbox/activity"]) {
     const response = await page.request.get(path);
     expect(response.status()).toBe(200);
     const html = await response.text();
@@ -482,6 +506,103 @@ test("unknown documents, assets and unauthenticated future APIs never receive an
     expect(response.headers()["content-type"]).toContain("application/json");
     await expect(response.json()).resolves.toMatchObject({ error: { code: "UNAUTHORIZED" } });
   }
+});
+
+test("activity reflects read and unread operations and retains the Tech Inbox PWA document", async ({
+  page,
+}) => {
+  await page.goto("/tech-inbox/");
+  await page.getByRole("button", { name: "既読にする" }).click();
+  await page.getByRole("link", { name: "活動", exact: true }).click();
+  await expect(page).toHaveURL(/\/tech-inbox\/activity$/);
+  await expect(page.getByRole("heading", { name: "活動", exact: true })).toBeVisible();
+  await expect(page.getByText("既読記事", { exact: true }).locator("..")).toContainText("1件");
+  await page.getByLabel("日付を確認").fill("2026-08-27");
+  await expect(page.getByRole("status")).toContainText("2026年8月27日");
+  await expect(page.getByRole("status")).toContainText("1件");
+  await page.reload();
+  await expect(page.getByText("既読記事", { exact: true }).locator("..")).toContainText("1件");
+  await expect(page).toHaveTitle("Tech Inbox");
+  await expect(page.locator('link[rel="manifest"]')).toHaveAttribute(
+    "href",
+    "/manifest.webmanifest",
+  );
+  await page.getByRole("link", { name: "すべて", exact: true }).click();
+  await page.getByRole("button", { name: "未読に戻す" }).click();
+  await page.getByRole("link", { name: "活動", exact: true }).click();
+  await expect(page.getByText(/まだ既読の記事はありません/u)).toBeVisible();
+  await expect(page.getByText("既読記事", { exact: true }).locator("..")).toContainText("0件");
+});
+
+test("activity supports keyboard dates and confines horizontal scrolling at normal and enlarged text sizes", async ({
+  page,
+}) => {
+  await page.goto("/tech-inbox/activity/");
+  await expect(page).toHaveURL(/\/tech-inbox\/activity$/);
+  const calendar = page.getByRole("group", { name: "直近365日の既読活動" });
+  await expect(calendar.getByRole("button")).toHaveCount(365);
+  const today = calendar.getByRole("button", { name: "2026年9月12日: 0件既読", exact: true });
+  await today.focus();
+  await today.press("ArrowUp");
+  await expect(
+    calendar.getByRole("button", { name: "2026年9月11日: 0件既読", exact: true }),
+  ).toBeFocused();
+  await page.keyboard.press("ArrowLeft");
+  await expect(page.getByRole("status")).toContainText("2026年9月4日");
+  await page.keyboard.press("Home");
+  await expect(calendar.getByRole("button").first()).toBeFocused();
+  await page.keyboard.press("End");
+  await expect(today).toBeFocused();
+  await expect(page.getByLabel("日付を確認")).toHaveValue("2026-09-12");
+  expect(
+    await calendar
+      .getByRole("button")
+      .evaluateAll(
+        (buttons) =>
+          buttons.filter((button) => (button as HTMLButtonElement).tabIndex === 0).length,
+      ),
+  ).toBe(1);
+  for (const fontSize of ["16px", "32px"]) {
+    await page.evaluate((size) => {
+      document.documentElement.style.fontSize = size;
+    }, fontSize);
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+    ).toBe(true);
+    expect(
+      await calendar.getByRole("button").evaluateAll((buttons) => {
+        const first = buttons[0]?.getBoundingClientRect();
+        const second = buttons[1]?.getBoundingClientRect();
+        return first !== undefined && second !== undefined && second.top >= first.bottom;
+      }),
+    ).toBe(true);
+  }
+});
+
+test("activity shows authentication errors without counts and can retry", async ({ page }) => {
+  let failed = true;
+  await page.route("**/api/v1/activity", async (route) => {
+    if (!failed) {
+      await route.fallback();
+      return;
+    }
+    await route.fulfill({
+      status: 401,
+      json: {
+        error: {
+          code: "UNAUTHORIZED",
+          message: "認証情報を確認できませんでした。",
+          requestId: "123e4567-e89b-42d3-a456-426614174000",
+        },
+      },
+    });
+  });
+  await page.goto("/tech-inbox/activity");
+  await expect(page.getByRole("alert")).toContainText("認証情報を確認できませんでした。");
+  await expect(page.getByRole("group", { name: "直近365日の既読活動" })).toHaveCount(0);
+  failed = false;
+  await page.getByRole("button", { name: "再読み込み" }).click();
+  await expect(page.getByRole("group", { name: "直近365日の既読活動" })).toBeVisible();
 });
 
 test("static assets and API responses include the security policy", async ({ page }) => {

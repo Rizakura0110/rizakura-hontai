@@ -1,4 +1,17 @@
 import type { ArticleDto } from "../src/article";
+import {
+  createReadActivityWindow,
+  summarizeReadActivity,
+  type ReadActivitySnapshot,
+} from "@tech-inbox/core/activity";
+import { articleActivityResponseSchema } from "../src/activity";
+
+export function articleActivityFixture(
+  snapshot: ReadActivitySnapshot = { totalReadCount: 0, days: [] },
+) {
+  const window = createReadActivityWindow(new Date("2026-09-12T03:00:00.000Z"));
+  return articleActivityResponseSchema.parse(summarizeReadActivity(window, snapshot));
+}
 
 export const articleDtoFixture = (overrides: Partial<ArticleDto> = {}): ArticleDto => ({
   id: "article-1",
