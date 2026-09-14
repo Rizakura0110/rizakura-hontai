@@ -1,6 +1,6 @@
 # Operations
 
-最終更新: 2026-09-02
+最終更新: 2026-09-14
 
 ## Phase 25の本番反映状況
 
@@ -14,6 +14,16 @@ GitHubは旧`Rizakura0110/webclip`を`Rizakura0110/rizakura-hontai`へ改名済�
 - app Workerの`ASSETS`は既存のStatic Assetsへアクセスするbindingで、新しいDBやWorkerの作成ではありません。
 - 統合版とDaymark復元CPU改善版はproductionへdeploy済みです。Accessの所有者限定policy、旧記事URL、入口、2製品のroute・manifestが保護下にあることを確認しました。iPhoneでTech InboxとDaymarkの独立PWA、入口からの動線、日・週・月への記録反映も確認済みです。
 - 新旧client headerを互換対応しています。rollback時は既知のapp Worker versionへ戻し、古いHTMLが残る場合は再読み込みします。旧manifest/URLは削除しません。
+
+## Phase 28の本番反映状況
+
+2026-09-14にTech Inboxの既読活動APIと`/tech-inbox/activity`画面を、所有者の明示承認後に既存app Workerだけへ反映しました。release commitは`c27eb4f355ce828c007da33206ee7f8df4fa1f0a`、提供versionは`42d201d4-a175-4800-9035-bcdc35132d62`（100%）です。metadata-fetcher、resource名・ID・origin、PWA identity、Daymarkの固定commit、DB schema・migrationを変更せず、課金・Access・Secrets変更も行っていません。
+
+反映前後のread-only preflightは所有者email 1件だけのpolicy、168時間session、launcher非表示とWorkerの公開範囲まで成功しました。未認証の入口、記事、活動、記事/活動API、Daymarkと両manifestはAccessへredirectされます。所有者のbrowserで草と件数の表示・更新、PCの既読/未読/再既読・日付選択・製品間移動も成功しました。初回の活動API CPUは約14.7 msでstatus 200・例外0、再取得の開始側には17.277 msを観測しましたが、その後の最後3 app requestsはP99 7.621 ms以下・success・errors 0でした。PC操作時間帯の後続7 groupsも2.784〜8.538 msでした。開始側の一時的な超過はcold認証/起動時の測定傾向と整合しますが、JWKS/isolate状態の直接traceではありません。iPhoneは所有者判断で今回はスキップして後日確認へ延期し、全自動gateの再実行成功後にPhase 28を完了としました。実機成功とは扱いません。
+
+反映前後のD1 sizeは712,704 bytes、既存bindingは14件の名前・種類を維持しました。Billing subscription APIは権限不足で読み取れず、実契約・請求額0円をこの検査だけで断定しません。旧app version `290a9ad3-ee65-416c-a577-8344569047e4`をrollback候補として記録しましたが、rollback実行は別途所有者承認が必要です。詳しい測定値と未確認・skipの範囲は[Progress](progress.md)と[実機checklist](manual-device-test.md)を参照してください。
+
+活動は永続eventではなく、現在既読の記事と`read_at`を日本時間で数えます。未読へ戻す・削除すると元の日から減り、再び既読にすると新しい日へ移ります。表示の再取得は「更新」で行い、pollingやprivate APIのoffline cacheは追加していません。確認には元が未読の記事を選び、最後に未読へ戻してください。
 
 ## 運用原則
 

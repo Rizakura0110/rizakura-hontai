@@ -8,7 +8,7 @@ Phase 19では共通基盤と入口をローカル実装しました。`/`から
 
 Phase 19〜24の統合変更とDaymark migration `0002`は、Phase 25で既存のapp Worker・D1へ反映済みです。基盤名をrizakura-hontaiへ変更し、GitHub repositoryは旧webclipから[Rizakura0110/rizakura-hontai](https://github.com/Rizakura0110/rizakura-hontai)へ改名済みです。既存の別repository `rizakura-me`には触れていません。Worker・DB名・本番URL、ローカルdirectoryは維持しています。Daymarkは別public repositoryをcommit固定のGit submoduleとして取り込み、npmには公開しません。iPhone Safariで入口、Tech Inbox、Daymarkの独立PWAと日・週・月への記録反映まで確認済みです。[設計書](docs/rizakura-hontai-design.md)と[Phase 18〜28の計画](docs/rizakura-hontai-roadmap.md)を参照してください。
 
-Phase 26〜27ではTech Inboxの既読活動APIと`/tech-inbox/activity`画面をローカル実装・検証しました。直近365日の草、日別件数、全期間・今月の既読数と連続日数を表示します。現在の既読状態を数えるため、未読へ戻す・削除すると元の日から減り、再び既読にすると新しい日へ移ります。未デプロイであり、本番反映と実機確認はPhase 28です。
+Phase 26〜27で実装・検証したTech Inboxの既読活動APIと`/tech-inbox/activity`画面は、2026-09-14にPhase 28で既存app Workerへ反映しました。直近365日の草、日別件数、全期間・今月の既読数と連続日数を表示します。現在の既読状態を数えるため、未読へ戻す・削除すると元の日から減り、再び既読にすると新しい日へ移ります。表示・更新とPCの主要操作、Access・CPU・全自動品質gateを確認してPhase 28を完了しました。iPhoneは所有者判断で今回はスキップし、後日確認へ延期しています。
 
 ## DaymarkのPhase 21〜23機能
 
@@ -33,7 +33,7 @@ Phase 26〜27ではTech Inboxの既読活動APIと`/tech-inbox/activity`画面�
 
 - URLの登録、重複防止、canonical URL重複時の安全な統合
 - 未読・既読の切り替え、検索、状態・タグによる絞り込み、並べ替え
-- 既読活動の365日gridと要約、日付選択（Phase 27でローカル実装済み、未デプロイ）
+- 既読活動の365日gridと要約、日付選択（本番反映・PC確認済み、iPhone確認はスキップ）
 - タイトル・URLの編集、記事の削除
 - 1記事10件までの複数タグ、タグごとの自動色、タグの追加・名前変更・削除
 - 記事、URL alias、タグ、タグ付けを含むJSON exportと、既存データを上書きしない復元

@@ -1,8 +1,8 @@
 # Security
 
-最終更新: 2026-09-02
+最終更新: 2026-09-14
 
-Phase 19以降の共通基盤整理を含むsourceとproductionの方針です。Phase 25で統合版をproductionへ反映し、既存のAccess所有者email完全一致policyを維持しています。
+Phase 19以降の共通基盤整理を含むsourceとproductionの方針です。Phase 25で統合版を、Phase 28でTech Inbox既読活動をproductionへ反映しました。Phase 28の反映前後にもAccess所有者email 1件だけの完全一致policyと公開範囲を再検証し、認証設定とSecretsを変更していません。
 
 ## 保護対象と境界
 

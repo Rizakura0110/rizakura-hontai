@@ -1711,3 +1711,44 @@
 
 - Cloudflare deploy、remote DB migration、resource・Access・課金設定・本番データは変更していない。本番はPhase 25のままで、活動API/画面はまだ提供していない。
 - Phase 28で統合確認後、所有者承認を得てapp Workerへ反映し、PC・iPhoneで既読、未読へ戻す、再既読と活動表示を確認する。Cloudflareの名称移行は別計画として残す。
+
+## Phase 28: 統合確認とproduction反映
+
+状態: 完了（2026-09-14、iPhoneは所有者判断でスキップ）。本番反映、AccessとCPU確認、PCの主要操作確認、phase-endの全自動品質gate再実行に成功した。iPhoneは後日確認へ延期し、実機成功とは扱わない。
+
+### 反映範囲と確認計画
+
+- release対象は基盤`main`の`c27eb4f355ce828c007da33206ee7f8df4fa1f0a`。Phase 26〜27の活動API/UIとPhase 26で検証したHono修正版を含む。Daymark gitlinkは`b6b3cdf89014c2fb71dffb5229a0f84932685df4`で維持する。
+- 既存app Worker `tech-inbox-app`だけを反映した。metadata-fetcher source、Wranglerのresource名・ID・origin、PWA identity、既存migrationには変更がなく、remote migration・DB移行/rename・resource作成・課金/Access/Secrets変更は行っていない。
+- 2026-09-12のread-only preflightはtokenの`expired`で停止した。2026-09-14に所有者がローテーションしたtokenで再実行し、resource存在、所有者email 1件だけの完全一致policy、168時間session、launcher非表示、app/fetcherの公開状態まで反映前後とも成功した。運用端末の所有者email入力の誤記は検査process内だけで補正し、remote policy/secretは変更していない。API token期限と利用者のAccess session期限は別のものとして扱う。
+- Workersの公式料金を2026-09-12に再確認した。Freeは100,000 request/day・10 ms CPU/invocation、通常Static Assetsは無料・無制限で、既存の設計基準を変更しない。実accountの契約とusageはこの確認で断定しない。[Workers pricing](https://developers.cloudflare.com/workers/platform/pricing/)、[Static Assets billing](https://developers.cloudflare.com/workers/static-assets/billing-and-limitations/)。
+- 本番反映後のAccess再検証と所有者による活動表示・更新・PCの既読→未読→再既読は成功した。iPhoneは所有者の最新指示で今回はスキップとした。[実機checklist](manual-device-test.md)では端末未提供の表示成功と端末別操作結果、skipを区別する。既存の既読記事を未読化して過去の既読日を失わせない。
+- Phase 27で報告した開発用Vite previewのReact preamble errorは未修正。本番用buildのE2Eと区別し、この準備時点でローカル開発プレビューの復旧済みとは扱わない。
+
+### 統合品質確認
+
+- 2026-09-12と2026-09-14の`pnpm check`が成功。Daymark単体9 files・69 tests、基盤51 files・477 tests、desktop/mobile Playwright 37 pass・意図的mobile sidebar skip 1件。format、lint、Cloudflare生成型、TypeScript、coverage、fresh local D1・実HTTP、build、artifact budgetも通過した。2026-09-14の最初のsandbox実行は依存監査のDNS失敗で停止し、network許可後の全gate再実行で成功した。
+- 所有者のiPhone skip指示後にも同日`pnpm check`を再実行して全gate成功（Daymark 69 tests、基盤477 tests、Playwright 37 pass / 意図的skip 1、audit high/critical 0）。実機skipを自動testのskipと混同しない。
+- 基盤coverageはstatements 88.57%、branches 84.15%、functions 88.92%、lines 90.02%、Daymark domain/契約/backupは全指標100%。依存監査はhigh 0・critical 0、既存の開発用moderate 1件だけを継続する。
+- app Workerは509.3 KiB raw / 108.7 KiB gzip、fetcherは587.2 / 88.9 KiB、client JSは421.7 / 121.3 KiB、CSSは35.3 / 7.3 KiBでartifact budget内。runtime source・依存・Daymark gitlinkの追加変更はない。
+
+### 本番反映と読み取り確認
+
+- appだけのdry-runで対象と既存bindingを確認後、2026-09-14T12:13:21.81356Zにversion `42d201d4-a175-4800-9035-bcdc35132d62`を100%提供していることをdeployment APIで確認した。旧versionは`290a9ad3-ee65-416c-a577-8344569047e4`。DB migrationがないためapp versionのrollback手段を維持するが、rollbackは別途所有者承認が必要。
+- 反映前後のD1 sizeは712,704 bytes、8 tables。bindingは既存14件の名前・種類を維持した。UTC 2026-09-14の日次analytics snapshotはaccount全体でD1 rows read 849、rows written 0、Workers requests 2、errors 0だった。集計には遅延があり、その後の操作や将来のusageを保証する値ではない。Billing subscription APIは権限不足で読み取れず、実契約や請求額0円をこの結果だけで断定しない。
+- 反映前後の直近24時間healthはapp 13 requests・errors 0、fetcher 0 requests、通常Queue backlog 0。DLQの過去7 messages / 851 bytesは維持し、bodyを読まず変更もしなかった。新しいDLQ/failは0。
+- 未認証の`/`、`/tech-inbox/`、`/tech-inbox/activity`、`/api/v1/activity`、`/api/v1/articles`、`/daymark/`と両manifestの8 routesはすべてAccessへの302 redirect。cookie/JWT/login URL詳細は保存していない。
+- 所有者の本番browserから「表示OK」を受領し、草と件数の表示を確認した。端末・OS・browserは未提供であり、PC/iPhoneの操作check完了とは扱わない。agent側browserのCloudflare loginは保存済みsecurity preferenceで拒否され、別surface等で迂回していない。
+- 初回観測は`/tech-inbox/` 4 ms、`/api/v1/articles` 20 ms、`/api/v1/activity` 14 msで、いずれもstatus 200・`outcome: ok`・例外0。GraphQLの対応値は4.212 / 20.643 / 14.726 ms。この時点ではcold JWKSと断定できず、再読み込み時の確認へ進んだ。deployのstartup time 30 msはrequest CPUとは扱わない。
+- 所有者へ画面の「更新」を読み込み完了ごとに3回押すよう依頼し、「更新OK」を受領。最初の再照会では新しいrequestがまだanalyticsへ反映されていなかった。Workers metricsには直近数分の集計・配信遅延がある。[Metrics and analytics](https://developers.cloudflare.com/workers/observability/metrics-and-analytics/)。
+- 集計反映後、UTC 12:25:19の開始側2 requestsはCPU P50 5.074 / P99 17.277 ms、12:25:21の2 requestsはP50 0.749 / P99 7.621 ms、12:25:22の1 requestは0.641 msで、全5 requestsが`success`・errors 0だった。最後3 requestsは通常基準10 ms以下。開始側だけの超過は既存のcold認証/起動時の測定傾向と整合し、25 ms未満かつ継続超過なしと判定した。ただしJWKS取得やisolateの状態を直接traceした結果ではなく、各path別CPUをこのGraphQL集計から推測しない。今後の反復超過・CPU error時にはADR-0004/0015に従って停止する。
+- 所有者からPC browserでの確認が問題なかったとの報告を受領。直前に依頼した既読+1、未読-1、再既読+1（重複なし）、日付選択と全記事/設定/Daymarkへの往復は成功。OS・browser詳細・操作時刻、直接URL reloadと矢印キーの個別結果は未提供。iPhoneの確認へは読み替えない。
+- PC操作時間帯の追加CPU観測は、UTC 12:28:29の開始側がP50/P99 15.268 ms・`sum.requests = 10`・`avg.sampleInterval = 10`だった。samplingを伴う推計件数なので10回の連続超過とみなさない。その後の7 groupsはすべてsample interval 1・各1 requestで2.784〜8.538 ms、全groupsがsuccess・errors 0。開始側の一時的な負荷と後続の通常基準内という傾向を確認した。samplingで取得されなかったrequestのCPUや各pathは断定しない。[Understanding sampling](https://developers.cloudflare.com/analytics/sampling/)。
+- 所有者の最新指示によりiPhoneの活動確認は今回はスキップし、後日確認へ延期した。実機passや自動mobile E2Eでの代替成功とは記録しない。PCの直接URL reload・矢印キーの個別結果も未提供のまま残し、自動E2Eの成功と区別する。
+- tracked内容とbuildのtoken/email漏洩scan、差分review、ignore確認は成功。本番結果と確認範囲を記録した7文書をphase-end commit・pushの対象とする。runtime・依存・Daymark gitlinkは追加変更していない。
+
+### 完了判定と後日確認
+
+- iPhone Safari/PWAの実操作確認は所有者判断で後日へ延期した。今回の完了gateには含めず、成功扱いにもしない。
+- 本番PCの確認範囲は依頼した主要4項目。直接URL reload・矢印キーの動作は自動E2Eで検証済みだが、本番の個別操作報告は未提供のまま記録する。
+- 操作用token期限の運用とCloudflare resource名称移行は別作業として残す。名称だけのための再deploy・DB移行・resource作成は今回行わない。
