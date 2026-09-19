@@ -106,6 +106,68 @@ function repository(
 }
 
 describe("processMetadataQueueMessage", () => {
+  it.each(["frozen", "invalid", ""])(
+    "defers every message without DB/fetch/queue access in %s",
+    async (mode) => {
+      const queueSend = vi.fn(async () => undefined);
+      const repositoryFactory = vi.fn(() => {
+        throw new Error("must not open the DB");
+      });
+      const fetchMetadata = vi.fn(async () => ({ ok: true as const, metadata: fetchedMetadata }));
+      const log = vi.fn();
+      const ack = vi.fn();
+      const retry = vi.fn();
+      await consumeMetadataQueue(
+        {
+          messages: [
+            {
+              body: { articleId: "article-1", url: "https://example.com/article", attempt: 0 },
+              ack,
+              retry,
+            },
+            { body: { invalid: true }, ack, retry },
+          ],
+        } as unknown as MessageBatch<unknown>,
+        { ...bindings(queueSend), MAINTENANCE_MODE: mode },
+        {
+          repositoryFactory,
+          fetchMetadata,
+          clock: () => new Date(),
+          log,
+        },
+      );
+      expect(repositoryFactory).not.toHaveBeenCalled();
+      expect(fetchMetadata).not.toHaveBeenCalled();
+      expect(queueSend).not.toHaveBeenCalled();
+      expect(ack).not.toHaveBeenCalled();
+      expect(retry).toHaveBeenCalledTimes(2);
+      expect(retry).toHaveBeenCalledWith({ delaySeconds: 60 });
+      expect(log).toHaveBeenCalledWith({ route: "metadata.consume", result: "paused" });
+    },
+  );
+
+  it("allows existing queue work to drain during read-only mode", async () => {
+    let state: Article | null = article();
+    const dependencies: MetadataConsumerDependencies = {
+      repositoryFactory: () =>
+        repository(
+          () => state,
+          (value) => (state = value),
+        ),
+      fetchMetadata: async () => ({ ok: true, metadata: fetchedMetadata }),
+      clock: () => new Date("2026-08-27T01:00:00.000Z"),
+      log: () => undefined,
+    };
+    await expect(
+      processMetadataQueueMessage(
+        { articleId: "article-1", url: "https://example.com/article", attempt: 0 },
+        { ...bindings(), MAINTENANCE_MODE: "read-only" },
+        dependencies,
+      ),
+    ).resolves.toMatchObject({ action: "ack", log: { result: "ready" } });
+    expect(state).toMatchObject({ metadataStatus: "ready" });
+  });
+
   it("is idempotent for duplicate delivery and preserves a manual title", async () => {
     let state: Article | null = article();
     const fetchMetadata = vi.fn(async () => ({ ok: true, metadata: fetchedMetadata }) as const);

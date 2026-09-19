@@ -22,7 +22,7 @@ Phase 17までのTech Inboxは完了済み。以下は所有者と合意した�
 | 27 | 完了（Phase 28で反映済み） | Tech Inbox活動画面 | `/tech-inbox/activity`に年間gridと要約を追加し、desktop/mobile・キーボード・読み上げで確認できる |
 | 28 | 完了（PC確認済み・iPhoneは所有者判断でスキップ） | 統合確認とproduction反映 | 既存機能の回帰確認後、承認を得てdeployし、Access・CPUとPCの既読・未読操作を確認。iPhoneは成功扱いにせず後日確認へ延期する |
 | 29 | 完了 | Cloudflare名称移行の準備 | 読み取りinventory、非公開backupのlocal復元・全値照合、全自動gate、費用/停止/切り戻し手順を確認。remote変更なし |
-| 30 | 未着手 | 共用D1をrizakura-hontaiへ移行 | 更新停止とQueue制御、fresh backup、schema/data copy、全値照合後にDB bindingだけ切替 |
+| 30 | 完了（旧DBは削除せず保持） | 共用D1をrizakura-hontaiへ移行 | 全値copy・binding切替・全自動gate・所有者の表示/保存確認が成功。URL/認証は維持し、旧DB接続なし |
 | 31 | 未着手 | Worker・Access表示名・URL・PWA切替 | 本人限定認証を維持し、新originと2 PWAを確認 |
 | 32 | 未着手 | Tech Inboxと基盤の依存整理 | 同じrepository内で機能・API・DBを変えず製品単体testを可能にする |
 | 33 | 未着手 | Tech Inboxの別repository化 | 公開範囲確認後、固定commitのsubmoduleとworkspaceで統合 |

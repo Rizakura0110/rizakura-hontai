@@ -1786,3 +1786,33 @@
 
 - Phase 30ではまず全製品の更新を止めるmaintenance write gateを実装・検証する。現状は未実装であり、Phase 29完了を停止機能実装済みとは扱わない。その後、対象と費用を提示し承認後にfresh backup・新DB作成/copy・binding切替を行う。
 - Phase 31のURL/認証/PWA変更、Phase 32〜34のコード整理/別repository化/deployは未実施。Phase 29の開始承認を後続の本番操作へ流用しない。
+
+## Phase 30: 共用D1をrizakura-hontaiへ移行
+
+状態: 完了（2026-09-19）。新DBへの全値copy、全自動品質gate、接続切替と所有者の表示/保存確認が成功。新DBで保存/Queue配送を再開済み。旧DBは接続なしで保持し、別途承認まで削除しない。Phase 31〜34は未着手。
+
+### 承認・実装・移行記録
+
+- 所有者の画面で`Workers Free`を確認し、更新一時停止、新DB作成/copy、既存appのbinding切替、Queue pause/resumeの承認を得た。料金プラン・URL・Access/Secretsは変更せず、旧DB削除は対象外。
+- 共通APIへ`MAINTENANCE_MODE`を追加。`read-only`で両製品の変更APIとPOST previewを503へ止め、GET export等は維持。`frozen`ではconsumerもDB・fetch・再送へ進まずnative retryへ回す。不正値はfrozen、未設定だけは従来local fixture互換。詳細は[手順](foundation-migration.md)。
+- 記事・タグ・既読・metadata再試行・習慣/記録・両製品復元・将来APIの停止、認証とOrigin検査の維持、protected GET/HEAD/OPTIONS・health、停止解除、consumer drain/pauseを単体testで確認。local実HTTPでも各停止modeで両製品exportが不変、解除後に保存可能と確認した。
+- 初回全gateを通過後、旧DB接続の`read-only`版`acc8fb21-fd6d-4c5d-a8e5-ac7d28418a1e`、通常Queue backlog 0と配送pause後に`frozen`版`753d292b-44e8-445b-84b3-a1dd616d3eb2`を各100%反映した。DLQは既存7件/851 bytesを変更していない。
+- 停止後のSQL・fingerprintはrepo内のprivate `.tmp/phase30-backup-*`へ保存（directory 0700 / file 0600、Git対象外）。書出し前後の全値不変、local復元・第2 DBへの再復元・migration no-opに成功した。
+- 新D1 `rizakura-hontai`（ID `0ca17f98-96bc-4970-94b3-f9e55356e711`）をAPAC hintで作成。旧`tech-inbox`（ID `487a5705-5d37-4d80-8ff9-9a3f1aae97b3`）は維持。copy書込見積もりはindex/余裕込み5,506 rows。直前の日次snapshotはread 12,485/write 0、Worker 5 requests/errors 0で、無料枠の運用閾値内だった。
+- 全体data dumpのremote importは外部キー制約エラー。新DBの全tableが0行で旧DBが不変と確認してから、native table exportを親→子順で取得し直した。SQL値の書換え・外部キー無効化・DB削除は行っていない。順序をlocalで検証後、8 tableを個別にremote適用し、2026-09-19T11:58:06Zに全値・schema/index・migration・外部キー・quick_checkの完全一致を確認した。
+- copy時点は記事357、URL alias 366、タグ10、タグ付け286、習慣8、設定履歴8、日次記録85、migration履歴3件。件数だけでなく全列・全行のfingerprintを照合した。
+- `db:verify:backup`を親子関係検査付きtable別export/復元へ更新。`pnpm`の自動install表示が機械用JSONへ混入した検証エラーも修正し、workspace内の固定Wrangler CLIを直接呼び出す。sandboxのローカル待受・監査DNS拒否は権限付きで再実行し、失敗を成功扱いにしない。
+- local migrationは物理名でなく`DB` bindingを指定。preflightは設定のDB名・IDと唯一の本番D1 bindingを照合し、旧DBを保持していても誤接続を検出する。
+- Codex内browserのCloudflare dashboardログインは所有者の保存済みbrowser許可設定で拒否された。回避せず、認証済み画面の検証は所有者の通常browserで行う。
+- 12:03:27 UTCに新DB接続・`frozen`版`cf7558f4-d4f5-4fae-86ba-d678ee172cfd`を100%反映。切替後も両DBが停止時snapshotと全値一致し、Access preflightと未認証8経路の302保護に成功した。所有者が記事・タグ・活動、Daymarkの日/週/月と両設定の表示OKを報告した。
+- 12:05:27 UTCに同じbuildの`off`版`e33a5ce2-301d-434d-b6db-bff70cda1ddc`を100%反映し、新DB bindingを確認後、通常Queue配送を再開。単一consumer・backlog 0を確認した。以後は旧DBへの単純rollbackを禁止し、旧DBは削除しない。
+- 切替直後のusage snapshotはD1 read 47,511/write 4,224、Worker 6 requests/errors 0。新DB size 741,376 bytes、8 tables。直近24h app 10 requests/errors 0、fetcher 0、通常Queue 0、DLQは過去7件/851 bytes・新規fail 0だった。analytics遅延を含む観測値で、将来の課金額保証ではない。
+- 所有者がTech Inboxの未読→既読→未読とDaymarkの実際の日次記録保存を行い、再読み込み後も正常と報告した。12:07:28 UTCの最終検査では旧DBの全値不変・全Workerの旧DB binding 0・新DB binding 1を確認。新DBは記事357件等を維持し、Daymark記録は本人の保存により85→86件。schema/index・migration履歴・外部キー・quick_checkは正常。2 DB合計1,486,848 bytesで、新DB745,472 bytes・旧DB741,376 bytesだった。
+- 最終Access/preflight、未認証8経路、healthは成功。24h app 24 requests/errors 0・fetcher 0、新規Queue fail/DLQ 0、通常backlog 0。再開直後のCPUは開始側2 groupsでP99 13.075/13.835 ms、後続最後2 groupsは6.949/7.432 ms、全groups success・errors 0だった。冷起動の直接traceではないため原因は断定せず、継続超過は観測していない。
+
+### 品質gate
+
+- 最終`pnpm check`成功: format、lint、生成型整合、TypeScript、Daymark 69 tests、基盤54 files / 511 tests、coverage、fresh local D1 migration/制約、SQL backupの往復復元、実HTTP API/更新停止、両Worker build、artifact budget、E2E 37 passed / desktop専用1 skipped、dependency auditを通過。
+- 基盤coverage: statements 88.66%、branches 84.35%、functions 88.96%、lines 90.12%。Daymark domain/contracts/backupは100%。auditはhigh/critical 0、既存dev-only moderate 1件を維持。
+- app Worker raw 510.1 KiB / gzip 109.0 KiB、fetcher raw 587.2 KiB / gzip 88.9 KiB、client JS raw 421.7 KiB / gzip 121.3 KiB、CSS raw 35.3 KiB / gzip 7.3 KiBで既定budget内。build configとsource configの新DB名/ID・Worker/origin・停止overrideをdeploy前に照合した。
+- 完了時の文書更新後にformat/diff検査とcredential scanを再実行し、private backup・cache・生成物のignoreを確認してphase-end commit/pushする。Daymark gitlink・依存lockfile・DB migrationの変更はない。

@@ -12,6 +12,32 @@ export const backupTables = [
   "tags",
 ];
 
+// Remote imports may check constraints before the end of a multi-table dump.
+// Export each table natively and load parents first, without rewriting SQL values.
+export const backupImportOrder = [
+  "articles",
+  "tags",
+  "article_urls",
+  "article_tags",
+  "daymark_habits",
+  "daymark_habit_versions",
+  "daymark_records",
+  "d1_migrations",
+];
+
+export async function assertBackupImportOrder(query) {
+  assert.deepEqual([...backupImportOrder].sort(), backupTables);
+  const loaded = new Set();
+  for (const table of backupImportOrder) {
+    const keys = await query(`PRAGMA foreign_key_list("${table}")`);
+    assert.ok(
+      Array.isArray(keys) && keys.every((key) => loaded.has(key.table)),
+      `Backup import order must load every parent before ${table}; review schema dependencies.`,
+    );
+    loaded.add(table);
+  }
+}
+
 export const schemaQuery =
   "SELECT type, name, tbl_name, sql FROM sqlite_schema WHERE name NOT GLOB 'sqlite_*' AND name NOT GLOB '_cf_*' ORDER BY type, name";
 

@@ -12,7 +12,7 @@
     "metadata-fetcher:build": "pnpm --dir apps/web exec wrangler deploy --dry-run --config ../../workers/metadata-fetcher/wrangler.jsonc --outdir ../../dist/metadata-fetcher",
     "preview": "pnpm --dir apps/web preview",
     "db:generate": "drizzle-kit generate --config drizzle.config.ts",
-    "db:migrate:local": "pnpm --dir apps/web exec wrangler d1 migrations apply tech-inbox --local",
+    "db:migrate:local": "pnpm --dir apps/web exec wrangler d1 migrations apply DB --local",
     "db:verify:local": "node scripts/verify-local-d1.mjs",
     "db:verify:backup": "node scripts/verify-d1-backup.mjs",
     "api:verify:local": "node scripts/verify-phase3-api.mjs",

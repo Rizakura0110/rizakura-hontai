@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  assertBackupImportOrder,
+  backupImportOrder,
   assertMatchingSnapshots,
   backupTables,
   fingerprintRows,
@@ -25,6 +27,33 @@ function queryFixture(overrides = {}) {
 }
 
 describe("D1 backup fingerprints", () => {
+  it("checks parent-first imports including product relations and migration history", async () => {
+    expect([...backupImportOrder].sort()).toEqual(backupTables);
+    const parents = {
+      article_urls: ["articles"],
+      article_tags: ["articles", "tags"],
+      daymark_habit_versions: ["daymark_habits"],
+      daymark_records: ["daymark_habits"],
+    };
+    await expect(
+      assertBackupImportOrder(async (sql) => {
+        const table = backupImportOrder.find(
+          (table) => sql === `PRAGMA foreign_key_list("${table}")`,
+        );
+        expect(table).toBeDefined();
+        return (parents[table] ?? []).map((table) => ({ table }));
+      }),
+    ).resolves.toBeUndefined();
+  });
+  it.each(["tags", "articles", "unknown_table"])(
+    "rejects unsupported parent %s for the first table",
+    async (table) => {
+      await expect(assertBackupImportOrder(async () => [{ table }])).rejects.toThrow(
+        "load every parent",
+      );
+    },
+  );
+
   it("ignores row and property order, but preserves duplicate rows", () => {
     expect(fingerprintRows([{ a: 1, b: 2 }, { a: null }])).toEqual(
       fingerprintRows([{ a: null }, { b: 2, a: 1 }]),

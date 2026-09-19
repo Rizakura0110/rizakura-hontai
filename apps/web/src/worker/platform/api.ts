@@ -6,10 +6,16 @@ import {
   type AuthPrincipal,
 } from "./access-auth";
 import { ApiError } from "./errors";
+import {
+  blocksApiRequest,
+  MAINTENANCE_RETRY_SECONDS,
+  type MaintenanceBindings,
+} from "./maintenance";
 import { enforceApiRateLimit, type RateLimitBindings, type RateLimitCategory } from "./rate-limit";
 import { SECURITY_HEADERS } from "./security-headers";
 
 export type PlatformBindings = AccessAuthBindings &
+  MaintenanceBindings &
   RateLimitBindings & {
     readonly APP_ORIGIN?: string;
   };
@@ -155,6 +161,14 @@ export function createApiApp<Bindings extends PlatformBindings>(
         context.set("principal", principal);
         await dependencies.enforceRateLimit(context.env, principal, policy.rateLimit);
         enforceMutationRequest(request, context.env);
+        if (blocksApiRequest(request.method, context.env)) {
+          context.header("Retry-After", String(MAINTENANCE_RETRY_SECONDS));
+          throw new ApiError(
+            503,
+            "SERVICE_UNAVAILABLE",
+            "メンテナンスのため保存・変更を一時停止しています。時間をおいて再度お試しください。",
+          );
+        }
       }
       await next();
     } catch (error: unknown) {

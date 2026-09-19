@@ -2,6 +2,7 @@ import { inspect } from "node:util";
 import { describe, expect, it } from "vitest";
 import {
   assertExactAccessApplication,
+  assertExactDatabaseBinding,
   assertExactOwnerPolicy,
   assertWorkerSubdomainState,
 } from "./cloudflare-preflight-assertions.mjs";
@@ -30,6 +31,32 @@ function validPolicies() {
 }
 
 describe("Cloudflare read-only preflight assertions", () => {
+  it("requires the configured D1 name, ID and single Worker binding even when the old DB remains", () => {
+    const expected = { binding: "DB", database_name: "rizakura-hontai", database_id: "new-id" };
+    const databases = [
+      { name: "tech-inbox", uuid: "old-id" },
+      { name: "rizakura-hontai", uuid: "new-id" },
+    ];
+    const bindings = [
+      { name: "DB", type: "d1", id: "new-id" },
+      { name: "ASSETS", type: "assets" },
+    ];
+    expect(() => assertExactDatabaseBinding(databases, bindings, expected)).not.toThrow();
+    for (const invalid of [
+      [],
+      [{ name: "DB", type: "d1", id: "old-id" }],
+      [...bindings, { name: "OLD_DB", type: "d1", id: "old-id" }],
+    ]) {
+      expect(() => assertExactDatabaseBinding(databases, invalid, expected)).toThrow();
+    }
+    expect(() =>
+      assertExactDatabaseBinding(databases, bindings, { ...expected, database_name: "missing" }),
+    ).toThrow();
+    expect(() =>
+      assertExactDatabaseBinding([...databases, databases[1]], bindings, expected),
+    ).toThrow();
+  });
+
   it("accepts the exact private Access application", () => {
     expect(() => assertExactAccessApplication(validApplication(), workerId)).not.toThrow();
   });

@@ -1,5 +1,9 @@
 # Cloudflare setup
 
+## 現在の接続先（Phase 30）
+
+2026-09-19に共用D1を新しい`rizakura-hontai`へコピー・切替済みです。現行のDB名・IDは`apps/web/wrangler.jsonc`、現行コマンドは[Operations](operations.md)、移行・停止・rollback制限は[移行手順](foundation-migration.md)を参照してください。以下の`tech-inbox`は初期構築当時の記録であり、通常のmigration/復元対象には使いません。Worker名・URL・Accessは維持し、旧DBは接続せず保持しています。
+
 ## Phase 19 local configuration（Phase 25でproduction反映済み）
 
 - app Worker名、D1名・ID、Access・origin、Queue/Service/Rate Limitのremote設定は維持する。

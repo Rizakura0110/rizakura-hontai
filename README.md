@@ -6,9 +6,11 @@ rizakura-hontaiは、本人限定のツールへの入口と共通基盤です�
 
 Phase 19では共通基盤と入口をローカル実装しました。`/`から`/tech-inbox/`と`/daymark/`へ進み、各製品から入口へ戻れます。記事設定は`/tech-inbox/settings`です。旧`/articles`・`/settings`はqueryを維持して移動します。Daymarkでは日次入力、週/月履歴、習慣追加・名称/目標/状態変更を操作できます。
 
-Phase 19〜24の統合変更とDaymark migration `0002`は、Phase 25で既存のapp Worker・D1へ反映済みです。基盤名をrizakura-hontaiへ変更し、GitHub repositoryは旧webclipから[Rizakura0110/rizakura-hontai](https://github.com/Rizakura0110/rizakura-hontai)へ改名済みです。既存の別repository `rizakura-me`には触れていません。Worker・DB名・本番URL、ローカルdirectoryは維持しています。Daymarkは別public repositoryをcommit固定のGit submoduleとして取り込み、npmには公開しません。iPhone Safariで入口、Tech Inbox、Daymarkの独立PWAと日・週・月への記録反映まで確認済みです。[設計書](docs/rizakura-hontai-design.md)と[Phase 18〜28の計画](docs/rizakura-hontai-roadmap.md)を参照してください。
+Phase 19〜24の統合変更とDaymark migration `0002`は、Phase 25で既存のapp Worker・D1へ反映済みです。基盤名をrizakura-hontaiへ変更し、GitHub repositoryは旧webclipから[Rizakura0110/rizakura-hontai](https://github.com/Rizakura0110/rizakura-hontai)へ改名済みです。既存の別repository `rizakura-me`には触れていません。Phase 25時点ではWorker・DB名・本番URLを維持しました。Daymarkは別public repositoryをcommit固定のGit submoduleとして取り込み、npmには公開しません。iPhone Safariで入口、Tech Inbox、Daymarkの独立PWAと日・週・月への記録反映まで確認済みです。[設計書](docs/rizakura-hontai-design.md)と[フェーズ計画](docs/rizakura-hontai-roadmap.md)を参照してください。
 
 Phase 26〜27で実装・検証したTech Inboxの既読活動APIと`/tech-inbox/activity`画面は、2026-09-14にPhase 28で既存app Workerへ反映しました。直近365日の草、日別件数、全期間・今月の既読数と連続日数を表示します。現在の既読状態を数えるため、未読へ戻す・削除すると元の日から減り、再び既読にすると新しい日へ移ります。表示・更新とPCの主要操作、Access・CPU・全自動品質gateを確認してPhase 28を完了しました。iPhoneは所有者判断で今回はスキップし、後日確認へ延期しています。
+
+Phase 30では共用D1を`tech-inbox`から新しい`rizakura-hontai`へコピーし、全データ・schema/index・migration履歴の一致を確認して接続先を切り替えました。保存とQueue配送は再開し、所有者の表示・保存確認まで完了しています。旧DBは接続せず保持しています。Worker名・URL・Access・PWA・料金プランとローカルdirectoryは変更していません。以後、旧DBを指すversionへ直接rollbackしないでください。[移行手順](docs/foundation-migration.md)
 
 ## DaymarkのPhase 21〜23機能
 
@@ -64,7 +66,7 @@ tech-inbox-metadata-fetcher Worker
 
 アプリWorkerがStatic Assets、API、D1、Queueを担当します。metadata-fetcherは公開URL、D1、Queue、Secretsを持たず、Service Binding経由でのみ呼び出されます。
 
-共通の認証・request検証・Rate Limit・安全なlogは`apps/web/src/worker/platform/`、記事APIは`tech-inbox-api.ts`へ分離しています。共通layout・dialog・通知・HTTP clientは`apps/web/src/client/platform/`にあります。内部package名は`rizakura-hontai`、`@rizakura-hontai/web`、`@rizakura-hontai/contracts`、`@rizakura-hontai/db`で、記事domainの`@tech-inbox/core`と実際のCloudflare resource名は維持しています。
+共通の認証・request検証・Rate Limit・安全なlogは`apps/web/src/worker/platform/`、記事APIは`tech-inbox-api.ts`へ分離しています。共通layout・dialog・通知・HTTP clientは`apps/web/src/client/platform/`にあります。内部package名は`rizakura-hontai`、`@rizakura-hontai/web`、`@rizakura-hontai/contracts`、`@rizakura-hontai/db`です。記事domainの`@tech-inbox/core`と記事専用Queue・metadata-fetcher名は維持し、共用D1名だけをPhase 30で`rizakura-hontai`へ切り替えました。
 
 主要バージョンと採用理由は[Dependency baseline](docs/dependency-baseline.md)を参照してください。
 

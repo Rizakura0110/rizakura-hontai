@@ -4,7 +4,7 @@
 
 ## Phase 25の本番反映状況
 
-共通基盤・入口の名前はrizakura-hontaiへ整理しましたが、productionのresource名とURLは変更していません。現在の作業directoryも`/Users/ryo/dev/webclip`のままです。以下のdeploy・D1コマンドに残る`tech-inbox-app`・`tech-inbox`は実際の対象名であり、一括置換しません。
+Phase 25時点では共通基盤・入口の名前だけをrizakura-hontaiへ整理し、productionのresource名とURLは維持しました。Phase 30ではD1だけを新しい`rizakura-hontai`へ切り替えています。Workerは`tech-inbox-app`、作業directoryは`/Users/ryo/dev/webclip`のままです。以下の現行D1コマンドは新DBが対象です。
 
 GitHubは旧`Rizakura0110/webclip`を`Rizakura0110/rizakura-hontai`へ改名済みです。別repositoryの`Rizakura0110/rizakura-me`は変更していません。GitHubの命名変更はCloudflareへのdeployを伴いません。基盤codeの`@rizakura-hontai/*`は内部workspace名で、npm scopeを作成・公開した記録ではありません。
 
@@ -13,11 +13,11 @@ GitHubは旧`Rizakura0110/webclip`を`Rizakura0110/rizakura-hontai`へ改名済�
 - 入口・記事・DaymarkのHTMLはそれぞれbuildします。全pathを入口HTMLへ戻すSPA fallbackを復活させないでください。
 - app Workerの`ASSETS`は既存のStatic Assetsへアクセスするbindingで、新しいDBやWorkerの作成ではありません。
 - 統合版とDaymark復元CPU改善版はproductionへdeploy済みです。Accessの所有者限定policy、旧記事URL、入口、2製品のroute・manifestが保護下にあることを確認しました。iPhoneでTech InboxとDaymarkの独立PWA、入口からの動線、日・週・月への記録反映も確認済みです。
-- 新旧client headerを互換対応しています。rollback時は既知のapp Worker versionへ戻し、古いHTMLが残る場合は再読み込みします。旧manifest/URLは削除しません。
+- 新旧client headerを互換対応しています。rollback候補は現在のDB bindingと整合するversionだけを選び、古いHTMLが残る場合は再読み込みします。旧manifest/URLは削除しません。
 
 ## Phase 28の本番反映状況
 
-2026-09-14にTech Inboxの既読活動APIと`/tech-inbox/activity`画面を、所有者の明示承認後に既存app Workerだけへ反映しました。release commitは`c27eb4f355ce828c007da33206ee7f8df4fa1f0a`、提供versionは`42d201d4-a175-4800-9035-bcdc35132d62`（100%）です。metadata-fetcher、resource名・ID・origin、PWA identity、Daymarkの固定commit、DB schema・migrationを変更せず、課金・Access・Secrets変更も行っていません。
+2026-09-14にTech Inboxの既読活動APIと`/tech-inbox/activity`画面を、所有者の明示承認後に既存app Workerだけへ反映しました。release commitは`c27eb4f355ce828c007da33206ee7f8df4fa1f0a`、当時の提供versionは`42d201d4-a175-4800-9035-bcdc35132d62`（100%）です。metadata-fetcher、resource名・ID・origin、PWA identity、Daymarkの固定commit、DB schema・migrationを変更せず、課金・Access・Secrets変更も行っていません。
 
 反映前後のread-only preflightは所有者email 1件だけのpolicy、168時間session、launcher非表示とWorkerの公開範囲まで成功しました。未認証の入口、記事、活動、記事/活動API、Daymarkと両manifestはAccessへredirectされます。所有者のbrowserで草と件数の表示・更新、PCの既読/未読/再既読・日付選択・製品間移動も成功しました。初回の活動API CPUは約14.7 msでstatus 200・例外0、再取得の開始側には17.277 msを観測しましたが、その後の最後3 app requestsはP99 7.621 ms以下・success・errors 0でした。PC操作時間帯の後続7 groupsも2.784〜8.538 msでした。開始側の一時的な超過はcold認証/起動時の測定傾向と整合しますが、JWKS/isolate状態の直接traceではありません。iPhoneは所有者判断で今回はスキップして後日確認へ延期し、全自動gateの再実行成功後にPhase 28を完了としました。実機成功とは扱いません。
 
@@ -25,9 +25,15 @@ GitHubは旧`Rizakura0110/webclip`を`Rizakura0110/rizakura-hontai`へ改名済�
 
 活動は永続eventではなく、現在既読の記事と`read_at`を日本時間で数えます。未読へ戻す・削除すると元の日から減り、再び既読にすると新しい日へ移ります。表示の再取得は「更新」で行い、pollingやprivate APIのoffline cacheは追加していません。確認には元が未読の記事を選び、最後に未読へ戻してください。
 
+## Phase 30の本番反映状況
+
+2026-09-19に更新を停止して両製品とmigration履歴を新D1 `rizakura-hontai`へコピーし、全値・schema/index・外部キー・quick_checkの一致を確認しました。新DB接続の`frozen`版は`cf7558f4-d4f5-4fae-86ba-d678ee172cfd`、所有者の表示確認後に反映した通常動作版は`e33a5ce2-301d-434d-b6db-bff70cda1ddc`（100%、`MAINTENANCE_MODE=off`）です。通常Queue配送を再開し、所有者の両製品の保存・再読み込み確認まで成功しました。
+
+旧`tech-inbox`は接続なしで保持し、SQL backupはGit対象外のprivate directoryに保存しています。旧DBは別途承認まで削除しません。Worker名・origin・Access・Secrets・PWA・料金プラン・Daymarkの固定commitは変更していません。Workers Freeは所有者の画面で確認しました。更新停止、native table別copy、失敗時の照合と切り戻し制限は[移行手順](foundation-migration.md)を参照してください。
+
 ## 運用原則
 
-Phase 29〜34の名称移行・Tech Inbox分離は[専用の実行手順](foundation-migration.md)に従う。Phase 29は本番の読み取り確認とbackupのlocal復元予行のみ。以下の既存resource名を先行して置換しない。DB切替後は古いapp versionのrollbackで旧DB bindingへ戻らないよう、候補を更新する。
+Phase 29〜34の名称移行・Tech Inbox分離は[専用の実行手順](foundation-migration.md)に従う。共用D1の現行名は`rizakura-hontai`。旧`tech-inbox`は接続せず保持し、別途承認まで削除しない。新DBで更新再開後は旧DB bindingを持つPhase 28以前のversionへ直接rollbackしない。
 
 - productionの変更は所有者の明示許可、対象resource、target branch、credential、費用gateを確認してから行う
 - API token、Access設定値、個人email、JWT、cookieをfile、command引数、logへ残さない
@@ -136,7 +142,7 @@ pnpm check
 pnpm cloudflare:preflight
 ```
 
-`pnpm cloudflare:preflight`はCloudflare APIへGETだけを送り、credential値を表示しません。対象accountのD1、Queue、Worker、Access applicationの存在に加え、Accessがapp Workerだけを対象にし、所有者email 1件だけを許可し、7日session、launcher非表示であることを検査します。app Workerは`workers.dev`有効・preview無効、metadata-fetcherは`workers.dev`・previewとも無効であることも検査します。
+`pnpm cloudflare:preflight`はCloudflare APIへGETだけを送り、credential値を表示しません。設定したD1名・IDとappの唯一のD1 bindingの一致、Queue、Worker、Access applicationの存在に加え、Accessがapp Workerだけを対象にし、所有者email 1件だけを許可し、7日session、launcher非表示であることを検査します。app Workerは`workers.dev`有効・preview無効、metadata-fetcherは`workers.dev`・previewとも無効であることも検査します。
 
 - `main`と個人remoteが意図した対象であること
 - working treeに無関係な変更がないこと
@@ -147,14 +153,14 @@ pnpm cloudflare:preflight
 
 ### 2. Migration
 
-新しいmigrationがない場合は実行しません。ある場合はSQL、対象database名`tech-inbox`、productionであることを表示し、JSON exportまたはTime Travel bookmarkを取得してから実行します。
+新しいmigrationがない場合は実行しません。ある場合はSQL、対象database名`rizakura-hontai`と設定中のID、productionであることを表示し、JSON exportまたはTime Travel bookmarkを取得してから実行します。
 
 ```bash
 pnpm db:verify:local
 pnpm api:verify:local
-pnpm --dir apps/web exec wrangler d1 time-travel info tech-inbox
-pnpm --dir apps/web exec wrangler d1 migrations list tech-inbox --remote
-pnpm --dir apps/web exec wrangler d1 migrations apply tech-inbox --remote
+pnpm --dir apps/web exec wrangler d1 time-travel info rizakura-hontai
+pnpm --dir apps/web exec wrangler d1 migrations list rizakura-hontai --remote
+pnpm --dir apps/web exec wrangler d1 migrations apply rizakura-hontai --remote
 ```
 
 destructive migrationは1回で削除せず、column/table追加、移行、検証、後続releaseで削除の段階へ分けます。remote migration後はmigration履歴と必要な件数だけをread-only queryで確認し、記事URLやtitleをterminalへ出しません。
@@ -182,7 +188,7 @@ app deploy outputで既存のD1、Queue、Service Binding、Rate Limiting、prod
 
 ## Worker rollback
 
-rollbackは即時にproduction trafficを過去versionへ切り替えるremote変更です。所有者の明示許可と、戻すversion IDの確認後だけ実行します。
+rollbackは即時にproduction trafficを過去versionへ切り替えるremote変更です。所有者の明示許可と、戻すversion ID・DB ID・`MAINTENANCE_MODE`の確認後だけ実行します。Phase 30の新DBで更新再開後は、旧DBを指すversionへ戻してはいけません。必要なら更新とQueueを再停止し、新DBの最新backupを確保して修正継続または逆移行を設計します。新DBの`frozen`版へ戻す場合も保存停止を伴います。
 
 ```bash
 pnpm --dir apps/web exec wrangler deployments list
@@ -201,20 +207,20 @@ Cloudflare D1 Time Travelは自動で有効になり、production backendのdata
 bookmark確認:
 
 ```bash
-pnpm --dir apps/web exec wrangler d1 time-travel info tech-inbox
-pnpm --dir apps/web exec wrangler d1 time-travel info tech-inbox --timestamp="RFC3339_UTC_TIMESTAMP"
+pnpm --dir apps/web exec wrangler d1 time-travel info rizakura-hontai
+pnpm --dir apps/web exec wrangler d1 time-travel info rizakura-hontai --timestamp="RFC3339_UTC_TIMESTAMP"
 ```
 
 restoreはdatabaseをその場で上書きし、実行中queryを中断する破壊的操作です。通常運用では実行しません。必要な場合は次をすべて満たしてから、表示される確認promptを読んで実行します。
 
 1. incidentの時刻と影響を特定する。
 2. 現在のbookmarkとJSON exportを保存する。
-3. 対象がproductionの`tech-inbox`であることを再確認する。
+3. 対象がproductionの`rizakura-hontai`であり、設定中のIDと一致することを再確認する。旧DBの履歴と混同しない。
 4. restore先のtimestampまたはbookmarkをread-onlyの`info`で確認する。
 5. 所有者の明示許可を得る。
 
 ```bash
-pnpm --dir apps/web exec wrangler d1 time-travel restore tech-inbox --bookmark=CONFIRMED_BOOKMARK
+pnpm --dir apps/web exec wrangler d1 time-travel restore rizakura-hontai --bookmark=CONFIRMED_BOOKMARK
 ```
 
 restore結果が返すprevious bookmarkを保存すると、必要に応じてrestore自体を戻せます。復旧後はmigration履歴、記事・alias・タグ・関連の参照整合、アプリ表示を確認します。

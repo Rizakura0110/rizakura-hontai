@@ -158,6 +158,44 @@ const stopWorker = async () => {
   }
 };
 
+const startWorker = async (workerConfigPath, maintenanceMode = "off") => {
+  workerOutput = "";
+  workerProcess = spawn(
+    process.execPath,
+    [
+      pnpmCli,
+      "--dir",
+      "apps/web",
+      "exec",
+      "wrangler",
+      "dev",
+      "--config",
+      workerConfigPath,
+      "--local",
+      "--persist-to",
+      persistenceDirectory,
+      "--ip",
+      "127.0.0.1",
+      "--port",
+      String(port),
+      "--var",
+      "ENVIRONMENT:local",
+      "--var",
+      `APP_ORIGIN:${baseUrl}`,
+      "--var",
+      `MAINTENANCE_MODE:${maintenanceMode}`,
+      "--log-level",
+      "error",
+      "--show-interactive-dev-session",
+      "false",
+    ],
+    { cwd: projectRoot, env: childEnvironment, stdio: ["ignore", "pipe", "pipe"] },
+  );
+  workerProcess.stdout.on("data", appendWorkerOutput);
+  workerProcess.stderr.on("data", appendWorkerOutput);
+  await waitForWorker();
+};
+
 const requestJson = async (path, init) => {
   const response = await fetch(`${baseUrl}${path}`, {
     ...init,
@@ -327,39 +365,7 @@ try {
     "INSERT INTO articles (id, original_url, site_name, status, metadata_status, saved_at, created_at, updated_at) VALUES ('site-filter-article', 'https://site-filter.example/article', 'Example Site', 'unread', 'pending', '2026-08-20T00:00:00.000Z', '2026-08-20T00:00:00.000Z', '2026-08-20T00:00:00.000Z'); INSERT INTO article_urls (normalized_url, article_id, kind, created_at) VALUES ('https://site-filter.example/article', 'site-filter-article', 'original', '2026-08-20T00:00:00.000Z'), ('https://site-filter.example/canonical', 'site-filter-article', 'canonical', '2026-08-20T00:00:00.000Z');",
   ]);
 
-  workerProcess = spawn(
-    process.execPath,
-    [
-      pnpmCli,
-      "--dir",
-      "apps/web",
-      "exec",
-      "wrangler",
-      "dev",
-      "--config",
-      workerConfigPath,
-      "--local",
-      "--persist-to",
-      persistenceDirectory,
-      "--ip",
-      "127.0.0.1",
-      "--port",
-      String(port),
-      "--var",
-      "ENVIRONMENT:local",
-      "--var",
-      `APP_ORIGIN:${baseUrl}`,
-      "--log-level",
-      "error",
-      "--show-interactive-dev-session",
-      "false",
-    ],
-    { cwd: projectRoot, env: childEnvironment, stdio: ["ignore", "pipe", "pipe"] },
-  );
-  workerProcess.stdout.on("data", appendWorkerOutput);
-  workerProcess.stderr.on("data", appendWorkerOutput);
-
-  await waitForWorker();
+  await startWorker(workerConfigPath);
 
   const daymark = await requestJson("/api/v1/daymark/status");
   assert.equal(daymark.response.status, 200);
@@ -1023,6 +1029,49 @@ try {
   assert.equal(repeatedImport.body.summary.hasChanges, false);
   assert.equal(repeatedImport.body.summary.changes.articlesMatched, 1);
   assert.equal(repeatedImport.body.summary.changes.tagsMatched, 1);
+
+  const productSnapshot = async () => {
+    const snapshots = [];
+    for (const path of ["/api/v1/export", "/api/v1/daymark/export"]) {
+      const { response, body } = await requestJson(path);
+      assert.equal(response.status, 200);
+      const { exportedAt, ...snapshot } = body;
+      assert.equal(typeof exportedAt, "string");
+      snapshots.push(snapshot);
+    }
+    return snapshots;
+  };
+  const beforeMaintenance = await productSnapshot();
+  for (const mode of ["read-only", "frozen", "invalid"]) {
+    await stopWorker();
+    await startWorker(workerConfigPath, mode);
+    for (const [method, path, body] of [
+      ["POST", "/articles", { url: "https://maintenance.example/article" }],
+      ["POST", "/tags", { name: "must-not-be-created" }],
+      ["PATCH", "/articles/site-filter-article", { status: "read" }],
+      ["DELETE", "/articles/site-filter-article", {}],
+      ["POST", "/articles/site-filter-article/retry-metadata", {}],
+      ["POST", "/import", {}],
+      ["POST", "/import/preview", {}],
+      ["POST", "/daymark/habits", {}],
+      ["PUT", "/daymark/habits/habit-1/records/2026-09-19", {}],
+      ["POST", "/daymark/import", {}],
+      ["POST", "/daymark/import/preview", {}],
+    ]) {
+      const result = await requestJson(`/api/v1${path}`, {
+        method,
+        headers: mutationHeaders,
+        body: JSON.stringify(body),
+      });
+      assertApiError(result, 503, "SERVICE_UNAVAILABLE");
+      assert.equal(result.response.headers.get("retry-after"), "60");
+    }
+    assert.equal((await requestJson("/api/v1/activity")).response.status, 200);
+    assert.deepEqual(await productSnapshot(), beforeMaintenance);
+  }
+  await stopWorker();
+  await startWorker(workerConfigPath, "off");
+  assert.equal((await createTag("maintenance-resumed")).response.status, 201);
 } catch (error) {
   verificationError = error;
 }

@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import {
   assertExactAccessApplication,
+  assertExactDatabaseBinding,
   assertExactOwnerPolicy,
   assertWorkerSubdomainState,
 } from "./cloudflare-preflight-assertions.mjs";
@@ -10,6 +12,11 @@ const apiPrefix = "/client/v4";
 const applicationName = "tech-inbox-app";
 const appWorkerName = "tech-inbox-app";
 const metadataFetcherName = "tech-inbox-metadata-fetcher";
+const config = JSON.parse(
+  readFileSync(new URL("../apps/web/wrangler.jsonc", import.meta.url), "utf8"),
+);
+assert.equal(config.d1_databases.length, 1, "Expected one configured shared D1 database.");
+const expectedDatabase = config.d1_databases[0];
 
 const token = requiredEnvironmentVariable("CLOUDFLARE_API_TOKEN");
 const accountId = requiredEnvironmentVariable("CLOUDFLARE_ACCOUNT_ID");
@@ -103,7 +110,9 @@ const resourceState = {
     namedResources(accessApplications, "name", "Access applications"),
     ["tech-inbox-app"],
   ),
-  databases: existingState(namedResources(databases, "name", "D1 databases"), ["tech-inbox"]),
+  databases: existingState(namedResources(databases, "name", "D1 databases"), [
+    expectedDatabase.database_name,
+  ]),
   queues: existingState(namedResources(queues, "queue_name", "Queues"), [
     "tech-inbox-metadata",
     "tech-inbox-metadata-dlq",
@@ -136,22 +145,28 @@ assert.ok(
   "The Access application ID is missing.",
 );
 
-const [application, policies, appSubdomain, metadataFetcherSubdomain] = await Promise.all([
-  cloudflareGet(`${accountPath}/access/apps/${applicationId}`, "Access application verification"),
-  cloudflareGet(
-    `${accountPath}/access/apps/${applicationId}/policies?per_page=100`,
-    "Access policy verification",
-  ),
-  cloudflareGet(
-    `${accountPath}/workers/scripts/${appWorkerName}/subdomain`,
-    "App Worker subdomain verification",
-  ),
-  cloudflareGet(
-    `${accountPath}/workers/scripts/${metadataFetcherName}/subdomain`,
-    "Metadata fetcher subdomain verification",
-  ),
-]);
+const [application, policies, appSubdomain, metadataFetcherSubdomain, appSettings] =
+  await Promise.all([
+    cloudflareGet(`${accountPath}/access/apps/${applicationId}`, "Access application verification"),
+    cloudflareGet(
+      `${accountPath}/access/apps/${applicationId}/policies?per_page=100`,
+      "Access policy verification",
+    ),
+    cloudflareGet(
+      `${accountPath}/workers/scripts/${appWorkerName}/subdomain`,
+      "App Worker subdomain verification",
+    ),
+    cloudflareGet(
+      `${accountPath}/workers/scripts/${metadataFetcherName}/subdomain`,
+      "Metadata fetcher subdomain verification",
+    ),
+    cloudflareGet(
+      `${accountPath}/workers/scripts/${appWorkerName}/settings`,
+      "App Worker bindings verification",
+    ),
+  ]);
 
+assertExactDatabaseBinding(databases, appSettings.bindings, expectedDatabase);
 assertExactAccessApplication(application, appWorkerId);
 assertExactOwnerPolicy(policies, allowedEmail);
 assertWorkerSubdomainState(appSubdomain, { enabled: true, previews_enabled: false }, "App Worker");

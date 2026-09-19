@@ -14,7 +14,12 @@ import {
 } from "node:fs";
 import { isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
-import { assertMatchingSnapshots, snapshotDatabase } from "./d1-backup-snapshot.mjs";
+import {
+  assertBackupImportOrder,
+  backupImportOrder,
+  assertMatchingSnapshots,
+  snapshotDatabase,
+} from "./d1-backup-snapshot.mjs";
 
 const root = realpathSync(fileURLToPath(new URL("..", import.meta.url)));
 function inside(parent, target) {
@@ -26,6 +31,12 @@ function inside(parent, target) {
   return target;
 }
 const tmp = join(root, ".tmp");
+// Invoke the installed, lockfile-pinned CLI directly. pnpm may auto-install and
+// prepend progress text to --json stdout when another command refreshed metadata.
+const wranglerCli = inside(
+  root,
+  realpathSync(join(root, "apps/web/node_modules/wrangler/bin/wrangler.js")),
+);
 if (!existsSync(tmp)) mkdirSync(tmp, { mode: 0o700 });
 assert.ok(
   lstatSync(tmp).isDirectory() && !lstatSync(tmp).isSymbolicLink(),
@@ -91,11 +102,7 @@ function run(database, action, extra = []) {
   const result = spawnSync(
     process.execPath,
     [
-      join(root, ".tools/pnpm/bin/pnpm.cjs"),
-      "--dir",
-      "apps/web",
-      "exec",
-      "wrangler",
+      wranglerCli,
       "d1",
       ...action,
       "local-backup-rehearsal",
@@ -163,13 +170,14 @@ try {
     "Backup migration history differs from the repository.",
   );
   if (expected) assertMatchingSnapshots(expected, source);
-  // Schema first: a full dump may insert child rows before the parent table exists.
-  for (const [file, option] of [
-    ["schema.sql", "--no-data"],
-    ["data.sql", "--no-schema"],
+  // Schema first, then native per-table exports in checked dependency order.
+  await assertBackupImportOrder((sql) => query("source", sql));
+  for (const [file, options] of [
+    ["schema.sql", ["--no-data"]],
+    ...backupImportOrder.map((table) => [`data-${table}.sql`, ["--no-schema", "--table", table]]),
   ]) {
     const dump = join(work, file);
-    run("source", ["export"], ["--output", dump, option]);
+    run("source", ["export"], ["--output", dump, ...options]);
     chmodSync(dump, 0o600);
     run("target", ["execute"], ["--file", dump, "--yes"]);
   }

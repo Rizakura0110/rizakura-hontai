@@ -1,6 +1,22 @@
 import assert from "node:assert/strict";
 import { isDeepStrictEqual } from "node:util";
 
+export function assertExactDatabaseBinding(databases, bindings, expected) {
+  assert.ok(Array.isArray(databases) && Array.isArray(bindings), "D1 state is missing.");
+  const named = databases.filter(({ name }) => name === expected.database_name);
+  assert.ok(
+    named.length === 1 && named[0].uuid === expected.database_id,
+    "D1 name/ID does not match the configured database.",
+  );
+  const bound = bindings.filter(({ type }) => type === "d1");
+  assert.ok(
+    bound.length === 1 &&
+      bound[0].name === expected.binding &&
+      bound[0].id === expected.database_id,
+    "Worker D1 binding does not match the configured database.",
+  );
+}
+
 export function assertExactAccessApplication(application, workerId) {
   assert.ok(
     typeof application?.id === "string" && application.id.length > 0,

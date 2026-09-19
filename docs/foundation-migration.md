@@ -1,6 +1,6 @@
 # Cloudflare名称移行とTech Inbox分離
 
-最終更新: 2026-09-19。Phase 29の準備・復元予行・全自動品質gateは完了。Phase 30〜34は未実施。
+最終更新: 2026-09-19。Phase 29〜30完了。新DBへの全値copy・binding切替、所有者の表示/保存確認、全自動品質gateが成功し、保存/Queue配送を再開済み。旧DBは接続せず保持し、削除は別途承認待ち。Phase 31〜34は未着手。
 
 ## 実行順と境界
 
@@ -21,7 +21,7 @@
 
 | 現在 | 変更後 | 方法 |
 |---|---|---|
-| 共用D1 `tech-inbox` | `rizakura-hontai` | 新IDのDBへcopy。一時2 DB、運用は最終1 DB |
+| 共用D1 `tech-inbox`（旧・保持のみ） | `rizakura-hontai`（接続切替済み） | 新IDへcopy・全値照合済み。旧DB削除は別途承認 |
 | 公開Worker `tech-inbox-app` | `rizakura-hontai` | immutable IDを保持する改名を優先 |
 | Access表示名 `tech-inbox-app` | `rizakura-hontai` | app ID・audience・本人限定policy・Worker destinationを維持 |
 | metadata-fetcher・Queue・DLQ | 維持 | 記事専用の`tech-inbox-…`名を残す |
@@ -82,12 +82,36 @@ Phase 29ではschema 6,334 bytes・data 529,987 bytesを取得し、書出し前
 ## Phase 30: DB切替
 
 1. approval、source/target ID、Git revision、Access、当日usageを再確認。Freeは10 DB/account、500 MB/DB、合計5 GB、日次500万read/10万write。現行の400 MB停止閾値も守る。copyのtable/index書込・照合read・通常利用分に余裕がなければ延期する。[D1 limits](https://developers.cloudflare.com/d1/platform/limits/)、[D1 pricing](https://developers.cloudflare.com/d1/platform/pricing/)
-2. **更新停止手段を先に実装・検証する。** 現在は全製品共通のmaintenance write gateがない。Phase 30で変更APIを共通middlewareで拒否する一時運用手段を用意し、記事/習慣/復元/metadata再試行を含めて検証する。本人にタブを閉じてもらうだけを停止保証にしない。
+2. **更新停止手段を先に実装・検証する。** `MAINTENANCE_MODE`を共通middlewareとmetadata consumerで扱う。記事/習慣/復元/metadata再試行を含めて検証する。本人にタブを閉じてもらうだけを停止保証にしない。
 3. 旧DB接続のまま更新停止し、処理中APIの終了を確認。通常Queueをdrainし、`queues pause-delivery tech-inbox-metadata`で配送停止後、実行中consumerの終了も確認する。DLQを再処理・purgeしない。pauseはretentionを延長しないので短時間で行い、長引く場合は中断・復旧する。[Queues pause](https://developers.cloudflare.com/queues/configuration/pause-purge/)
 4. 停止後のschema/data backupとsnapshotを取得し、local復元・照合を通す。新しい空の`rizakura-hontai` DBを作成しIDを記録。既存同名resourceがあれば停止する。
-5. targetへschema→dataの順でimport。migrationを先に適用してdumpを重ねない。全値・index・履歴・外部キー・quick_checkをsourceと照合。部分import失敗時に無計画な再実行はしない。
+5. targetへschema→親から順に各tableのdataをimport。migrationを先に適用してdumpを重ねない。下記のremote順序制約を守り、全値・index・履歴・外部キー・quick_checkをsourceと照合。部分import失敗時に無計画な再実行はしない。
 6. 停止を維持してappのDB bindingを新IDへ切替。database_name、local migration command、検査script、型、運用文書を同期する。Worker名・originは維持し、旧設定のbuild成果物を誤deployしない。
 7. Accessを維持した読取smokeで入口・両製品・草・タグ・backupを確認。その後新DB側で更新・Queue配送を再開し、所有者の保存操作を確認。旧DBへ書くconsumer/versionが残らないことを確認する。
+
+### 更新停止の設定
+
+| `MAINTENANCE_MODE` | API | metadata consumer |
+|---|---|---|
+| `off` | 通常動作 | 通常動作 |
+| `read-only` | GET/HEAD/OPTIONS以外を503で拒否 | 既存処理をdrainできる |
+| `frozen` | 同上 | DB/fetch/再送へ進まずnative retry（60秒） |
+
+明示した不正値・空文字は`frozen`。未設定だけは過去のlocal fixture互換で`off`になるため、本番では必ず値を明示してdeployment後のbindingも照合する。HTTPの認証・Origin・Rate Limit検証は停止中も維持し、許可された変更要求へ`SERVICE_UNAVAILABLE`・`Retry-After: 60`・`no-store`を返す。previewもPOSTなので停止するが、両製品のGET exportは使える。時間経過で自動解除しない。
+
+`read-only`を100%反映→旧APIの終了・通常Queue drain確認→配送pause→`frozen`を100%反映→旧consumer終了・データ不変確認→backup/copyの順とする。新bindingへ切替中も`frozen`を維持し、再開時だけ新DBの`off`版を100%反映して配送resumeする。native retryは回数制限があり、Queue配送pauseの代替ではない。pause中も24時間retentionは進む。DLQをack/purge/replayしない。
+
+設定はdeployment versionに属する。migration中に通常の`off`設定や旧DB bindingの成果物を誤deployしない。実行前にbuild後のconfig、`--var` override、対象DB IDを照合し、実行後にWorker settings/deployment/Queueを再確認する。旧versionの実行中requestを強制停止する機能ではないため、停止前からの処理終了とsnapshotの安定を別途確認する。
+
+2026-09-19に所有者の画面で`Workers Free`表示を確認し、更新停止・新DB作成/copy・既存appのbinding切替・Queue停止/再開を承認された。料金プラン・URL・認証は変更せず、旧DB削除は承認範囲に含めない。
+
+### Remote importの順序制約（Phase 30で判明）
+
+schema/dataを分けた全体exportはlocal予行を通過したが、remoteのdata取込では`FOREIGN KEY constraint failed`になった。dumpは`article_tags`等の子の行を親より先に挿入し、`defer_foreign_keys`があっても今回のremote importでは成功しなかった。内部のtransaction分割境界は直接観測していないため断定しない。失敗後は新DBの全8 tablesが0行、schemaのみ存在し、旧DBがbackupと全値一致することを読み取り確認した。
+
+取り直しは公式`d1 export --table <table> --no-schema`を使い、SQL本文を正規表現で並べ替えない。元backupも保持する。順序は`articles → tags → article_urls → article_tags → daymark_habits → daymark_habit_versions → daymark_records → d1_migrations`。各tableの`PRAGMA foreign_key_list`で参照先が先に存在することを検査し、schema変更・循環参照があれば停止する。型・値・IDを変更せず、外部キーチェックも無効化しない。[D1 import/export](https://developers.cloudflare.com/d1/best-practices/import-export-data/)
+
+`db:verify:backup`の再export/第2 DB復元も、このtable別の順序へ変更した。生成したnative exportを同順に連結した検証用data fileを、従来の`--data`と`--expected`で全値比較できる。remoteではtableごとに適用する。失敗時は全体を再適用せず、対象ID・適用済みtable・各値を再照合して続行可否を判断する。
 
 ### 切り戻し
 

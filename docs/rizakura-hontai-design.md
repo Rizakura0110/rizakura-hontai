@@ -2,7 +2,7 @@
 
 最終更新: 2026-09-19
 
-移行準備: Phase 29完了。本番inventory・SQL backup・local復元の全値照合・自動品質gateを通過し、Phase 30〜34の[実行手順](foundation-migration.md)を用意した。本番の名称・ID・URL・データ・機能は変更していない。
+名称移行: Phase 29〜30完了。共用D1を新しい`rizakura-hontai`へ全値copy・接続切替し、保存/Queue配送を再開済み。所有者の表示/保存確認と全自動品質gateは成功。旧DBは接続せず保持する。Worker・URL・Access・PWA・料金プランは変更していない。Phase 31〜34は未着手。[実行手順](foundation-migration.md)
 
 状態: Phase 28完了（iPhoneは所有者判断でスキップ）。Phase 26〜27のTech Inbox既読活動集計APIと年間活動画面を、所有者承認後にproductionへ反映した。現在の既読状態と`read_at`を日本時間で集計し、DB migrationは追加していない。表示・更新、PCの主要操作、AccessとCPU確認、全自動品質gateは成功。iPhoneは後日確認へ延期し、成功扱いにはしない。
 
@@ -19,7 +19,7 @@
 | 記事管理 | `Tech Inbox`。記事、タグ、URL、metadata、記事backupを担当する |
 | 習慣管理 | `Daymark`。画面、API処理、domain、schema定義、testを別repository `daymark`で管理する |
 | PWA | Tech InboxとDaymarkを別々に追加・起動する。rizakura-hontai専用PWAは作らない |
-| production | 同一origin、公開app Worker 1つ、既存D1 1つ。記事用metadata-fetcherは引き続き非公開Workerとして分離する |
+| production | 同一origin、公開app Worker 1つ、共用D1 `rizakura-hontai` 1つへ接続。旧D1は移行後の保管用に残す。記事用metadata-fetcherは引き続き非公開Workerとして分離する |
 
 ```text
 Browser → Cloudflare Access → rizakura-hontai（入口）
@@ -160,7 +160,7 @@ manifest linkの`crossorigin="use-credentials"`を維持する。Service Worker�
 
 Worker名はworkers.devのhostnameに関係するため、変更にはAccess対象、APP_ORIGIN、JWT audience、PWA identity、旧URLの扱いの同時確認が必要になる。[Cloudflare workers.dev](https://developers.cloudflare.com/workers/configuration/routing/workers-dev/)
 
-D1の物理名はin-place変更できないため、Phase 30で承認後に新しい`rizakura-hontai` DBへ両製品を移す計画とする。単にWranglerの名前を変更したり、旧DBを先に削除したりしない。一時的に2 DBを使い、運用は最終1 DBへ戻す。Phase 29は読み取り確認・backup・local復元予行だけで、実際の名称・ID・URLは維持する。[D1 migrations](https://developers.cloudflare.com/d1/reference/migrations/)
+D1の物理名はin-place変更できないため、Phase 30で承認後に新しい`rizakura-hontai` DBへ両製品を全値copyし、bindingを切り替えた。schema/index・ID・関連・履歴を維持し、Worker/URLは変更しない。新DBにだけ接続し、旧DBは別途削除承認まで保持する。新DBで更新再開後に旧binding/versionへ直接rollbackしない。[D1 migrations](https://developers.cloudflare.com/d1/reference/migrations/)
 
 Phase 31でWorker/Access名・origin・2 PWAを切り替え、その後Phase 32〜34でTech Inboxを別repositoryへ切り出す。基盤→Tech Inbox/Daymarkの一方向の依存、固定commitのsubmodule連携、1 app Worker/共用DBを維持する。移動対象・認証・更新停止・切り戻しの詳細は[実行手順](foundation-migration.md)を正とし、現在の製品分離を完了済みとは扱わない。
 

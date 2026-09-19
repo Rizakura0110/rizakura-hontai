@@ -90,7 +90,7 @@ const runWrangler = (arguments_, { expectFailure = false } = {}) => {
   return output;
 };
 
-const d1Arguments = ["tech-inbox", "--local", "--persist-to", persistenceDirectory];
+const d1Arguments = ["DB", "--local", "--persist-to", persistenceDirectory];
 
 const execute = (sql, options) =>
   runWrangler(["d1", "execute", ...d1Arguments, "--yes", "--command", sql], options);

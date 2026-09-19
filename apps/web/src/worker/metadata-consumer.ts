@@ -15,8 +15,13 @@ import {
 } from "./metadata-queue";
 import { createD1ArticleRepository } from "./repositories/d1-article-repository";
 import type { ArticleRepository, CanonicalAliasInput } from "./repositories/article-repository";
+import {
+  maintenanceMode,
+  MAINTENANCE_RETRY_SECONDS,
+  type MaintenanceBindings,
+} from "./platform/maintenance";
 
-type MetadataConsumerBindings = {
+type MetadataConsumerBindings = MaintenanceBindings & {
   readonly DB: D1Database;
   readonly METADATA_QUEUE: Queue<MetadataQueueMessage>;
   readonly METADATA_FETCHER: Fetcher;
@@ -24,7 +29,7 @@ type MetadataConsumerBindings = {
 
 export type MetadataConsumerLogEvent = {
   readonly route: "metadata.consume";
-  readonly result: "invalid" | "stale" | "ready" | "failed" | "rescheduled" | "retry";
+  readonly result: "invalid" | "stale" | "ready" | "failed" | "rescheduled" | "retry" | "paused";
   readonly attempt?: number;
   readonly errorCode?: MetadataErrorCode;
   readonly droppedTagCount?: number;
@@ -130,6 +135,15 @@ export async function processMetadataQueueMessage(
   bindings: MetadataConsumerBindings,
   dependencies: MetadataConsumerDependencies = defaultDependencies,
 ): Promise<ProcessResult> {
+  // A safety net, not a replacement for Cloudflare's pause-delivery: native
+  // retries are bounded and message retention keeps running while paused.
+  if (maintenanceMode(bindings) === "frozen") {
+    return {
+      action: "retry",
+      delaySeconds: MAINTENANCE_RETRY_SECONDS,
+      log: { route: "metadata.consume", result: "paused" },
+    };
+  }
   const parsedMessage = metadataQueueMessageSchema.safeParse(rawMessage);
   if (!parsedMessage.success) {
     return { action: "ack", log: { route: "metadata.consume", result: "invalid" } };

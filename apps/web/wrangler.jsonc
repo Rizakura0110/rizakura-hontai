@@ -7,6 +7,7 @@
   "preview_urls": false,
   "vars": {
     "ENVIRONMENT": "production",
+    "MAINTENANCE_MODE": "off",
     "APP_ORIGIN": "https://tech-inbox-app.sx7k2p9q.workers.dev"
   },
   "secrets": {
@@ -32,8 +33,8 @@
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "tech-inbox",
-      "database_id": "487a5705-5d37-4d80-8ff9-9a3f1aae97b3",
+      "database_name": "rizakura-hontai",
+      "database_id": "0ca17f98-96bc-4970-94b3-f9e55356e711",
       "migrations_dir": "../../packages/db/migrations",
       "remote": false
     }
