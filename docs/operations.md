@@ -1,6 +1,6 @@
 # Operations
 
-最終更新: 2026-09-14
+最終更新: 2026-09-19
 
 ## Phase 25の本番反映状況
 
@@ -26,6 +26,8 @@ GitHubは旧`Rizakura0110/webclip`を`Rizakura0110/rizakura-hontai`へ改名済�
 活動は永続eventではなく、現在既読の記事と`read_at`を日本時間で数えます。未読へ戻す・削除すると元の日から減り、再び既読にすると新しい日へ移ります。表示の再取得は「更新」で行い、pollingやprivate APIのoffline cacheは追加していません。確認には元が未読の記事を選び、最後に未読へ戻してください。
 
 ## 運用原則
+
+Phase 29〜34の名称移行・Tech Inbox分離は[専用の実行手順](foundation-migration.md)に従う。Phase 29は本番の読み取り確認とbackupのlocal復元予行のみ。以下の既存resource名を先行して置換しない。DB切替後は古いapp versionのrollbackで旧DB bindingへ戻らないよう、候補を更新する。
 
 - productionの変更は所有者の明示許可、対象resource、target branch、credential、費用gateを確認してから行う
 - API token、Access設定値、個人email、JWT、cookieをfile、command引数、logへ残さない

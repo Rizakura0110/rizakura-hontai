@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { isDeepStrictEqual } from "node:util";
 
 export function assertExactAccessApplication(application, workerId) {
   assert.ok(
@@ -41,9 +42,8 @@ export function assertExactOwnerPolicy(policies, allowedEmail) {
 
   const [policy] = policies;
   assert.equal(policy?.decision, "allow", "The Access policy must use the allow decision.");
-  assert.deepEqual(
-    policy?.include,
-    [{ email: { email: allowedEmail } }],
+  assert.ok(
+    isDeepStrictEqual(policy?.include, [{ email: { email: allowedEmail } }]),
     "The Access policy must include only the configured owner email.",
   );
   assert.ok(

@@ -1,0 +1,118 @@
+# Cloudflare名称移行とTech Inbox分離
+
+最終更新: 2026-09-19。Phase 29の準備・復元予行・全自動品質gateは完了。Phase 30〜34は未実施。
+
+## 実行順と境界
+
+| Phase | 作業 | 完了条件 |
+|---|---|---|
+| 29 | 読み取りinventory、非公開backup、local復元予行、切り戻し設計 | remote変更なしで復元・照合手順を検証 |
+| 30 | 新D1 `rizakura-hontai`へ両製品をコピーし、DB bindingを切替 | 現在のURLで両製品が動作し、全データ・履歴を維持 |
+| 31 | Worker/Access表示名・origin・PWA切替 | 本人限定認証、新URL、2つのPWAを確認 |
+| 32 | 現repository内でTech Inboxと基盤の依存を整理 | 機能/API/DBを変えず、製品単体testが可能 |
+| 33 | Tech Inboxを別repositoryへ移し、固定submoduleで統合 | 公開範囲を確認し、固定commitの組み合わせが全gate成功 |
+| 34 | 分離後の構成を本番反映 | 両製品・草・タグ・metadata・backup・PWAの回帰確認 |
+
+各phaseで品質gate、差分・ignore・secret review、commit/pushを行う。DB作成/移行、Worker改名/deploy、Queue pause/resume、旧DB削除は、対象と影響を提示して承認を得る。Phase 29開始やGit pushは後続の本番変更承認ではない。
+
+基盤は`Rizakura0110/rizakura-hontai`の`main`。既存`Rizakura0110/rizakura-me`とローカルdirectoryは変更しない。新repository候補は`Rizakura0110/tech-inbox`、配置は`modules/tech-inbox`で、名前の空き・公開範囲はPhase 33作成前に確認する。
+
+## 名前と識別子
+
+| 現在 | 変更後 | 方法 |
+|---|---|---|
+| 共用D1 `tech-inbox` | `rizakura-hontai` | 新IDのDBへcopy。一時2 DB、運用は最終1 DB |
+| 公開Worker `tech-inbox-app` | `rizakura-hontai` | immutable IDを保持する改名を優先 |
+| Access表示名 `tech-inbox-app` | `rizakura-hontai` | app ID・audience・本人限定policy・Worker destinationを維持 |
+| metadata-fetcher・Queue・DLQ | 維持 | 記事専用の`tech-inbox-…`名を残す |
+
+D1のbinding名`DB`と物理DB名は別物。物理名はin-place renameできない。[D1 migrations](https://developers.cloudflare.com/d1/reference/migrations/)。WorkerのUUIDベースの改名APIは公式でBetaとされているためPhase 31に対応状況を再確認し、失敗時に勝手に別Workerを作らない。[Workers API](https://developers.cloudflare.com/changelog/post/2025-09-03-new-workers-api/)
+
+Worker改名ではworkers.dev hostnameも変わる。新originは既存account subdomainを維持し、先頭を`rizakura-hontai`にする。実URL・Access機密値は公開文書へ複写しない。[workers.dev](https://developers.cloudflare.com/workers/configuration/routing/workers-dev/)
+
+## Phase 29の読み取り結果
+
+2026-09-19時点のsnapshot。移行直前に再確認する。
+
+- account全体: D1 1個、合計741,376 bytes、Worker 2個、Queue 2個。新DB/Workerの`rizakura-hontai`名は未使用。
+- appはPhase 28のversion `42d201d4-a175-4800-9035-bcdc35132d62`を100%提供。DB接続と既存14 bindingの名前・型は維持。
+- Accessは本人email 1件だけ・168h session・launcher非表示・appのみ公開・preview無効・fetcher非公開を確認。端末の検査用emailには既知の入力ミスが残っており、前回所有者が確認した値へ検査process内だけを補正した。remote policy/secretは変更していない。
+- 通常Queue backlog 0。過去DLQ 7 messages / 851 bytesは維持。直近24hはapp 4 requests・errors 0、fetcher 0 requests、新規DLQ/fail 0。
+- 最初の当日UTC analyticsはD1 read/writeとWorker request/errorが0。遅延を含むsnapshotで、後続照会や将来利用量を保証しない。
+- Billing APIは権限不足。契約・請求額0円を断定せず、Phase 30直前に所有者のdashboard表示で確認する。権限追加やPaidへの切替はしない。
+
+| テーブル | 行数 |
+|---|---:|
+| articles | 357 |
+| article_urls | 366 |
+| tags | 10 |
+| article_tags | 286 |
+| daymark_habits | 8 |
+| daymark_habit_versions | 8 |
+| daymark_records | 85 |
+| d1_migrations | 3 |
+
+## Backupと復元予行
+
+製品別JSONのmerge復元はID再割当て・競合skip・pendingのfailed化等を行い、DB全体とmigration履歴の完全copyではない。今回の移行にはSQLを使う。
+
+1. process environmentのcredentialでsource名・IDとWorker bindingを照合する。`.tmp/phase29-backup-*`のfresh directory（0700）へSQL・fingerprint・inventoryを0600で保存する。全てGit対象外。
+2. `scripts/d1-backup-snapshot.mjs`の`snapshotDatabase(query)`へD1 APIのSELECT/読取PRAGMA実行関数を渡し、schema/indexと各tableの全列・全行をSHA-256化する。件数だけで一致と判定せず、値は表示しない。
+3. `wrangler d1 export tech-inbox --remote --no-data`と`--no-schema`でschema/dataを別fileへ取得する。Wranglerはstdoutにsigned download URLを含めるため、運用では出力を捕捉し成功/失敗だけ報告する。sourceを変更しないがexport中はqueryが待たされる。取得前後のsource snapshotが一致しなければ取り直す。[D1 export/import](https://developers.cloudflare.com/d1/best-practices/import-export-data/)
+4. 空のlocal D1へ**schema.sql → data.sql**の順で取り込む。full dumpの直接importは子tableのINSERT時に親table未作成で`no such table`となった。SQL文字列を正規表現で並べ替えたり、foreign keyを無効にして成功扱いにしたりしない。
+5. source snapshotとの全値・schema/index・migration履歴一致、`PRAGMA foreign_key_check`、D1対応の`PRAGMA quick_check`を確認する。[対応PRAGMA](https://developers.cloudflare.com/d1/sql-api/sql-statements/)
+6. 復元local DBを再exportし、第2の空local DBへ復元して指紋を再照合する。migration再適用後も不変であることを確認する。
+
+合成fixtureの自動検証:
+
+```sh
+pnpm db:verify:backup
+```
+
+保存済みSQLを検証する例（directory部分を実際の`.tmp`内directoryへ置き換える）:
+
+```sh
+pnpm db:verify:backup --schema .tmp/<backup-directory>/schema.sql --data .tmp/<backup-directory>/data.sql --expected .tmp/<backup-directory>/source-snapshot.json
+```
+
+検証commandはcredentialを継承せず、`--local`・仮ID・専用config・fresh一時状態を固定する。通常local DBとremote DBへ書かず、失敗時もprivate SQLを表示しない。一時復元DBだけを終了時に削除し、指定backupは残す。通常`pnpm check`は合成fixtureだけを使う。
+
+Phase 29ではschema 6,334 bytes・data 529,987 bytesを取得し、書出し前後のsource snapshot一致、local復元の全値一致、第2 DBへの往復、migration再適用no-opがすべて成功した。backupは予行用であり、Phase 30では更新停止後に新しく取得する。同じ端末上のbackupは端末故障まで防ぐものではない。
+
+## Phase 30: DB切替
+
+1. approval、source/target ID、Git revision、Access、当日usageを再確認。Freeは10 DB/account、500 MB/DB、合計5 GB、日次500万read/10万write。現行の400 MB停止閾値も守る。copyのtable/index書込・照合read・通常利用分に余裕がなければ延期する。[D1 limits](https://developers.cloudflare.com/d1/platform/limits/)、[D1 pricing](https://developers.cloudflare.com/d1/platform/pricing/)
+2. **更新停止手段を先に実装・検証する。** 現在は全製品共通のmaintenance write gateがない。Phase 30で変更APIを共通middlewareで拒否する一時運用手段を用意し、記事/習慣/復元/metadata再試行を含めて検証する。本人にタブを閉じてもらうだけを停止保証にしない。
+3. 旧DB接続のまま更新停止し、処理中APIの終了を確認。通常Queueをdrainし、`queues pause-delivery tech-inbox-metadata`で配送停止後、実行中consumerの終了も確認する。DLQを再処理・purgeしない。pauseはretentionを延長しないので短時間で行い、長引く場合は中断・復旧する。[Queues pause](https://developers.cloudflare.com/queues/configuration/pause-purge/)
+4. 停止後のschema/data backupとsnapshotを取得し、local復元・照合を通す。新しい空の`rizakura-hontai` DBを作成しIDを記録。既存同名resourceがあれば停止する。
+5. targetへschema→dataの順でimport。migrationを先に適用してdumpを重ねない。全値・index・履歴・外部キー・quick_checkをsourceと照合。部分import失敗時に無計画な再実行はしない。
+6. 停止を維持してappのDB bindingを新IDへ切替。database_name、local migration command、検査script、型、運用文書を同期する。Worker名・originは維持し、旧設定のbuild成果物を誤deployしない。
+7. Accessを維持した読取smokeで入口・両製品・草・タグ・backupを確認。その後新DB側で更新・Queue配送を再開し、所有者の保存操作を確認。旧DBへ書くconsumer/versionが残らないことを確認する。
+
+### 切り戻し
+
+| 状態 | 対応 |
+|---|---|
+| 新DB接続前 | sourceを維持。旧DB接続で停止とQueue pauseを解除 |
+| 新DB接続後・更新再開前 | 停止中に旧bindingへ戻し、読取確認後に再開 |
+| 新DBで更新/Queue処理を再開した後 | 単純な旧binding/versionへのrollbackは禁止。再停止し新DBの最新backupを確保、修正継続か逆移行を設計 |
+
+旧DBは接続のない状態で短期保持。動作確認・最新backup・削除対象ID照合後に所有者承認を得て旧DBだけを削除する。新旧へ同時に書かず、sourceを先に削除しない。app version rollbackでもbindingが旧DBへ戻り得るので、Phase 30後にrollback候補を更新する。
+
+## Phase 31: Worker・Access・PWA切替
+
+- 改名前にWorker UUID・version・Access app ID/audience・policy・subdomain・binding・Queue consumerをprivateな運用記録へ控える。secret実値を取得・記録しない。
+- Worker UUIDをdestinationにするAccess構成を維持。新hostnameのroot/両製品/API/manifestが未認証時にAccessへredirectされることを確認し、保護を外して検証しない。
+- Wrangler name/APP_ORIGIN、preflight/health/Access設定script、budget test、deploy手順を同期。旧nameの別Workerを誤作成せず、Origin/CSRF/JWT audience検証を弱めない。
+- Queue/DLQ/fetcherは改名せず、consumerが既存appの1つだけであることを確認。
+- 新originで本人login、Tech Inbox/DaymarkのPWA追加し直し、直接起動・保存・再loginを確認。製品別id/scope/pathは維持するがorigin変更で別identityになる。[Manifest id](https://www.w3.org/TR/appmanifest/#id-member)
+- 旧hostnameの自動redirectは前提にしない。初期案は新URLへのブックマーク/PWA切替。旧URL用Worker追加が必要なら別途確認し、旧API書込を新originへ自動転送しない。
+
+## Phase 32〜34: 切り出し境界
+
+- Tech Inboxへ: 画面、記事/タグ/活動/backup/metadataの契約・業務処理・schema定義・単体test。
+- 基盤へ残す: 認証/Origin/rate limit、入口、HTTP/UI接続、全schema集約・過去migration、D1 adapter、Cloudflare設定・fetcherの薄いentrypoint、結合test・deploy。初期adapter境界は既存Daymark実装に揃える。
+- 記事serviceの基盤error参照と画面の直接HTTP/UI参照を注入方式へ整理。基盤DB→製品schema→基盤DBの循環を避け、記事contractを共通contractから分ける。
+- 同じrepo内で分離を確認してから別repoへ移す。workspace/lockfile・CSS source・型/test/CI・browser/server境界を更新し、DB migration差分はゼロとする。
+- Tech Inboxのtest/commit/pushを先に完了し、基盤が固定SHAを取り込み全gateを通す。npm公開・資格情報共有・moving branch追従・元履歴の書き換えはしない。
+- Phase 34で結合版をdeployし、既存両製品を確認。分離のための追加production Worker/DBは不要。

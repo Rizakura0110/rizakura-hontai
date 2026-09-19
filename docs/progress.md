@@ -1752,3 +1752,37 @@
 - iPhone Safari/PWAの実操作確認は所有者判断で後日へ延期した。今回の完了gateには含めず、成功扱いにもしない。
 - 本番PCの確認範囲は依頼した主要4項目。直接URL reload・矢印キーの動作は自動E2Eで検証済みだが、本番の個別操作報告は未提供のまま記録する。
 - 操作用token期限の運用とCloudflare resource名称移行は別作業として残す。名称だけのための再deploy・DB移行・resource作成は今回行わない。
+
+## Phase 29: Cloudflare名称移行の準備
+
+状態: 完了（2026-09-19）。所有者の開始指示に基づき、読み取りinventory・非公開SQL backup・local復元予行・Phase 30〜34の実行手順を用意し、全自動品質gateを通過した。remote DB作成/変更、Worker改名、deploy、Access・課金変更は行っていない。
+
+### 実施内容
+
+- [名称移行と分離の実行手順](foundation-migration.md)を追加し、roadmap・設計・運用文書を同期した。D1のin-place rename不可、Worker改名時のorigin/Access/PWA切替、固定commitによるTech Inbox分離、更新停止前後のrollbackの違いを明文化した。
+- 本番read-only preflightは、端末の検査用emailの既知の入力ミスを前回の所有者確認値へprocess内だけで補正して成功した。本番のpolicy/secretは変更していない。既存のdeep equality errorがemailを表示していたため、同じ厳密比較をboolean判定に変えてエラーへ値を含めないよう修正し、回帰testを追加した。
+- account全体のDB 1個・741,376 bytes、Worker 2個、Queue 2個、新DB/Worker名の空きを確認。現在のapp versionはPhase 28の`42d201d4-a175-4800-9035-bcdc35132d62`のまま。Billing APIは権限不足なので契約と請求額は未確定のまま区別し、Phase 30直前のdashboard確認gateへ残す。
+- healthは通常Queue backlog 0、既存DLQ 7件/851 bytes、直近24h app 4 requests・errors 0、fetcher 0 requests、新規DLQ/fail 0。DLQ bodyを読まず変更しなかった。backup後も未認証の入口/記事/活動/API/Daymark/両manifestの8 routesがAccessへ302になることを確認した。
+- repo内の非公開`.tmp/phase29-backup-*`へSQL・snapshot・inventoryを保存した。SQLや個人情報を公開物へ含めない。最初のfull export CLIがsigned download URLを標準出力へ表示することを確認したため、後続のexportは出力を捕捉し、成功/失敗だけを報告した。以後の手順にもこの制約を記録した。
+- 元Downloadsの実装ガイドは、権限付き読取でもmacOSのアクセス制限で開けなかった。リポジトリ内のAGENTS・設計・roadmap・運用・依存基準に従い、既存の全品質gateを維持した。
+
+### 復元予行で確認した点
+
+- full SQL exportを直接local D1へ戻すと、子table INSERT時に親tableが未作成で`no such table`となった。構造/データを別exportし、schema→dataの順に空DBへ取り込む手順へ修正した。remote targetへのimportは未実施。
+- D1で非対応の`PRAGMA integrity_check`は使用せず、公式対応の`quick_check`と`foreign_key_check`を用いた。また固定Wranglerのlocal exportは`--persist-to`を受け付けないため、source/target別の専用config directoryを使い、各configに属する隔離されたlocal状態を利用した。
+- sourceの全列・全行とschema/indexのSHA-256を取得。書出し前後のsource不変と、復元後の全値一致を確認した。記事357、URL alias 366、タグ10、タグ付け286、習慣8、設定履歴8、日次記録85、migration履歴3件を維持した。
+- schema 6,334 bytes・data 529,987 bytes。復元DBを再exportして第2の空local DBへ復元しても指紋が一致し、migration再適用もno-opだった。既読日時・タグ色・ID・習慣の値が件数だけでなく全値一致している。
+- `pnpm db:verify:backup`を追加し、合成fixtureで既読/未読・pending・日本語と引用符・タグ関連・数値上限・明示未達・両製品とmigration履歴を検証する。通常`pnpm check`とCIに組み込み、本番credentialとprivate backupは不要にした。
+- 実backupの検証は`.tmp`内の明示指定fileだけを読み、credentialを継承しないlocal-only processで行う。生成した一時復元DBは削除し、保存元backupは残す。
+
+### 品質gate
+
+- `pnpm check`が成功。Daymark単体9 files・69 tests、基盤52 files・487 tests、desktop/mobile E2Eは37 pass・desktop専用sidebarの意図的mobile skip 1件。format、lint、生成型、全TypeScript、coverage、fresh local D1、追加backup予行、実HTTP、build、artifact budget、auditを通過した。
+- 基盤coverageはstatements 88.57%、branches 84.15%、functions 88.92%、lines 90.02%、Daymark domain/契約/backupは全指標100%。auditはhigh/critical 0、従来の開発専用moderate 1件だけで、Daymark単体は既知脆弱性0件。
+- artifact budgetはapp Worker raw/gzip 509.3/108.7 KiB、fetcher 587.2/88.9 KiB、client JS 421.7/121.3 KiB、CSS 35.3/7.3 KiB。runtime・DB migration・依存/lockfile・Daymark gitlinkに差分はない。
+- 全phase差分review、backup/cache/distのignore確認、tracked/追加対象の実credential・個人email・signed URL候補scanを実施し、検出0件。phase対象のみcommit/pushする。
+
+### 次のphaseと未実施事項
+
+- Phase 30ではまず全製品の更新を止めるmaintenance write gateを実装・検証する。現状は未実装であり、Phase 29完了を停止機能実装済みとは扱わない。その後、対象と費用を提示し承認後にfresh backup・新DB作成/copy・binding切替を行う。
+- Phase 31のURL/認証/PWA変更、Phase 32〜34のコード整理/別repository化/deployは未実施。Phase 29の開始承認を後続の本番操作へ流用しない。

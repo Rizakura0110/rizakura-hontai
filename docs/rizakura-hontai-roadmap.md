@@ -1,6 +1,6 @@
 # rizakura-hontai / Daymark フェーズ計画
 
-最終更新: 2026-09-14
+最終更新: 2026-09-19
 
 Phase 17までのTech Inboxは完了済み。以下は所有者と合意した次期計画であり、未実装の機能を本番提供済みとは扱わない。詳細は[設計書](rizakura-hontai-design.md)、実行結果は[Progress](progress.md)へ記録する。
 
@@ -21,6 +21,12 @@ Phase 17までのTech Inboxは完了済み。以下は所有者と合意した�
 | 26 | 完了（Phase 28で反映済み） | Tech Inbox既読活動の集計API | 現在の既読状態を日本時間の日別に集計し、365日・全期間・今月・連続日数を保護APIで返す。DB migrationは行わない |
 | 27 | 完了（Phase 28で反映済み） | Tech Inbox活動画面 | `/tech-inbox/activity`に年間gridと要約を追加し、desktop/mobile・キーボード・読み上げで確認できる |
 | 28 | 完了（PC確認済み・iPhoneは所有者判断でスキップ） | 統合確認とproduction反映 | 既存機能の回帰確認後、承認を得てdeployし、Access・CPUとPCの既読・未読操作を確認。iPhoneは成功扱いにせず後日確認へ延期する |
+| 29 | 完了 | Cloudflare名称移行の準備 | 読み取りinventory、非公開backupのlocal復元・全値照合、全自動gate、費用/停止/切り戻し手順を確認。remote変更なし |
+| 30 | 未着手 | 共用D1をrizakura-hontaiへ移行 | 更新停止とQueue制御、fresh backup、schema/data copy、全値照合後にDB bindingだけ切替 |
+| 31 | 未着手 | Worker・Access表示名・URL・PWA切替 | 本人限定認証を維持し、新originと2 PWAを確認 |
+| 32 | 未着手 | Tech Inboxと基盤の依存整理 | 同じrepository内で機能・API・DBを変えず製品単体testを可能にする |
+| 33 | 未着手 | Tech Inboxの別repository化 | 公開範囲確認後、固定commitのsubmoduleとworkspaceで統合 |
+| 34 | 未着手 | 分離構成の本番反映 | 両製品・草・タグ・metadata・backup・PWAの回帰確認 |
 
 ## 共通ルール
 
@@ -30,7 +36,11 @@ Phase 17までのTech Inboxは完了済み。以下は所有者と合意した�
 - Daymark独立gateと基盤側の統合gateを分け、package単体成功だけで組み合わせを承認しない。
 - 完了したphaseの差分・ignore・秘密情報を確認し、対象repositoryへcommit・pushする。新repositoryのremoteや公開範囲は勝手に決めない。
 - Git push、package publish、production deploy、remote migrationは別操作。通常のphase-end pushで後者を暗黙実行しない。
-- Cloudflareの新規resource、有料product、独自domain、課金枠の拡張は本計画に含めない。
+- Phase 18〜29ではCloudflareの新規resourceを作成しない。Phase 30だけ承認後の移行用D1を一時追加し、最終1 DBへ戻す。有料product、独自domain、課金枠の拡張は含めない。
+
+## Phase 29〜34: 名称整理とTech Inbox分離
+
+所有者と合意した順序はCloudflare整理→コード境界整理→別repository化→結合版反映。詳細・現状snapshot・backup予行・書込停止と切り戻し条件は[実行手順](foundation-migration.md)に記録する。Phase 29では後続のDB作成/移行・Worker改名・deploy・新repository作成を実行しない。
 
 ## Phase 18: 共通基盤・命名・連携境界の設計
 

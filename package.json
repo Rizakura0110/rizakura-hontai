@@ -14,6 +14,7 @@
     "db:generate": "drizzle-kit generate --config drizzle.config.ts",
     "db:migrate:local": "pnpm --dir apps/web exec wrangler d1 migrations apply tech-inbox --local",
     "db:verify:local": "node scripts/verify-local-d1.mjs",
+    "db:verify:backup": "node scripts/verify-d1-backup.mjs",
     "api:verify:local": "node scripts/verify-phase3-api.mjs",
     "cloudflare:health": "node scripts/verify-cloudflare-health.mjs",
     "cloudflare:preflight": "node scripts/verify-cloudflare-preflight.mjs",
@@ -29,7 +30,7 @@
     "cf:typegen": "pnpm --dir apps/web cf:typegen && pnpm --dir apps/web exec wrangler types ../../workers/metadata-fetcher/worker-configuration.d.ts --config ../../workers/metadata-fetcher/wrangler.jsonc --env-interface MetadataFetcherBindings",
     "cf:typecheck": "pnpm --dir apps/web cf:typecheck && pnpm --dir apps/web exec wrangler types ../../workers/metadata-fetcher/worker-configuration.d.ts --config ../../workers/metadata-fetcher/wrangler.jsonc --env-interface MetadataFetcherBindings --check",
     "audit": "pnpm audit --audit-level high",
-    "check": "pnpm daymark:check && pnpm format:check && pnpm lint && pnpm cf:typecheck && pnpm typecheck && pnpm test && pnpm test:coverage && pnpm db:verify:local && pnpm api:verify:local && pnpm build && pnpm quality:artifacts && pnpm e2e && pnpm audit --audit-level high"
+    "check": "pnpm daymark:check && pnpm format:check && pnpm lint && pnpm cf:typecheck && pnpm typecheck && pnpm test && pnpm test:coverage && pnpm db:verify:local && pnpm db:verify:backup && pnpm api:verify:local && pnpm build && pnpm quality:artifacts && pnpm e2e && pnpm audit --audit-level high"
   },
   "engines": {
     "node": ">=24 <25"

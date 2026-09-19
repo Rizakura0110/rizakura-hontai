@@ -229,6 +229,7 @@ Playwright browserを`PLAYWRIGHT_BROWSERS_PATH`で指定したrepository内cache
 
 - [rizakura-hontai / Daymark design](docs/rizakura-hontai-design.md)
 - [rizakura-hontai phase roadmap](docs/rizakura-hontai-roadmap.md)
+- [Cloudflare名称移行・Tech Inbox分離の手順](docs/foundation-migration.md)
 - [Security](docs/security.md)
 - [Operations](docs/operations.md)
 - [Cloudflare setup](docs/cloudflare-setup.md)

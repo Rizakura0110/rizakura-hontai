@@ -1,6 +1,9 @@
 # rizakura-hontai: 共通基盤とDaymarkの設計
 
-最終更新: 2026-09-14
+最終更新: 2026-09-19
+
+移行準備: Phase 29完了。本番inventory・SQL backup・local復元の全値照合・自動品質gateを通過し、Phase 30〜34の[実行手順](foundation-migration.md)を用意した。本番の名称・ID・URL・データ・機能は変更していない。
+
 状態: Phase 28完了（iPhoneは所有者判断でスキップ）。Phase 26〜27のTech Inbox既読活動集計APIと年間活動画面を、所有者承認後にproductionへ反映した。現在の既読状態と`read_at`を日本時間で集計し、DB migrationは追加していない。表示・更新、PCの主要操作、AccessとCPU確認、全自動品質gateは成功。iPhoneは後日確認へ延期し、成功扱いにはしない。
 
 2026-08-31の所有者指示で、当初の基盤名rizakura-meをrizakura-hontaiへ変更した。既存の`Rizakura0110/rizakura-me`は別repositoryとしてそのまま残し、今回の基盤には使わない。Phase 18/19の実行記録とADRは当時の名称を保持する。
@@ -157,7 +160,9 @@ manifest linkの`crossorigin="use-credentials"`を維持する。Service Worker�
 
 Worker名はworkers.devのhostnameに関係するため、変更にはAccess対象、APP_ORIGIN、JWT audience、PWA identity、旧URLの扱いの同時確認が必要になる。[Cloudflare workers.dev](https://developers.cloudflare.com/workers/configuration/routing/workers-dev/)
 
-D1の物理名変更は安全なin-place変更が可能かを実行時に確認する。単にWranglerの名前を変更したり、旧DBを削除して同名の新DBを作ったりしない。名前だけのために2つ目のDBを常用する方針にはしない。productionの名称移行はPhase 25の独立した承認gateとし、保留したlegacy識別子があれば明記する。
+D1の物理名はin-place変更できないため、Phase 30で承認後に新しい`rizakura-hontai` DBへ両製品を移す計画とする。単にWranglerの名前を変更したり、旧DBを先に削除したりしない。一時的に2 DBを使い、運用は最終1 DBへ戻す。Phase 29は読み取り確認・backup・local復元予行だけで、実際の名称・ID・URLは維持する。[D1 migrations](https://developers.cloudflare.com/d1/reference/migrations/)
+
+Phase 31でWorker/Access名・origin・2 PWAを切り替え、その後Phase 32〜34でTech Inboxを別repositoryへ切り出す。基盤→Tech Inbox/Daymarkの一方向の依存、固定commitのsubmodule連携、1 app Worker/共用DBを維持する。移動対象・認証・更新停止・切り戻しの詳細は[実行手順](foundation-migration.md)を正とし、現在の製品分離を完了済みとは扱わない。
 
 ## 8. 外部操作・所有者確認
 

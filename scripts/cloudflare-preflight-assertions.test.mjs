@@ -1,3 +1,4 @@
+import { inspect } from "node:util";
 import { describe, expect, it } from "vitest";
 import {
   assertExactAccessApplication,
@@ -45,6 +46,18 @@ describe("Cloudflare read-only preflight assertions", () => {
 
   it("accepts only the exact owner allow policy", () => {
     expect(() => assertExactOwnerPolicy(validPolicies(), allowedEmail)).not.toThrow();
+  });
+
+  it("does not expose either owner email when validation fails", () => {
+    let failure;
+    try {
+      assertExactOwnerPolicy(validPolicies(), "typo@example.com");
+    } catch (error) {
+      failure = error;
+    }
+    expect(failure).toBeInstanceOf(Error);
+    expect(inspect(failure)).not.toContain(allowedEmail);
+    expect(inspect(failure)).not.toContain("typo@example.com");
   });
 
   it.each([
