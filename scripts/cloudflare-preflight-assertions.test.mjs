@@ -1,9 +1,13 @@
 import { inspect } from "node:util";
 import { describe, expect, it } from "vitest";
 import {
+  assertAccountWorkerOrigin,
   assertExactAccessApplication,
   assertExactDatabaseBinding,
   assertExactOwnerPolicy,
+  assertAppOriginBinding,
+  assertSingleQueueConsumer,
+  assertNoConflictingAccessApplication,
   assertWorkerSubdomainState,
 } from "./cloudflare-preflight-assertions.mjs";
 
@@ -31,6 +35,73 @@ function validPolicies() {
 }
 
 describe("Cloudflare read-only preflight assertions", () => {
+  it("requires the exact origin from the Worker name and the actual account subdomain", () => {
+    expect(() =>
+      assertAccountWorkerOrigin(
+        "https://rizakura-hontai.example.workers.dev",
+        "rizakura-hontai",
+        "example",
+      ),
+    ).not.toThrow();
+  });
+
+  it.each([
+    ["https://rizakura-hontai.other.workers.dev", "example"],
+    ["https://tech-inbox-app.example.workers.dev", "example"],
+    ["http://rizakura-hontai.example.workers.dev", "example"],
+    ["https://rizakura-hontai.example.workers.dev/", "example"],
+    ["https://rizakura-hontai.example.workers.dev:443", "example"],
+    ["https://rizakura-hontai.example.workers.dev", ""],
+    ["https://rizakura-hontai.example.workers.dev", undefined],
+    ["https://rizakura-hontai.example.workers.dev", null],
+  ])("rejects an origin or account subdomain mismatch", (origin, subdomain) => {
+    expect(() => assertAccountWorkerOrigin(origin, "rizakura-hontai", subdomain)).toThrow();
+  });
+
+  it("does not expose either hostname when account-origin verification fails", () => {
+    const origin = "https://private-worker.configured-subdomain.workers.dev";
+    let failure;
+    try {
+      assertAccountWorkerOrigin(origin, "private-worker", "actual-subdomain");
+    } catch (error) {
+      failure = error;
+    }
+    expect(failure).toBeInstanceOf(Error);
+    const details = inspect(failure);
+    for (const value of [origin, "private-worker", "configured-subdomain", "actual-subdomain"]) {
+      expect(details).not.toContain(value);
+    }
+  });
+
+  it("requires the current origin and exactly one renamed Queue consumer", () => {
+    const origin = "https://rizakura-hontai.example.workers.dev";
+    const binding = { name: "APP_ORIGIN", type: "plain_text", text: origin };
+    expect(() => assertAppOriginBinding([binding], origin)).not.toThrow();
+    for (const bindings of [[], [binding, binding], [{ ...binding, text: "old-origin" }]]) {
+      expect(() => assertAppOriginBinding(bindings, origin)).toThrow();
+    }
+    expect(() =>
+      assertSingleQueueConsumer({ consumers: [{ script: "rizakura-hontai" }] }, "rizakura-hontai"),
+    ).not.toThrow();
+    for (const consumers of [
+      [],
+      [{ script: "tech-inbox-app" }],
+      [{ script: "rizakura-hontai" }, { script: "tech-inbox-app" }],
+    ]) {
+      expect(() => assertSingleQueueConsumer({ consumers }, "rizakura-hontai")).toThrow();
+    }
+  });
+
+  it("refuses a duplicate Access application when only the name changed", () => {
+    expect(() => assertNoConflictingAccessApplication([], workerId)).not.toThrow();
+    expect(() =>
+      assertNoConflictingAccessApplication(
+        [{ name: "legacy", destinations: [{ type: "worker", worker_id: workerId }] }],
+        workerId,
+      ),
+    ).toThrow("another name");
+  });
+
   it("requires the configured D1 name, ID and single Worker binding even when the old DB remains", () => {
     const expected = { binding: "DB", database_name: "rizakura-hontai", database_id: "new-id" };
     const databases = [

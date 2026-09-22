@@ -1,10 +1,10 @@
 # Operations
 
-最終更新: 2026-09-19
+最終更新: 2026-09-23
 
 ## Phase 25の本番反映状況
 
-Phase 25時点では共通基盤・入口の名前だけをrizakura-hontaiへ整理し、productionのresource名とURLは維持しました。Phase 30ではD1だけを新しい`rizakura-hontai`へ切り替えています。Workerは`tech-inbox-app`、作業directoryは`/Users/ryo/dev/webclip`のままです。以下の現行D1コマンドは新DBが対象です。
+Phase 25時点では共通基盤・入口の名前だけをrizakura-hontaiへ整理し、productionのresource名とURLは維持しました。Phase 30でD1を、Phase 31でapp Worker名とAccess表示名を`rizakura-hontai`へ切り替えています。現行originは`apps/web/wrangler.jsonc`を参照してください。作業directoryは`/Users/ryo/dev/webclip`のままです。以下の現行D1コマンドは新DBが対象です。
 
 GitHubは旧`Rizakura0110/webclip`を`Rizakura0110/rizakura-hontai`へ改名済みです。別repositoryの`Rizakura0110/rizakura-me`は変更していません。GitHubの命名変更はCloudflareへのdeployを伴いません。基盤codeの`@rizakura-hontai/*`は内部workspace名で、npm scopeを作成・公開した記録ではありません。
 
@@ -30,6 +30,18 @@ GitHubは旧`Rizakura0110/webclip`を`Rizakura0110/rizakura-hontai`へ改名済�
 2026-09-19に更新を停止して両製品とmigration履歴を新D1 `rizakura-hontai`へコピーし、全値・schema/index・外部キー・quick_checkの一致を確認しました。新DB接続の`frozen`版は`cf7558f4-d4f5-4fae-86ba-d678ee172cfd`、所有者の表示確認後に反映した通常動作版は`e33a5ce2-301d-434d-b6db-bff70cda1ddc`（100%、`MAINTENANCE_MODE=off`）です。通常Queue配送を再開し、所有者の両製品の保存・再読み込み確認まで成功しました。
 
 旧`tech-inbox`は接続なしで保持し、SQL backupはGit対象外のprivate directoryに保存しています。旧DBは別途承認まで削除しません。Worker名・origin・Access・Secrets・PWA・料金プラン・Daymarkの固定commitは変更していません。Workers Freeは所有者の画面で確認しました。更新停止、native table別copy、失敗時の照合と切り戻し制限は[移行手順](foundation-migration.md)を参照してください。
+
+## Phase 31の本番反映状況（完了・PC/PWA確認済み）
+
+2026-09-22に既存app Workerのimmutable IDを維持して`rizakura-hontai`へ改名し、同じAccess applicationの表示名とAPP_ORIGINを更新しました。AccessのID・audience・本人限定policyを維持し、新originの未認証9経路がAccessへ302となることを確認しています。新originの通常版を100%提供し、`MAINTENANCE_MODE=off`、appの`workers.dev`有効・preview無効で保存を再開しました。提供versionと詳細な検査結果は[Progress](progress.md)を参照してください。
+
+通常Queueは同じconsumer IDのまま新Worker名へ追従することを今回の実操作で確認し、配送再開後はpause解除・backlog 0でした。D1の接続先を変更せず、停止中の全値・schema fingerprintの一致を確認しました。旧DBは接続なしで保持し、metadata-fetcher・Queue・DLQの名前は維持しています。
+
+所有者から「PC表示・保存OK」を受領しました。依頼した新URLログイン、記事・タグ・活動とDaymarkの日/週/月表示、元が未読の記事の既読→未読への復帰、Daymarkの今日の実記録保存と再読み込み反映を成功として記録しています。PCのOS・browser名/versionは未提供です。
+
+2026-09-23に所有者から「PWA確認できた」を受領し、Phase 31を完了しました。直前に依頼したiPhone Safariの新originからのTech Inbox/Daymarkのホーム画面への再追加、新アイコンでの起動・ログイン・表示・保存・閉じて再起動を両PWAの成功として記録しています。OS/browserのversionや強制logout後の再ログインは個別報告がなく、確認済みと推測しません。
+
+旧アイコンは新しい両PWAの動作確認後に削除できます。削除自体の報告は未提供ですが、整理のための任意操作でありPhase 31の必須gateにはしません。旧hostnameの自動redirectは前提にせず、新originと旧originの実機結果を混同しません。
 
 ## 運用原則
 
@@ -115,12 +127,12 @@ delivery停止や`wrangler queues purge`はremote stateを変更します。inci
 
 ### Logs
 
-Cloudflare dashboardのWorkers & Pagesから、`tech-inbox-app`と`tech-inbox-metadata-fetcher`のObservabilityを確認します。見る項目はstatus、outcome、exception、CPU time、Queue eventです。
+Cloudflare dashboardのWorkers & Pagesから、`rizakura-hontai`と`tech-inbox-metadata-fetcher`のObservabilityを確認します。見る項目はstatus、outcome、exception、CPU time、Queue eventです。
 
 短時間のlive確認例:
 
 ```bash
-pnpm --dir apps/web exec wrangler tail tech-inbox-app --format json --sampling-rate 0.999
+pnpm --dir apps/web exec wrangler tail rizakura-hontai --format json --sampling-rate 0.999
 pnpm --dir apps/web exec wrangler tail tech-inbox-metadata-fetcher --format json --sampling-rate 0.999 --config ../../workers/metadata-fetcher/wrangler.jsonc
 ```
 
@@ -143,6 +155,8 @@ pnpm cloudflare:preflight
 ```
 
 `pnpm cloudflare:preflight`はCloudflare APIへGETだけを送り、credential値を表示しません。設定したD1名・IDとappの唯一のD1 bindingの一致、Queue、Worker、Access applicationの存在に加え、Accessがapp Workerだけを対象にし、所有者email 1件だけを許可し、7日session、launcher非表示であることを検査します。app Workerは`workers.dev`有効・preview無効、metadata-fetcherは`workers.dev`・previewとも無効であることも検査します。
+
+Worker名とAPP_ORIGINはWrangler設定を正とし、APIで取得したaccount subdomainから組み立てたhostname、設定APP_ORIGIN、productionのAPP_ORIGIN bindingの完全一致を検査します。通常Queueのconsumerが現行app Worker 1個だけであることも検査し、改名前のWorker名や別accountのhostnameが残る状態を受け入れません。
 
 - `main`と個人remoteが意図した対象であること
 - working treeに無関係な変更がないこと
@@ -189,6 +203,8 @@ app deploy outputで既存のD1、Queue、Service Binding、Rate Limiting、prod
 ## Worker rollback
 
 rollbackは即時にproduction trafficを過去versionへ切り替えるremote変更です。所有者の明示許可と、戻すversion ID・DB ID・`MAINTENANCE_MODE`の確認後だけ実行します。Phase 30の新DBで更新再開後は、旧DBを指すversionへ戻してはいけません。必要なら更新とQueueを再停止し、新DBの最新backupを確保して修正継続または逆移行を設計します。新DBの`frozen`版へ戻す場合も保存停止を伴います。
+
+Phase 31以降はAPP_ORIGINと現在のWorker名・hostnameの整合も必須です。Phase 30のversionは同じ新DBへ接続していてもAPP_ORIGINが旧hostnameのため、新Worker名のまま戻すと新originからの保存が403になります。新origin・現在のDB bindingと整合するversionだけを選ぶか、同じWorker ID・新DBを維持した名称/Originの切り戻しを別途設計してください。旧Worker名で通常deployして別Workerを作成する方法や、旧DBへの復帰は使いません。
 
 ```bash
 pnpm --dir apps/web exec wrangler deployments list

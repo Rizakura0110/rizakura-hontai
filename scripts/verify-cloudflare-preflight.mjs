@@ -1,20 +1,19 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readDeploymentConfig } from "./cloudflare-deployment-config.mjs";
 import {
+  assertAccountWorkerOrigin,
   assertExactAccessApplication,
   assertExactDatabaseBinding,
   assertExactOwnerPolicy,
+  assertAppOriginBinding,
+  assertSingleQueueConsumer,
   assertWorkerSubdomainState,
 } from "./cloudflare-preflight-assertions.mjs";
 
 const apiOrigin = "https://api.cloudflare.com";
 const apiPrefix = "/client/v4";
-const applicationName = "tech-inbox-app";
-const appWorkerName = "tech-inbox-app";
+const { config, applicationName, appWorkerName, appOrigin } = readDeploymentConfig();
 const metadataFetcherName = "tech-inbox-metadata-fetcher";
-const config = JSON.parse(
-  readFileSync(new URL("../apps/web/wrangler.jsonc", import.meta.url), "utf8"),
-);
 assert.equal(config.d1_databases.length, 1, "Expected one configured shared D1 database.");
 const expectedDatabase = config.d1_databases[0];
 
@@ -95,10 +94,7 @@ const [account, workersSubdomain, organization, databases, queues, workers, acce
   ]);
 
 assert.equal(account?.id, accountId, "The token did not return the requested account.");
-assert.ok(
-  typeof workersSubdomain?.subdomain === "string" && workersSubdomain.subdomain.length > 0,
-  "A workers.dev subdomain is not configured for this account.",
-);
+assertAccountWorkerOrigin(appOrigin, appWorkerName, workersSubdomain?.subdomain);
 assert.ok(
   typeof organization?.auth_domain === "string" &&
     organization.auth_domain.endsWith(".cloudflareaccess.com"),
@@ -108,7 +104,7 @@ assert.ok(
 const resourceState = {
   accessApplications: existingState(
     namedResources(accessApplications, "name", "Access applications"),
-    ["tech-inbox-app"],
+    [applicationName],
   ),
   databases: existingState(namedResources(databases, "name", "D1 databases"), [
     expectedDatabase.database_name,
@@ -118,8 +114,8 @@ const resourceState = {
     "tech-inbox-metadata-dlq",
   ]),
   workers: existingState(namedResources(workers, "id", "Workers"), [
-    "tech-inbox-app",
-    "tech-inbox-metadata-fetcher",
+    appWorkerName,
+    metadataFetcherName,
   ]),
 };
 
@@ -145,7 +141,11 @@ assert.ok(
   "The Access application ID is missing.",
 );
 
-const [application, policies, appSubdomain, metadataFetcherSubdomain, appSettings] =
+const mainQueues = queues.filter((queue) => queue?.queue_name === "tech-inbox-metadata");
+assert.equal(mainQueues.length, 1, "Expected exactly one metadata Queue.");
+assert.match(mainQueues[0]?.queue_id ?? "", /^[0-9a-f]{32}$/i, "Invalid metadata Queue ID.");
+
+const [application, policies, appSubdomain, metadataFetcherSubdomain, appSettings, mainQueue] =
   await Promise.all([
     cloudflareGet(`${accountPath}/access/apps/${applicationId}`, "Access application verification"),
     cloudflareGet(
@@ -164,9 +164,15 @@ const [application, policies, appSubdomain, metadataFetcherSubdomain, appSetting
       `${accountPath}/workers/scripts/${appWorkerName}/settings`,
       "App Worker bindings verification",
     ),
+    cloudflareGet(
+      `${accountPath}/queues/${mainQueues[0].queue_id}`,
+      "Metadata Queue consumer verification",
+    ),
   ]);
 
 assertExactDatabaseBinding(databases, appSettings.bindings, expectedDatabase);
+assertAppOriginBinding(appSettings.bindings, appOrigin);
+assertSingleQueueConsumer(mainQueue, appWorkerName);
 assertExactAccessApplication(application, appWorkerId);
 assertExactOwnerPolicy(policies, allowedEmail);
 assertWorkerSubdomainState(appSubdomain, { enabled: true, previews_enabled: false }, "App Worker");

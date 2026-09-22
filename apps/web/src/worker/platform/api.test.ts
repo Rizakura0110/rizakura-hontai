@@ -53,6 +53,26 @@ function fixture(overrides: Partial<ApiDependencies> = {}) {
 }
 
 describe("default-protected shared API", () => {
+  it("accepts writes only from the new origin after a Worker rename", async () => {
+    const { app, handler } = fixture();
+    const newOrigin = "https://rizakura-hontai.example.workers.dev";
+    const oldOrigin = "https://tech-inbox-app.example.workers.dev";
+    const renamedBindings = { ...bindings, APP_ORIGIN: newOrigin };
+    for (const requestOrigin of [oldOrigin, newOrigin]) {
+      const response = await app.request(
+        `${newOrigin}/api/v1/probe`,
+        {
+          method: "POST",
+          headers: { ...mutationHeaders, Origin: requestOrigin },
+          body: "{}",
+        },
+        renamedBindings,
+      );
+      expect(response.status).toBe(requestOrigin === newOrigin ? 200 : 403);
+    }
+    expect(handler).toHaveBeenCalledOnce();
+  });
+
   it.each([
     "/api",
     "/api/v1/probe",

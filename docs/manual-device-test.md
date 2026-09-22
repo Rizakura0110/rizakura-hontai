@@ -1,6 +1,6 @@
 # Manual device test
 
-最終更新: 2026-09-14
+最終更新: 2026-09-23
 
 ## 現在の状態
 
@@ -15,8 +15,22 @@
 | Tech Inbox既読活動 PC browser | 成功 | 2026-09-14に所有者が既読/未読/再既読、日付選択、全記事/設定/Daymarkへの移動を確認 |
 | Tech Inbox既読活動 iPhone Safari PWA | スキップ | 2026-09-14の所有者判断で後日確認へ延期。過去のPWA成功や自動mobile E2Eで代替しない |
 | Android Google Chrome | スキップ | 所有者判断でPhase 9では実施しない。成功扱いにはしない |
+| Phase 31 新origin PC browser | 成功 | 2026-09-22に本人login、記事/タグ/活動・Daymark日週月表示、両製品の保存と再読み込み反映を所有者確認 |
+| Phase 31 新origin iPhone Safari / 2 PWA | 成功 | 2026-09-23に所有者が両PWAの再追加・新アイコン起動・login・表示・保存・閉じて再起動を確認。旧originの過去成功とは区別 |
 
 実機を操作していない状態を「確認済み」と記録しない。OS、Chrome、端末、向き、実施者、日時を結果に残す。個人情報や秘密値をスクリーンショット、issue、commitへ含めない。
+
+## Phase 31: 新originへの移行確認
+
+2026-09-22にWorker/Accessを改名し、新originで保存とQueue配送を再開した。同日、所有者から「PC表示・保存OK」を受領し、下記1〜2が成功。2026-09-23に「PWA確認できた」を受領し、依頼した3〜4の両PWA再追加・起動・login・表示・保存・再起動も成功として記録した。PCのOS・browser version・向き、iPhone機種・OS/Safari version・向き、強制logout後の再loginは個別報告がなく推測しない。5の旧アイコン整理は確認後の任意操作で、完了条件ではない。接続先は現行Wranglerの`APP_ORIGIN`を使用する。旧hostnameは404になり、新URLへ自動redirectしない。
+
+1. PC browserで新しい入口へloginし、Tech Inboxの記事・タグ・活動と、Daymarkの日・週・月を表示する。
+2. 元が未読の記事1件を「既読→未読」に戻し、Daymarkで今日の実際の記録を1件保存する。再読み込み後も結果が残ることを確認する。
+3. iPhone Safariで新originの`/tech-inbox/`と`/daymark/`をそれぞれ開き、共有メニューから各製品をホーム画面へ追加し直す。入口そのものを製品PWAとして追加しない。
+4. 新しい2つのアイコンから直接起動し、各製品のlogin・表示・保存・閉じて再起動を確認する。再loginが必要な場合も元の製品へ戻れることを確認する。
+5. 新しいPWAが動くことを確認してから、旧originのアイコンとbookmarkを整理する。旧アイコンを先に削除したことだけを移行成功とは扱わない。
+
+Android実機は従来の所有者判断でskipを維持する。PC・iPhoneそれぞれの報告を区別して記録する。
 
 Phase 19〜24の入口・URL整理・DaymarkはPhase 25でproductionへ反映済みです。上記の既存iPhone成功を新構成の移行成功とは扱いません。最後に入口と両製品の往復、既存PWAが新`/tech-inbox/`へ起動できること、Daymarkを別PWAとして追加・直接起動できることを確認します。Daymark JSONの書き出しと復元previewは本番ブラウザで確認済みです。3年fixtureはpreviewだけを行い、確定復元しません。
 

@@ -3,13 +3,16 @@ import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { dirname, extname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { gzipSync } from "node:zlib";
+import { readDeploymentConfig } from "./cloudflare-deployment-config.mjs";
 
 const projectRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 
 const budgets = [
   {
     label: "app Worker",
-    paths: [join(projectRoot, "apps/web/dist/tech_inbox_app/index.js")],
+    paths: [
+      join(projectRoot, "apps/web/dist", readDeploymentConfig().artifactDirectory, "index.js"),
+    ],
     maxRawBytes: 1_000_000,
   },
   {

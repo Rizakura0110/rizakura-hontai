@@ -1816,3 +1816,30 @@
 - 基盤coverage: statements 88.66%、branches 84.35%、functions 88.96%、lines 90.12%。Daymark domain/contracts/backupは100%。auditはhigh/critical 0、既存dev-only moderate 1件を維持。
 - app Worker raw 510.1 KiB / gzip 109.0 KiB、fetcher raw 587.2 KiB / gzip 88.9 KiB、client JS raw 421.7 KiB / gzip 121.3 KiB、CSS raw 35.3 KiB / gzip 7.3 KiBで既定budget内。build configとsource configの新DB名/ID・Worker/origin・停止overrideをdeploy前に照合した。
 - 完了時の文書更新後にformat/diff検査とcredential scanを再実行し、private backup・cache・生成物のignoreを確認してphase-end commit/pushする。Daymark gitlink・依存lockfile・DB migrationの変更はない。
+
+## Phase 31: Worker・Access表示名・URL・PWA切替
+
+状態: 完了（2026-09-23）。全自動品質gateと、承認後のWorker/Access改名・新origin反映・保存/Queue再開、所有者のPC表示・保存と新originの2 PWA確認が成功した。旧DBは接続せず保持し、Phase 32〜34は未着手。
+
+- 最初のread-only preflightはAPI token検証でHTTP 401 / Invalid API Tokenとなり停止した。期限切れ・失効等の原因は断定せず、所有者へrotation/端末設定の更新を依頼した。tokenをチャットへ貼らせず、認証・料金・本番resourceは変更していない。
+- 所有者のtoken更新・再起動後、保存済みtokenと実行processのtokenが異なり、既存のAccount IDも所定形式ではないことを値を表示せず確認した。保存済みtokenをメモリ内で使用し、APIで取得できる単一accountと既知の本番D1 ID/名前を照合してread-only接続を回復した。global設定や認証情報fileは変更していない。
+- 2026-09-22のread-only inventoryで、旧Workerと新DBの接続、既存Accessの本人限定policy・168h session・hidden launcher、app公開/preview無効・fetcher非公開、通常Queue consumerが旧Worker 1個であることを確認した。Worker 2個・D1 2個・Queue 2個で、変更先のWorker/Access名は未使用だった。UUID指定Worker APIでも同一IDを確認し、切替前の提供versionはPhase 30完了時の`e33a5ce2-301d-434d-b6db-bff70cda1ddc`（100%）だった。
+- local Wrangler名/APP_ORIGINを変更予定の`rizakura-hontai`へ揃え、生成型も更新した。preflight/health/Access設定/artifact検査は設定から同じWorker名を読む。旧Accessアプリが同じWorkerを保護している場合、新しい名前で重複作成しない検査を追加した。改名前に新名で通常deployすると新Worker作成につながるため、既存Workerの改名とimmutable ID照合を先行させた。
+- preflightへ実account subdomainとAPP_ORIGINの完全一致、実WorkerのAPP_ORIGIN binding、通常Queue consumerの一意性の検査を追加した。旧originからの変更要求を403にする回帰testを追加し、hostname不一致の検査errorには実値を含めない。
+- 公式Beta Worker APIはUUID指定のPATCHでnameだけを更新でき、未指定設定は維持される。Accessは既存ID・audience・本人限定policy・Worker destinationを維持して表示名だけを変更する計画を採用した。Queue/DLQ/fetcher名・DB・schema・Daymark gitlinkは変更しない。[Worker edit](https://developers.cloudflare.com/api/resources/workers/subresources/beta/subresources/workers/methods/edit/)
+- 最終実装で`pnpm check`成功: format、lint、生成型、全TypeScript、Daymark 69 tests、基盤55 files / 542 tests、coverage、fresh local D1、SQL backup往復、実HTTP、両Worker build、artifact budget、E2E 37 passed / desktop専用の意図的mobile skip 1件、auditを通過した。auditはhigh/critical 0、既存dev-only moderate 1件。tracked/new sourceとapp/client成果物のcredential scan、private script/cache/生成物のignore確認も成功した。
+
+### 承認後の本番切替
+
+- 所有者の「やろう」で、Worker/Access名・URL変更、一時的なアクセス/保存/metadata停止・再開を承認された。データ/本人限定認証を維持し、料金プランや旧DB削除は変更範囲に含めない。
+- 一時設定をすべて`workers_dev:false`でdry-run検証した。旧URLを閉じ、通常Queue配送をpauseし、旧originの`frozen`版`e79f3899-4d15-4fe4-8b7c-d2e47ac7b139`を同じWorkerへ反映。処理終了待ちの後、現D1のTime Travel復旧情報と全値の非公開fingerprintを取得した。
+- Worker UUID指定のPATCHで`tech-inbox-app`を`rizakura-hontai`へ改名。Worker新規作成なしで、Queueの同一consumer IDが新名へ追従した。Accessも同じapp IDへ全設定を維持したname変更を行い、ID/audience・本人限定policy・168h・hidden launcher・IdP・Worker destinationが不変だった。表示名以外にはapp/policyの更新時刻だけが変わり、値を出さない差分調査後、更新時刻以外を完全比較した。
+- 新originの停止版`8a3e6b26-e3f3-4412-8496-406d2e944d31`、通常版`47e2955e-2a18-48d6-a2c9-df41617a9c6c`の順に反映した。どちらも同じD1接続で、公開前に停止時の全値・schema/index・migration履歴一致を確認。対象件数は記事357、URL alias 366、タグ10、タグ付け286、習慣8、設定履歴8、日次記録114、migration 3だった。公開後の所有者の通常更新とは区別する。
+- 通常版を閉鎖したまま反映後、公開直後の検査がHTTP 404だったため再び閉鎖した。状態照合後に再公開し、入口・記事/活動/設定・Daymark・両製品API・両manifestの9経路が未認証では期待したAccessへ302で進むことを確認。通常Queue配送も再開し、`MAINTENANCE_MODE=off`・100%の通常動作へ戻した。旧hostnameは404で、新URLへの自動redirectはない。
+- 反映後のread-only preflight/health成功。新Workerの直近24h集計は11 requests / errors 0、fetcher 0、新規DLQ/fail 0、通常backlog 0。過去DLQ 7 messages / 851 bytesは本文を読まず保持。DB 757,760 bytes、当日UTC集計はD1 read 14,815 / write 28、Worker requests 11 / errors 0で停止閾値内。集計遅延を含むsnapshotで将来の利用量や請求額を保証しない。Billing APIは引き続き権限不足で、契約変更はしていない。
+- 所有者から「PC表示・保存OK」を受領。新originへのlogin、記事・タグ・活動、Daymarkの日・週・月の表示、元未読の記事の既読→未読、今日の実際の習慣記録の保存と再読み込み反映を確認した。この時点では2 PWAの確認を待ち、自動testや旧originでの実機成功で代替しなかった。
+- PC操作時間帯のCPU集計は8 groupsすべてsuccess・errors 0。開始付近のP99は19.646 msと12.714 msで、その後のgroupsは0.592〜7.52 msと通常基準内だった。起動直後の一時的な負荷と整合するが、isolate/JWKSの直接traceではないため原因は断定しない。25 ms超過・継続する10 ms超過はこの観測ではなかった。
+- 本番切替・PC確認後にも全`pnpm check`を再実行して成功（Daymark 69、基盤542、E2E 37 passed / 意図的mobile skip 1、audit high/critical 0・既知dev-only moderate 1）。Daymark gitlink、依存lockfile、供給網policy、DB migrationに差分なし。
+- 2026-09-23に所有者から「PWA確認できた」を受領し、直前に依頼した新originでのTech Inbox/Daymark再追加・新アイコン起動・login・表示・保存・閉じて再起動を成功として記録した。OS/browser version・向き・強制logout後の再loginは個別未提供。旧アイコン削除は任意で、今回の完了条件には含めない。Android実機skipは維持する。
+- PWA報告後のread-only preflight/healthも成功。appは33 requests / errors 0、通常Queue backlog 0、新規DLQ/fail 0、既存DLQ 7件のまま。D1は757,760 bytes、当日UTC集計はread 20,831 / write 36で停止閾値内だった。PWA操作を含むCPUは全15 groupsがsuccess・errors 0、後続の開始付近にもP99 21.193 / 22.475 msを観測したが、最後のgroupはP99 5.393 msだった。観測範囲では25 ms超過や継続した超過はなく、cold由来かは直接traceしていない。
+- 全差分・生成物/運用記録のignore・credential scanを再確認し、完了記録を含めてphase-end commit/pushする。本番の追加deploy、DB削除、Phase 32の実装はこの確認に混ぜない。

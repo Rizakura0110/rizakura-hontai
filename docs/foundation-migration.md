@@ -1,6 +1,6 @@
 # Cloudflare名称移行とTech Inbox分離
 
-最終更新: 2026-09-19。Phase 29〜30完了。新DBへの全値copy・binding切替、所有者の表示/保存確認、全自動品質gateが成功し、保存/Queue配送を再開済み。旧DBは接続せず保持し、削除は別途承認待ち。Phase 31〜34は未着手。
+最終更新: 2026-09-23。Phase 29〜31完了。Phase 31は承認後の同一Worker改名・Access表示名・新origin反映が成功し、保存/Queue配送を再開済み。所有者のPC表示・保存と2 PWA確認も成功した。D1はPhase 30の新DBのままで、旧DBは接続せず保持し、削除は別途承認待ち。Phase 32〜34は未着手。
 
 ## 実行順と境界
 
@@ -22,8 +22,8 @@
 | 現在 | 変更後 | 方法 |
 |---|---|---|
 | 共用D1 `tech-inbox`（旧・保持のみ） | `rizakura-hontai`（接続切替済み） | 新IDへcopy・全値照合済み。旧DB削除は別途承認 |
-| 公開Worker `tech-inbox-app` | `rizakura-hontai` | immutable IDを保持する改名を優先 |
-| Access表示名 `tech-inbox-app` | `rizakura-hontai` | app ID・audience・本人限定policy・Worker destinationを維持 |
+| 公開Worker `tech-inbox-app`（旧名） | `rizakura-hontai`（改名済み） | immutable IDを保持して改名 |
+| Access表示名 `tech-inbox-app`（旧名） | `rizakura-hontai`（変更済み） | app ID・audience・本人限定policy・Worker destinationを維持 |
 | metadata-fetcher・Queue・DLQ | 維持 | 記事専用の`tech-inbox-…`名を残す |
 
 D1のbinding名`DB`と物理DB名は別物。物理名はin-place renameできない。[D1 migrations](https://developers.cloudflare.com/d1/reference/migrations/)。WorkerのUUIDベースの改名APIは公式でBetaとされているためPhase 31に対応状況を再確認し、失敗時に勝手に別Workerを作らない。[Workers API](https://developers.cloudflare.com/changelog/post/2025-09-03-new-workers-api/)
@@ -131,6 +131,17 @@ schema/dataを分けた全体exportはlocal予行を通過したが、remoteのd
 - Queue/DLQ/fetcherは改名せず、consumerが既存appの1つだけであることを確認。
 - 新originで本人login、Tech Inbox/DaymarkのPWA追加し直し、直接起動・保存・再loginを確認。製品別id/scope/pathは維持するがorigin変更で別identityになる。[Manifest id](https://www.w3.org/TR/appmanifest/#id-member)
 - 旧hostnameの自動redirectは前提にしない。初期案は新URLへのブックマーク/PWA切替。旧URL用Worker追加が必要なら別途確認し、旧API書込を新originへ自動転送しない。
+
+### Phase 31の実施結果（PC・2 PWA確認済み）
+
+- 2026-09-22に所有者が、Worker/Access改名・新URL・一時停止/再開・PWA再追加の範囲を承認した。global資格情報設定、料金、DB作成/移行/削除は変更していない。
+- UUID・Access全設定・policy・Queue設定と復旧用configをGit対象外のprivate directoryへ控え、全deploy configを`workers_dev:false`にしたdry-runを通した。通常の`workers_dev:true`設定は切替途中に使用しない。
+- 旧URLを閉じ、通常Queueをpauseし、同じ新DB接続の`frozen`版を反映した。処理中requestの終了を待ち、Time Travel復旧情報と全tableの指紋を取得した。本文・認証情報を公開logへ出さず、SQLによる変更は行っていない。
+- UUID指定PATCHで既存Workerを改名した。同一Queue/consumer IDのまま新Worker名へ追従することを実測した。Accessは直前GETの全設定を維持してnameだけPUTし、app ID/audience/Worker destination/本人限定policy/IdP等を照合した。Cloudflareが更新したpolicyの`updated_at`だけは比較から除外し、他のpolicy fieldは完全一致を要求した。
+- 新originの閉鎖`frozen`版を反映後、全table値・schema/index・migration履歴が停止時と一致した。閉鎖したまま通常版へ反映し、公開後の9経路のAccess redirect検査が成功してからQueueをresumeした。公開直後の初回検査が404だったため一度閉じ直し、状態照合後の再開では全経路の302を確認した。旧hostnameは404で、redirect用Workerは作成していない。
+- 通常versionは`47e2955e-2a18-48d6-a2c9-df41617a9c6c`（100%、`off`）、新originの停止版は`8a3e6b26-e3f3-4412-8496-406d2e944d31`。read-only preflight/healthが成功し、Worker 2個・D1 2個・Queue 2個、preview無効・fetcher非公開を維持した。所有者のPC表示・保存・再読み込みに続き、2026-09-23に2 PWAの追加し直し・直接起動・login・表示・保存・再起動確認も成功した。
+
+Phase 31の切り戻しでも新DBを維持する。Phase 30のversionは新DB接続でも旧APP_ORIGINを含むため、新Worker名のまま直接rollbackすると保存が403になり得る。改名も戻す場合は旧名の空き・同一UUID・Access・APP_ORIGINを一組で照合し、閉鎖/Queue pause中に行う。versionだけを戻す場合も現在のoriginと停止modeが一致するものを選び、通常動作版と停止版を取り違えない。
 
 ## Phase 32〜34: 切り出し境界
 

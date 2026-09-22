@@ -1,13 +1,14 @@
 import assert from "node:assert/strict";
+import { readDeploymentConfig } from "./cloudflare-deployment-config.mjs";
 import {
   assertExactAccessApplication,
   assertExactOwnerPolicy,
+  assertNoConflictingAccessApplication,
 } from "./cloudflare-preflight-assertions.mjs";
 
 const apiOrigin = "https://api.cloudflare.com";
 const apiPrefix = "/client/v4";
-const applicationName = "tech-inbox-app";
-const workerName = "tech-inbox-app";
+const { applicationName, appWorkerName: workerName } = readDeploymentConfig();
 
 const token = requiredEnvironmentVariable("CLOUDFLARE_API_TOKEN");
 const accountId = requiredEnvironmentVariable("CLOUDFLARE_ACCOUNT_ID");
@@ -87,6 +88,8 @@ let application = matchingApplications[0];
 let applicationWasCreated = false;
 
 if (application === undefined) {
+  // A rename is not a new installation. Never replace an existing audience/policy.
+  assertNoConflictingAccessApplication(applications, workerId);
   application = await cloudflareRequest(
     "POST",
     `${accountPath}/access/apps`,

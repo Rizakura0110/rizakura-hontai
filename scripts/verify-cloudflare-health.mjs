@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readDeploymentConfig } from "./cloudflare-deployment-config.mjs";
 import {
   assertHealthyProductionState,
   normalizeQueueMetrics,
@@ -11,7 +12,7 @@ const apiPrefix = "/client/v4";
 const healthWindowHours = 24;
 const mainQueueName = "tech-inbox-metadata";
 const deadLetterQueueName = "tech-inbox-metadata-dlq";
-const workerNames = ["tech-inbox-app", "tech-inbox-metadata-fetcher"];
+const workerNames = [readDeploymentConfig().appWorkerName, "tech-inbox-metadata-fetcher"];
 
 const token = requiredEnvironmentVariable("CLOUDFLARE_API_TOKEN");
 const accountId = requiredEnvironmentVariable("CLOUDFLARE_ACCOUNT_ID");

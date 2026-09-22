@@ -1,6 +1,43 @@
 import assert from "node:assert/strict";
 import { isDeepStrictEqual } from "node:util";
 
+export function assertAccountWorkerOrigin(origin, workerName, subdomain) {
+  assert.ok(
+    typeof subdomain === "string" && subdomain.length > 0,
+    "A workers.dev subdomain is not configured for this account.",
+  );
+  assert.ok(
+    origin === `https://${workerName}.${subdomain}.workers.dev`,
+    "Configured APP_ORIGIN does not match the account's Worker hostname.",
+  );
+}
+
+export function assertAppOriginBinding(bindings, origin) {
+  const matches = bindings.filter(({ name }) => name === "APP_ORIGIN");
+  assert.ok(
+    matches.length === 1 && matches[0].type === "plain_text" && matches[0].text === origin,
+    "Worker APP_ORIGIN does not match the deployment configuration.",
+  );
+}
+
+export function assertSingleQueueConsumer(queue, workerName) {
+  assert.ok(
+    Array.isArray(queue?.consumers) &&
+      queue.consumers.length === 1 &&
+      queue.consumers[0].script === workerName,
+    "Metadata Queue must have exactly one consumer using the current app Worker name.",
+  );
+}
+
+export function assertNoConflictingAccessApplication(applications, workerId) {
+  assert.ok(
+    !applications.some((application) =>
+      application.destinations?.some((destination) => destination.worker_id === workerId),
+    ),
+    "This Worker already has an Access application under another name; migrate it explicitly.",
+  );
+}
+
 export function assertExactDatabaseBinding(databases, bindings, expected) {
   assert.ok(Array.isArray(databases) && Array.isArray(bindings), "D1 state is missing.");
   const named = databases.filter(({ name }) => name === expected.database_name);

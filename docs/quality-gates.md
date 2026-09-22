@@ -160,6 +160,9 @@ Playwrightのmobile viewport成功は実機確認の代替にしない。手順�
 `pnpm cloudflare:preflight`は通常の`pnpm check`から分離し、Cloudflare credentialとnetworkを持つ運用時だけ実行する。Cloudflare APIへGETだけを送り、次を検査する。
 
 - D1、Queue、app Worker、metadata-fetcher、Access applicationが期待どおり1件ずつ存在する
+- Wrangler設定のD1名・IDが実在するDBと一致し、app Workerの唯一のD1 bindingが同じDBを指す。保持中の旧DBには接続しない
+- Wrangler設定のWorker名と、APIで取得したaccount subdomainから組み立てたoriginが、設定APP_ORIGINおよびproductionのAPP_ORIGIN bindingと完全一致する
+- 通常Queueのconsumerが現行app Worker 1個だけである
 - Access applicationがapp Workerだけを対象にする
 - allow policyが所有者email 1件だけで、追加policy、Everyone、exclude、requireがない
 - sessionが7日、app launcherが非表示である

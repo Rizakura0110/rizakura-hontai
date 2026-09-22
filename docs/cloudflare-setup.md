@@ -1,8 +1,10 @@
 # Cloudflare setup
 
-## 現在の接続先（Phase 30）
+## 現在の接続先（Phase 31完了・PC/PWA確認済み）
 
-2026-09-19に共用D1を新しい`rizakura-hontai`へコピー・切替済みです。現行のDB名・IDは`apps/web/wrangler.jsonc`、現行コマンドは[Operations](operations.md)、移行・停止・rollback制限は[移行手順](foundation-migration.md)を参照してください。以下の`tech-inbox`は初期構築当時の記録であり、通常のmigration/復元対象には使いません。Worker名・URL・Accessは維持し、旧DBは接続せず保持しています。
+2026-09-19に共用D1を新しい`rizakura-hontai`へコピー・切替済みです。2026-09-22には既存WorkerのIDを維持してapp Worker名を`rizakura-hontai`へ改名し、同じAccess applicationの表示名とAPP_ORIGINを更新しました。AccessのID・audience・本人限定policyとD1接続先を維持し、新originの未認証9経路のAccess redirect確認後に保存・Queue配送を再開しています。所有者からPCでの新URLログイン、両製品の表示・保存と再読み込み反映の成功報告を受領しました。2026-09-23には新originからiPhone Safariで両PWAを再追加し、新アイコンからの起動・ログイン・表示・保存・閉じて再起動の成功報告も受領して、Phase 31を完了しました。
+
+現行のWorker名・APP_ORIGIN・DB名・IDは`apps/web/wrangler.jsonc`、現行コマンドは[Operations](operations.md)、移行・停止・rollback制限は[移行手順](foundation-migration.md)を参照してください。以下の`tech-inbox`や`tech-inbox-app`は初期構築当時の記録であり、通常のmigration/復元・deploy対象には使いません。旧DBは接続せず保持しています。記事専用のQueue・DLQ・metadata-fetcher名は変更していません。
 
 ## Phase 19 local configuration（Phase 25でproduction反映済み）
 

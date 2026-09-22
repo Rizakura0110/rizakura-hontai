@@ -1,6 +1,6 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
-  "name": "tech-inbox-app",
+  "name": "rizakura-hontai",
   "main": "./src/worker/index.ts",
   "compatibility_date": "2026-08-15",
   "workers_dev": true,
@@ -8,7 +8,7 @@
   "vars": {
     "ENVIRONMENT": "production",
     "MAINTENANCE_MODE": "off",
-    "APP_ORIGIN": "https://tech-inbox-app.sx7k2p9q.workers.dev"
+    "APP_ORIGIN": "https://rizakura-hontai.sx7k2p9q.workers.dev"
   },
   "secrets": {
     "required": ["TEAM_DOMAIN", "POLICY_AUD", "ALLOWED_EMAIL"]

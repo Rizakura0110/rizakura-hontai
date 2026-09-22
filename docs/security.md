@@ -1,10 +1,12 @@
 # Security
 
-最終更新: 2026-09-19
+最終更新: 2026-09-23
 
 Phase 19以降の共通基盤整理を含むsourceとproductionの方針です。Phase 25で統合版を、Phase 28でTech Inbox既読活動をproductionへ反映しました。Phase 28の反映前後にもAccess所有者email 1件だけの完全一致policyと公開範囲を再検証し、認証設定とSecretsを変更していません。
 
 Phase 30で共用D1を新しい`rizakura-hontai`へ全値照合付きでコピーし、同じapp Workerの接続先を切り替えました。Access・Secrets・origin・PWA identityは維持し、切替後の本人限定policyと公開範囲を再検証しています。旧DBとSQL backupはprivateに保持し、削除は別途承認が必要です。製品別の物理DB分離を行う変更ではありません。
+
+Phase 31では所有者承認後に、同じWorker UUIDとAccess app ID/audience・本人限定policyを維持してWorker/Accessを`rizakura-hontai`へ改名し、APP_ORIGINを新hostnameへ切り替えました。Secret値は取得・変更していません。停止中のD1全値・schema一致を照合し、新originの入口・両製品・API・両manifestの9経路が未認証ではAccessへredirectすることを確認後、通常Queue配送を再開しています。previewは無効、fetcherは非公開のままです。旧hostnameは404で、旧originからの変更要求を許す互換例外は追加していません。新originのPC本人login・表示・保存と、iPhoneの2 PWA追加し直し・直接起動・login・表示・保存・再起動まで所有者確認済みです。強制logout後の再loginは個別報告がなく、実施済みとは扱いません。
 
 ## 保護対象と境界
 
@@ -140,7 +142,7 @@ backupと復元手順は[Operations](operations.md)を参照してください�
 
 1. Access policy、Worker deployment、D1、Queue、Secretsのどこに影響があるかを切り分ける。
 2. 漏えいの可能性があるtokenとsessionを失効し、secretをrotationする。
-3. 必要ならAccess applicationを維持したままapp Workerを既知のversionへrollbackする。Phase 30以降は新DB bindingと停止modeも照合し、旧DBへ戻るversionを選ばない。
+3. 必要ならAccess applicationを維持したままapp Workerを既知のversionへrollbackする。Phase 30以降は新DB bindingと停止mode、Phase 31以降は現在のWorker名/hostnameとAPP_ORIGINの一致も照合する。旧DBへ戻るversionを選ばず、旧originのPhase 30版を新名へそのまま戻さない。
 4. D1変更が疑われる場合は現在のbookmarkとJSON exportを確保し、復元操作を止めて影響範囲を確認する。
 5. Queue deliveryをpauseできる場合は新規処理を止め、DLQをpurgeせず内容の由来を確認する。
 6. 秘密情報を含まないtimeline、version ID、request ID、影響、復旧結果を`docs/progress.md`へ記録する。
