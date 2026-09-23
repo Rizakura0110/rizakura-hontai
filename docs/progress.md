@@ -1955,3 +1955,12 @@
 - 画面と静的JS/CSSはWorkerの本人認証を通す。Cloudflare AssetsのHTMLリダイレクトを無効にし、`/`を明示的に`/index.html`へ解決する。未知の静的パスは404で、未認証のカレンダー資産は403となることを確認した。
 - Toki単体の`pnpm check`は90 tests、coverage、format/lint、生成型、TypeScript、local D1 migrationと実SQL、Worker dry-run build、依存監査まで成功。ローカルChromeでPC週・日、スマホ320px日、編集後の再読込、2画面の競合、日跨ぎ・重複、小画面の横幅を実操作で検証した。PWAと本番反映は次フェーズ以降。
 - Toki commit `b6f812905aae6e5b64e206bdf3da7cb2b8361191`を`main`へpushし、[公開GitHub Quality](https://github.com/Rizakura0110/toki/actions/runs/35833279544)も成功した。
+
+## Phase 40: Toki専用PWAとモバイル操作
+
+状態: 完了（2026-09-23、ローカルのみ）。Tokiの独立originに専用manifest・時計アイコン・iPhoneホーム画面用メタ情報を追加した。Service Worker・オフラインキャッシュは設けず、計測状態・記録・Access認証はサーバー側を正とする。Tech Inbox/DaymarkのPWA identityと本番画面は変更していない。
+
+- 180/192/512pxとmaskableのPNGを専用SVG原稿から生成し、両画面に同じmanifestとアイコンを設定した。Workerの完全一致静的パスと本人認証をmanifest・アイコンにも適用し、未認証の配信を拒否する。CSPに`manifest-src 'self'`と`worker-src 'none'`を追加した。
+- 320px幅と200%拡大相当で計測・カレンダー・編集ダイアログのはみ出しを確認し、見出し・入力・操作ボタンの折り返しと最小44pxの操作領域を調整した。PC週タイムラインはキーボードで横スクロールでき、明示的なフォーカス表示を付けた。
+- ローカルChromeでmanifest/PNG配信、スマホの計測→時間だけ表示→終了→保存→カレンダー、キーボードEscape、日・週と記録、拡大表示を実操作で検証した。iPhone実機でのホーム画面追加と起動・再ログインは本番提供後のPhase 43で本人確認を依頼する。
+- Toki単体`pnpm check`は104 tests、coverage、format/lint、生成型、TypeScript、local D1とWorker dry-run build、依存監査0件まで成功。commit `bcec429b561c859da6c81bfa1961b2bc329cb555`を`main`へpushし、[公開GitHub Quality](https://github.com/Rizakura0110/toki/actions/runs/35834055751)も成功した。
