@@ -17,6 +17,14 @@
 - Preserve the pinned dependency and supply-chain rules in `pnpm-workspace.yaml` and `docs/dependency-baseline.md`.
 - Do not commit `.dev.vars`, tokens, personal email allowlists, Cloudflare credentials, or other secrets.
 
+## Cloudflare credential diagnosis: mandatory recurrence prevention
+
+- The 2026-09-23 Toki deployment incident was a diagnosis error, not an expired current token. Read the incident and procedure in `docs/toki-operations.md` (API認証エラーの切り分け) before investigating another Cloudflare authentication failure.
+- Never infer token expiration from HTTP 401 alone, or missing OS configuration from an empty sandboxed `launchctl getenv`. In this incident the inherited process environment was stale, its Account ID contained control characters, and sandboxed `launchctl` returned empty while the permitted non-sandboxed read returned valid current credentials.
+- Check recent successful deployment logs and their credential source first, especially when the owner reports a same-day rotation/deployment. Distinguish inherited process variables, a Terminal's `export`, and OS-stored settings. If sandbox restrictions may affect the result, use the approved permission mechanism to verify the source; do not bypass restrictions or treat an inaccessible value as absent.
+- Validate the latest available token with Cloudflare and confirm the account identity before requesting user work. Validate Account ID format strictly without guessing corrections. Pass verified credentials explicitly to the Wrangler child environment; never print values or place them in CLI arguments, tracked files, or shared logs.
+- Do not ask the owner to rotate again, re-enter credentials, or restart the app until these checks establish why that action is necessary. A valid token with a permission/account mismatch requires diagnosing that mismatch, not assuming expiration. If still blocked, report the observed evidence, remaining uncertainty, and the specific missing action.
+
 ## rizakura-hontai and Daymark planning boundaries
 
 - Name the shared foundation and portal `rizakura-hontai`. Keep Tech Inbox and Daymark as product names. The pre-existing `Rizakura0110/rizakura-me` repository is unrelated and must not be modified as part of this migration.
