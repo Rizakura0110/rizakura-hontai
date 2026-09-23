@@ -1945,3 +1945,13 @@
 - 公開commitの[GitHub Quality run](https://github.com/Rizakura0110/toki/actions/runs/35829300006)も成功。基盤側の`pnpm check`はDaymark69、Tech Inbox260、基盤609 tests、E2E37 passed/意図的skip1、format/lint/生成型/TypeScript/coverage、local D1/backup/API、両Worker build/budget、audit high/critical0で成功。基盤の既知dev-only moderate1は不変。
 - 基盤の公開commit `4006f7142bd283ad3a6f68f47dd06a2c0964c47d`に対する[GitHub Quality run](https://github.com/Rizakura0110/rizakura-hontai/actions/runs/35829464706)も成功（6分41秒）。このCI結果の追記はMarkdownのみで、workflowの除外規則により新しいCIは起動しない。
 - Tokiと基盤の差分・ignore・資格情報を確認した。既存Tech Inbox/Daymarkのcode、DB、Worker、Access、PWA、本番URL、課金設定は変更していない。Phase 37で業務schema/APIと本人限定認証のlocal実装に進む。
+
+## Phase 39: Tokiのアプリ内カレンダー
+
+状態: 完了（2026-09-23、ローカルのみ）。独立Toki repositoryに日・週カレンダーを追加し、保存済み記録の日本時間での表示・編集を実装した。スマートフォンでは日タイムラインを表示する。Cloudflare本番resource、基盤runtime、既存2製品は変更していない。
+
+- 日付計算を端末のタイムゾーンから独立させ、月曜始まりの週、半開区間、日跨ぎ・重複した記録の配置を検証した。重複記録は並列表示し、短い記録の拡大した操作領域も互いを隠さない。
+- 編集では開始・終了日時と内容を変更でき、`version`で別画面の変更を検出する。`409`や保存結果を確認できない通信失敗では上書きを続行せず、再読み込みを求める。ユーザー入力の表示はDOMの`textContent`を使用する。
+- 画面と静的JS/CSSはWorkerの本人認証を通す。Cloudflare AssetsのHTMLリダイレクトを無効にし、`/`を明示的に`/index.html`へ解決する。未知の静的パスは404で、未認証のカレンダー資産は403となることを確認した。
+- Toki単体の`pnpm check`は90 tests、coverage、format/lint、生成型、TypeScript、local D1 migrationと実SQL、Worker dry-run build、依存監査まで成功。ローカルChromeでPC週・日、スマホ320px日、編集後の再読込、2画面の競合、日跨ぎ・重複、小画面の横幅を実操作で検証した。PWAと本番反映は次フェーズ以降。
+- Toki commit `b6f812905aae6e5b64e206bdf3da7cb2b8361191`を`main`へpushし、[公開GitHub Quality](https://github.com/Rizakura0110/toki/actions/runs/35833279544)も成功した。

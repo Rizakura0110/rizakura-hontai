@@ -1,7 +1,7 @@
 # Toki実装フェーズ
 
 日付: 2026-09-23
-状態: Phase 35〜38完了。Phase 39以降のカレンダー・PWA・本番提供は未着手。
+状態: Phase 35〜39完了。Phase 40以降のPWA・入口連携・本番提供は未着手。
 仕様: [Toki設計](toki-design.md)、分離理由: [ADR-0021](decisions/0021-toki-independent-product.md)
 
 | Phase | 目的 | 完了条件と境界 |
