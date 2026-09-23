@@ -19,6 +19,14 @@ Toki初期版には**アプリ内JSON書き出し・復元はない**。Tech Inb
 
 [D1 Time Travel](https://developers.cloudflare.com/d1/reference/time-travel/)はFreeでは過去7日までの**DB全体**の時点復旧で、個別の記録だけを戻す機能ではない。復旧時刻以降の正しい記録まで巻き戻す可能性があるため、書き込み停止、直前export、対象時点と影響件数の確認、所有者の別途承認なしにrestoreしない。Workerの旧versionへの切り戻しは、現在のDB schemaとの互換性を確認してから行う。初回公開で互換性のある旧versionがなければ、Access保護を残したままToki origin/入口導線を閉じ、データを削除せず原因を調べる。SQL exportからのimportも自動では行わず、空のローカルDBで再現と照合を終えてから別途判断する。
 
+## Phase 45: 記録管理拡張の反映前確認（対象限定で承認済み）
+
+Phase 44の手動登録・完全削除は、ローカルでmigrationとWorkerを検証しても本番には自動反映しない。所有者はToki専用D1の非公開バックアップ・migrationとToki Workerの再デプロイに限って承認した。作業前に料金プラン・使用量、DB名/IDとbinding、既存の本人限定Accessを読み取り確認する。既存2製品・基盤Workerは触れない。
+
+承認後は作業中のToki保存・編集を一時停止し、Toki D1の個人データを非追跡の私有領域へSQL exportして、既存行を保持できることとローカルmigrationの結果を確認する。Toki D1だけに新migrationを適用し、既存記録・未完了計測・索引・整合性を読み取り検証してからToki Workerをdeployする。反映後は未認証の画面/API拒否と、所有者による既存記録表示・手動登録・編集・確認付き削除を検証する。削除の確認には消してよい新規記録だけを用い、確認後に保存・編集を再開する。
+
+手動記録が1件でも保存された後は、手動モードを理解しないPhase 43の旧Workerへそのまま戻さない。旧カレンダーが新記録を解釈できず読み込みに失敗するため、問題時はAccess保護を保って更新を止め、互換性のある修正版を優先する。D1全体の時点復旧は正しい後続記録も巻き戻すため、別の影響確認と承認なしに実行しない。
+
 ## Free枠と監視
 
 2026-09-23時点の公式資料では、Workers Freeは1アカウント100,000 dynamic requests/日・10 ms CPU/request・100 Workers、D1 Freeは1アカウント10 DB、1 DB 500 MB、合計5 GB、5,000,000 rows read/日・100,000 rows written/日。AccessのFree seat・application数もアカウント単位で確認する。これらは既存製品とTokiで共有される。参照: [Workers limits](https://developers.cloudflare.com/workers/platform/limits/)、[D1 limits](https://developers.cloudflare.com/d1/platform/limits/)、[D1 pricing](https://developers.cloudflare.com/d1/platform/pricing/)、[Cloudflare One account limits](https://developers.cloudflare.com/cloudflare-one/account-limits/)。資料の数値は変更され得るため、作成直前に再照合する。

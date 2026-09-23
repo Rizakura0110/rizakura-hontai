@@ -1,7 +1,7 @@
 # Toki実装フェーズ
 
 日付: 2026-09-23
-状態: Phase 35〜43を完了（2026-09-23）。Toki専用DB・Worker・本人限定Accessと基盤入口リンクを本番反映し、所有者がPCで計測・保存・編集・再読み込み、iPhone PWAでホーム画面起動・計測・保存・編集・再起動後の保持、基盤入口との往復と既存2製品の表示を確認した。
+状態: Phase 35〜44を完了（2026-09-23）。Phase 44の記録管理拡張はローカル実装・検証・Toki repositoryへのpushを完了。本番のTokiと基盤入口はPhase 43時点のままで、追加機能は未反映。
 仕様: [Toki設計](toki-design.md)、分離理由: [ADR-0021](decisions/0021-toki-independent-product.md)、運用: [Toki本番前確認](toki-operations.md)
 
 | Phase | 目的 | 完了条件と境界 |
@@ -15,6 +15,8 @@
 | 41 | rizakura-hontai入口との往復 | 入口に第三のメニューを追加しTokiへ、Tokiから入口へ戻る。リンクのみで、基盤DBやWorkerへToki業務処理を移さない。別repositoryの差分と統合gateを確認 |
 | 42 | 統合品質・運用準備 | 全format/lint/型/test/build/audit、E2E、時刻・競合・認証回帰、usage/Free境界、backup・切り戻し・運用手順を確認。production変更なし |
 | 43 | 承認後の本番提供 | 対象・費用・認証・データ保護を再確認し、明示承認後にToki用Access/Worker/D1を作成・deploy。Toki URLの保護と動作を先に確認してから基盤入口のリンクを反映し、リンク切れを避ける。本人のPC/iPhoneで計測→保存→編集→再起動とPWA、入口往復を確認 |
+| 44 | カレンダーの手動登録・削除 | `manual`記録の新規作成、編集画面からの確認付き完全削除、重複送信・版数競合・日時・内容の検証、PC/スマホE2E。既存D1の行と計測フローを保つmigrationをローカルで検証し、品質gate後にToki repositoryをcommit/push。本番DB・Workerは変更しない |
+| 45 | 追加機能の本番反映 | 別途対象を明示して承認を得てから、Toki専用D1のバックアップ・migrationとToki Workerのdeployを順に行う。認証と既存記録の保持、手動登録・削除を本人のPC/iPhoneで確認する。既存2製品と基盤Workerは変更しない |
 
 共通ルール: 1フェーズずつ進め、完了時には対象repositoryの差分・ignore・秘密情報を確認し、必要な品質gateが成功した場合だけcommit/pushする。Git pushはCloudflareの作成・migration・deployを許可しない。Toki側のcommitを先に公開し、基盤側に変更があるフェーズでは結合検証後に基盤をcommit/pushする。既存のTech Inbox/Daymarkとその本番データ・認証・PWAを保つ。
 

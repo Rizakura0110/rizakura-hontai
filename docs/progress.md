@@ -1999,3 +1999,11 @@
 - Tokiのローカル`pnpm check`は単体183件、ブラウザE2E 3件、audit 0件まで成功。最初の独立repositoryのGitHub Actionsでは開発フォルダ名に依存するテスト2件が失敗したため、実ファイル位置を基準に厳密照合するテストへ修正した。Toki commit `663889bcf402a5293aa8ab0251f7547014ed5017`を`main`へpushし、[修正後のGitHub Quality](https://github.com/Rizakura0110/toki/actions/runs/35841347692)は成功した。本番Workerのソースはこの修正で変えていない。
 - 所有者はPCで基盤入口↔Tokiの往復とTech Inbox・Daymarkの表示を確認し、iPhoneではToki PWAのホーム画面起動、計測→保存→編集→再起動後の記録保持まで確認した。PCのTokiでは先にストップウォッチの保存・編集とタイマー満了・集中表示も確認済み。これでPhase 43の実機完了条件を満たした。
 - 完了時にTokiの`pnpm check`（単体183件、E2E 3件、audit既知脆弱性0）と基盤の`VITE_TOKI_URL`指定`pnpm check`（Daymark 69件、Tech Inbox 260件、基盤615件、E2E 37件成功・意図的skip 1件、build/budget、audit high/critical 0）を再実行して成功した。基盤の既知dev-only moderate 1件は不変。追加の本番deployは行っていない。
+
+## Phase 44: Tokiカレンダーの手動登録・削除（完了）
+
+状態: 所有者から、編集モーダルでの保存済み記録の削除と、計測なしで時間範囲・内容を登録する機能を追加する依頼を受けた。削除は確認後の完全削除、手動登録は過去・未来の両方を許可する仕様で確認済み。Tokiでは既存行を保持するD1 migration、手動登録APIと再送時の二重登録防止、版数確認付き削除API、PC・スマートフォン用カレンダーUIを実装した。削除トリガーを含むD1変更件数の差をE2Eで検出・修正し、DB移行、単体192件、ブラウザE2E 5件、build、audit 0件を含む`pnpm check`に成功。Toki commit `744ad73`を`main`へpushした。基盤も`VITE_TOKI_URL`指定の全`pnpm check`に成功し、Daymark 69件、Tech Inbox 260件、基盤615件、ブラウザE2E 37件（意図的skip 1件）、audit high/critical 0件を確認した。既知dev-only moderate 1件は不変。ここまでは本番D1・Workerを変更していない。
+
+## Phase 45: Toki記録管理拡張の本番反映（進行中）
+
+状態: 所有者から、Toki専用D1の非公開バックアップ・migrationとToki Worker再デプロイに限って本番反映を承認済み。Tech Inbox・Daymark・基盤Worker、Access、料金プランは変更しない。実施前にFree/使用量、対象DB・binding・本人限定Accessを読み取り確認し、既存記録を保持するバックアップ・移行・照合を行う。
