@@ -1943,4 +1943,5 @@
 - Toki Workerは本番公開URLとpreviewを無効とし、通常routeを503で閉じる。ローカル起動で明示したflagとloopbackの`GET /__local/db`だけD1の`SELECT 1`を実行する。計測table/API・画面/PWA・Access JWT本実装は未着手。Cloudflare本番DB ID、origin、本人email、secretは含めていない。
 - Tokiの最終`pnpm check`成功: 境界、format/lint、Wrangler生成型、TypeScript、10 tests/coverage全指標100%、local D1の`SELECT 1`、Worker dry-run build、audit既知脆弱性0。local HTTPでD1 probeは200/`OK`、通常routeは503を確認。remote D1・Workerへの操作はしていない。
 - 公開commitの[GitHub Quality run](https://github.com/Rizakura0110/toki/actions/runs/35829300006)も成功。基盤側の`pnpm check`はDaymark69、Tech Inbox260、基盤609 tests、E2E37 passed/意図的skip1、format/lint/生成型/TypeScript/coverage、local D1/backup/API、両Worker build/budget、audit high/critical0で成功。基盤の既知dev-only moderate1は不変。
+- 基盤の公開commit `4006f7142bd283ad3a6f68f47dd06a2c0964c47d`に対する[GitHub Quality run](https://github.com/Rizakura0110/rizakura-hontai/actions/runs/35829464706)も成功（6分41秒）。このCI結果の追記はMarkdownのみで、workflowの除外規則により新しいCIは起動しない。
 - Tokiと基盤の差分・ignore・資格情報を確認した。既存Tech Inbox/Daymarkのcode、DB、Worker、Access、PWA、本番URL、課金設定は変更していない。Phase 37で業務schema/APIと本人限定認証のlocal実装に進む。
