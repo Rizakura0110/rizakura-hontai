@@ -1,7 +1,7 @@
 # Toki: 時間記録アプリの設計
 
 日付: 2026-09-23
-状態: Phase 37の認証・DB・APIをローカル実装。画面・本番提供は未着手。
+状態: Phase 38の計測画面までローカル実装。カレンダー・PWA・本番提供は未着手。
 関連: [フェーズ計画](toki-roadmap.md)、[ADR-0021](decisions/0021-toki-independent-product.md)
 
 ## 1. 目的と確定した範囲
