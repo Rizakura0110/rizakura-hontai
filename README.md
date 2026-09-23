@@ -2,6 +2,8 @@
 
 rizakura-hontaiは、本人限定のツールへの入口と共通基盤です。記事管理のTech Inboxと習慣管理のDaymarkを、別repositoryの固定commitから統合する構成です。Tech Inboxの別repository化はPhase 33、分離構成の本番反映と確認はPhase 34で完了しました。Daymarkの日次記録・設定履歴・日/週/月集計、保護API、responsive画面、独立PWA、製品別JSONバックアップを実装しました。Cloudflare Accessと既存のapp Worker・D1を共有し、Phase 25で本番反映と3年分データのFree CPU境界まで検証した構成です。
 
+第3製品の時間記録アプリ「Toki」（仮称）は[設計](docs/toki-design.md)と[Phase 35〜43の計画](docs/toki-roadmap.md)を用意しました。既存の統合Worker/DBへ追加せず、独立したrepository・Worker・D1で開発し、入口からリンクする予定です。現時点では実装・本番提供はしていません。
+
 ## 実装と本番の状態
 
 Phase 19では共通基盤と入口をローカル実装しました。`/`から`/tech-inbox/`と`/daymark/`へ進み、各製品から入口へ戻れます。記事設定は`/tech-inbox/settings`です。旧`/articles`・`/settings`はqueryを維持して移動します。Daymarkでは日次入力、週/月履歴、習慣追加・名称/目標/状態変更を操作できます。

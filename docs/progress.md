@@ -1924,3 +1924,13 @@
 - 所有者から「PC表示・保存／iPhone両PWAともOK」を受領した。直前に依頼したPCのTech Inbox記事・タグ・活動・設定、Daymark日・週・月・設定の表示、元が未読の記事の既読→未読と実際の習慣記録保存・再読み込み反映、iPhone既存2 PWAからの起動・表示を成功として記録する。端末/OS/browser versionは未提供。
 - 続いて所有者から「メタデータ取得・JSON書き出しともOK」を受領した。Tech Inboxのmetadata取得・記事JSON exportを本番実動作で確認できた。JSON復元は実行していない。
 - 所有者確認後のread-only再検査も成功。直近24時間はapp 65 requests/0 errors、fetcher 1 request/0 errors、通常Queue backlog0、新規DLQ/fail0。既存DLQ7件/851 bytesは保持し、本文は読んでいない。DBは757,760 bytes/8 tables。Cloudflareの当日usage集計は遅延の可能性があり、料金の確約とはみなさない。
+
+## Phase 35: 第3製品Toki（仮称）の仕様・分離設計
+
+状態: 完了（2026-09-23）。時間計測・アプリ内カレンダーの第3製品について、所有者確認済みPC/スマホ案を実装用の状態・日時・保存/編集仕様へ整理した。製品runtime、repository、Cloudflare resource、本番設定は変更していない。
+
+- [Toki設計](toki-design.md)にストップウォッチ/タイマー、一時停止なし、計測中の時間だけ表示、終了後の内容入力、保存済み記録だけのカレンダー表示、日時/内容編集を記録。画面を閉じた後の復帰、タイマー期限、複数タブの二重開始防止、未完了の保存/破棄導線、日またぎ表示、通信失敗時の表示も初期仕様とした。
+- [ADR-0021](decisions/0021-toki-independent-product.md)でTokiを別repository・別Worker・別D1・別Access applicationとし、基盤とは入口リンクのみで往復すると決定。既存2製品の業務処理/DB/認証policy/PWA identityを変更せず、Cloudflare Freeの利用枠はアカウントで共有することを明記した。
+- [Tokiフェーズ計画](toki-roadmap.md)にPhase 35〜43を記録。新repositoryの名称・公開範囲は作成前、Cloudflare作成/deployと本人実機確認はPhase 43の別承認で扱う。Toki originの稼働と保護を先に確認し、基盤入口リンクを後から反映する順序とした。
+- 最終`pnpm check`成功: Daymark69 tests、Tech Inbox260 tests、基盤609 tests、E2E37 passed/desktop専用mobile skip1、format/lint/生成型/TypeScript/coverage、fresh local D1・backup往復・実HTTP、両Worker build/budget、audit high/critical0。基盤auditのdev-only moderate1は既存値。
+- 最初の全gateではモバイルE2Eの既存URL編集ケースが1件失敗し、失敗画面でURL入力値の連結を確認した。同じケースを単独10回再実行して全件成功し、その後の全`pnpm check`はE2Eを含めて成功した。再現性のある原因は特定しておらず、アプリ・テストのコード変更はしていない。
