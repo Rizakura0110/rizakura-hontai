@@ -1973,3 +1973,14 @@
 - ローカルChromeでPC 1280pxとスマホ320pxの入口を目視・横幅確認し、3カード・リンク有効時の描画とリンク先を確認した。Tokiへの自動通信は起こさない。E2Eではリンク未設定の待機状態と、設定した場合の通常リンクを検証した。
 - Toki単体の全`pnpm check`は107 tests、format/lint・生成型・TypeScript・local D1 SQL・Worker dry-run build・audit既知脆弱性0で成功。Toki commit `bc7530359c186045ce380321e0958a68cf7feda9`を`main`へpushし、[公開GitHub Quality](https://github.com/Rizakura0110/toki/actions/runs/35834615822)も成功した。
 - 基盤の全`pnpm check`はDaymark69 tests、Tech Inbox260 tests、基盤615 tests、E2E37 passed/意図的skip1、format/lint・生成型・TypeScript・coverage・local D1/backup/API・両Worker build/budget・audit high/critical 0まで成功した。既存のdev-only moderate 1件は不変。初回はE2Eのテスト名の改行書式だけで停止したため修正し、全gateを最初から再実行した。独立レビューでTokiボタンのコントラスト不足を見つけ、通常時5.53:1・hover時7.90:1へ修正後、再び全gateを通した。Cloudflare本番resource・D1・Access・料金プランは変更していない。
+
+## Phase 42: Toki統合品質・運用準備
+
+状態: ローカル検証完了（2026-09-23、本番未反映）。Tokiの独立した品質gateにブラウザE2Eを追加し、密な記録とタイマー確認時のDB索引を検証した。基盤と既存2製品への回帰を全gateで確認した。Cloudflare本番resource・データは変更していない。
+
+- Tokiで毎回隔離したlocal D1を使うPC/320pxのPlaywright 3ケースを追加。ストップウォッチ・タイマー・集中表示・復帰、日跨ぎ編集、重複記録、楽観ロックの409と再読込、PWA資産、未認証時の画面/asset/API拒否を実HTTPとブラウザで確認した。GitHub QualityでもChromiumをrepository内のcacheへ導入して同じ`pnpm check`で走らせる。実際のCloudflare AccessおよびiPhone端末はPhase 43の確認対象。
+- 10,001件の保存済み記録から61件だけが期間に交差するfixtureで結果と索引使用を確認。期限切れタイマーのmaterializeも、既存の「未完了1件」部分索引を使う条件へ調整した。時間表示は引き続き端末内更新で毎秒のD1通信はしない。
+- Tokiの最終`pnpm check`は108 unit tests、ブラウザE2E 3 passed、format/lint・生成型・TypeScript・coverage・local D1 migration/SQL・Worker dry-run・audit既知脆弱性0で成功。E2E専用状態は他の同時実行と衝突しない一意の一時ディレクトリに分離し、タイマー待ち時間もCIの負荷を考慮した。
+- Toki commit `a71333737e80fd2ee5a28f36c866c265639c3ed3`を`main`へpushし、[公開GitHub Quality](https://github.com/Rizakura0110/toki/actions/runs/35836571237)も成功した。
+- 基盤の`pnpm check`はDaymark69、Tech Inbox260、基盤615 tests、E2E37 passed/意図的skip1、format/lint・生成型・TypeScript・coverage・local D1/backup/API・両Worker build/budget・audit high/critical 0で成功。既存のdev-only moderate 1件は不変。既存アプリのruntimeやDB schemaは変えていない。
+- [Toki本番前確認・運用手順](toki-operations.md)に独立Worker/D1/Accessの安全な公開順序、TokiのSQL exportとDB全体Time Travelの違い、失敗時の導線停止・切り戻し、Free枠と監視を記載。Tokiにはアプリ内JSON復元機能がなく、Tech Inbox/DaymarkのJSONにもTokiデータが入らない。公式のFree上限は文書化したが、実際のアカウントプラン・当日使用量は作成直前のPhase 43でread-only再確認する。

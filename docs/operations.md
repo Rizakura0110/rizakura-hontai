@@ -47,6 +47,8 @@ GitHubは旧`Rizakura0110/webclip`を`Rizakura0110/rizakura-hontai`へ改名済�
 
 Phase 29〜34の名称移行・Tech Inbox分離は[専用の実行手順](foundation-migration.md)に従う。共用D1の現行名は`rizakura-hontai`。旧`tech-inbox`は接続せず保持し、別途承認まで削除しない。新DBで更新再開後は旧DB bindingを持つPhase 28以前のversionへ直接rollbackしない。
 
+第3製品Tokiは別repository・別Worker・別D1・別Access applicationで準備中。作成前の確認、専用バックアップ、公開と切り戻しの順序は[Toki本番前確認・運用手順](toki-operations.md)を参照する。既存2製品のJSON書き出しにはTokiの記録は含まれない。
+
 - productionの変更は所有者の明示許可、対象resource、target branch、credential、費用gateを確認してから行う
 - API token、Access設定値、個人email、JWT、cookieをfile、command引数、logへ残さない
 - remote migration、restore、Queue purge、rollbackは通常の`pnpm check`へ含めない

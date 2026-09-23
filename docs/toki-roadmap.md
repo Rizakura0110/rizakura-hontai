@@ -1,8 +1,8 @@
 # Toki実装フェーズ
 
 日付: 2026-09-23
-状態: Phase 35〜41をローカル実装。Phase 42の統合確認・Phase 43の本番提供は未着手。
-仕様: [Toki設計](toki-design.md)、分離理由: [ADR-0021](decisions/0021-toki-independent-product.md)
+状態: Phase 35〜42をローカル実装・検証。Phase 43の本番提供は未着手。
+仕様: [Toki設計](toki-design.md)、分離理由: [ADR-0021](decisions/0021-toki-independent-product.md)、運用: [Toki本番前確認](toki-operations.md)
 
 | Phase | 目的 | 完了条件と境界 |
 |---|---|---|
