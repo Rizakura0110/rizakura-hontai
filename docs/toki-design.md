@@ -1,7 +1,7 @@
 # Toki: 時間記録アプリの設計
 
 日付: 2026-09-23
-状態: Phase 43まで本番提供・実機確認済み。Phase 44で保存済み記録の手動登録と削除をローカル実装・検証済み。Phase 45の本番反映は未実施。
+状態: Phase 43まで本番提供・実機確認済み。Phase 44で保存済み記録の手動登録と削除を実装・検証し、Phase 45で本番へ反映した。認証済みブラウザの手動登録・編集・削除は確認済みで、追加機能の所有者自身のPC/iPhone実機確認待ち。
 関連: [フェーズ計画](toki-roadmap.md)、[ADR-0021](decisions/0021-toki-independent-product.md)
 
 ## 1. 目的と確定した範囲
@@ -61,7 +61,7 @@ Tokiのナビゲーション ──通常のリンク──▶ rizakura-hontai�
 
 Tokiは**別repository・別Worker・別D1**の独立製品とする。基盤のメニューに入口を置くが、既存Workerへの製品submodule統合、既存の`rizakura-hontai` D1への業務table追加、製品間の直接SQL/API連携はしない。共通に必要な認証の考え方・UI設計は文書とテストで揃え、実行時に基盤Workerが必須となる依存は作らない。これによりToki側の障害・migration・deployを既存2製品から切り離す。ただしCloudflareアカウント全体のFree使用量は共有する。
 
-AccessはToki originを本人のemailに限定する別applicationで保護し、Toki Workerでもそのapplication固有のissuer・audience・本人emailを検証する。ブラウザから別製品のAPIを横断して呼ばず、単純なページ遷移だけを使う。認証前の画面/APIを漏らさない、入力と出力を検証する、安全なログと更新系のOrigin/CSRF対策を持つ。本番でのAccess application・Worker・D1作成およびdeployはPhase 43に範囲を明示して承認を得て実施した。Phase 44の追加機能はPhase 45まで本番に反映しない。
+AccessはToki originを本人のemailに限定する別applicationで保護し、Toki Workerでもそのapplication固有のissuer・audience・本人emailを検証する。ブラウザから別製品のAPIを横断して呼ばず、単純なページ遷移だけを使う。認証前の画面/APIを漏らさない、入力と出力を検証する、安全なログと更新系のOrigin/CSRF対策を持つ。本番でのAccess application・Worker・D1作成およびdeployはPhase 43に範囲を明示して承認を得て実施した。Phase 44の追加機能は別途承認されたPhase 45でToki専用D1とWorkerだけに反映し、Access設定は維持した。
 
 Phase 37のAPIは`/api/v1/session`の取得・開始、`/api/v1/session/:id/stop|save|discard`、`/api/v1/records?startMs=&endMs=`の期間取得、`PATCH /api/v1/records/:id`の編集を持つ。Phase 44では`POST /api/v1/records`の手動登録と`DELETE /api/v1/records/:id`の保存済み記録削除を追加する。時刻DTOはUTC epoch milliseconds、取得期間は半開区間。開始時と手動登録の`clientRequestId`で再送を冪等化する。APIはAccess JWTをWorkerでも検証し、更新系は同一Origin、JSON、専用クライアントヘッダーを要求する。ローカル開発用の認証バイパスは明示的な起動引数とloopback HTTPの両方が揃う場合だけ有効。本番設定には入れない。
 

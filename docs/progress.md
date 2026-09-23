@@ -2007,3 +2007,12 @@
 ## Phase 45: Toki記録管理拡張の本番反映（進行中）
 
 状態: 所有者から、Toki専用D1の非公開バックアップ・migrationとToki Worker再デプロイに限って本番反映を承認済み。Tech Inbox・Daymark・基盤Worker、Access、料金プランは変更しない。実施前にFree/使用量、対象DB・binding・本人限定Accessを読み取り確認し、既存記録を保持するバックアップ・移行・照合を行う。
+
+2026-09-23追記: 本番反映と認証済みブラウザsmokeを完了。所有者自身のPC/iPhone実機確認待ちで、Phase全体の完了にはしていない。
+
+- 所有者から当日初回deployの成功を指摘され、資格情報の取得元を再調査した。当日の公開成功ログと旧稼働version `5ed4e528-10d2-415e-a569-bf9440df0a05`を確認。sandbox内で空に見えた`launchctl`値はsandbox外では存在し、有効token・対象account・subdomainのAPI検証に成功した。継承環境の古いtokenと制御文字入りAccount IDを使った前の401から期限切れと断定したのは誤りで、再ローテーション・再起動なしに解決した。以降のWranglerには最新の検証済み資格情報を子プロセス環境へ明示した。値は出力・追跡していない。
+- preflightでは既存`toki`のDB ID/binding、Worker、本人限定の単一Access policy、7日session、3 secret、preview無効、custom domainなしを確認。Worker3件・D1 3件・Access application2件で新規resourceなし。Workers FreeとUsage cost $0は当日の所有者確認を使用した。subscription APIは取得不可のため自動検証済みとは扱わず、料金プラン変更は行っていない。
+- 保存・編集を控えるよう案内して非公開SQL exportを取得し、実データをローカルSQLiteへ復元して`0002_manual_records.sql`をリハーサル。既存5行（保存済み2、破棄済み2、計測中1）の全12列が一致した。本番でpending migrationが0002だけであることと直前のデータ不変を確認して適用し、全項目・3索引・migration履歴・新table/trigger・quick_check/foreign_key_checkを再検査した。実データと署名付きexport URLを含み得るログはGit無視の私有領域だけに保存した。
+- Phase 44で全品質gateと公開CIが成功したToki commit `744ad73f815b2785b3d82fc532f4126be6cd3b30`を、検証済みlive設定のdry-run後に既存Toki Workerだけへdeploy。新versionは`70cee223-6a02-4c16-859f-2078fb2ae4b0`、配信100%。DB binding、3 secret、Access application/policy、subdomain/preview設定、resource数は更新前と一致した。既存2製品・基盤Workerは再deployしていない。
+- 匿名で入口・カレンダー・manifest・JS2件・CSS・icon・API2件の全9経路がAccessへ302。認証済みブラウザでは既存保存済み2件が表示され、翌日の手動記録を1件作成して日時/内容の編集、再読み込み後の保持、削除確認のキャンセルと確定削除、削除後の再読み込みを確認した。既存記録は編集/削除せず、検証用1件だけを完全削除した。最終DB照合でも元の5行の全項目が一致し、再送防止用request IDだけ1件残ることを確認した。通常利用の再開を案内した。
+- 今回の追跡変更は反映状況と資格情報の切り分け手順のMarkdownのみ。Phase 44で成功済みのToki192単体/E2E5件・基盤615統合/E2E37件等の全品質gateを根拠とし、コード変更はない。今回追加で実データmigrationリハーサル、本番設定dry-run、本番整合性・認証・実画面の保存/編集/削除を検証した。所有者自身の追加機能のPC/iPhone確認は未受領で、以前のPhase 43確認を流用していない。

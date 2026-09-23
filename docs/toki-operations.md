@@ -19,13 +19,26 @@ Toki初期版には**アプリ内JSON書き出し・復元はない**。Tech Inb
 
 [D1 Time Travel](https://developers.cloudflare.com/d1/reference/time-travel/)はFreeでは過去7日までの**DB全体**の時点復旧で、個別の記録だけを戻す機能ではない。復旧時刻以降の正しい記録まで巻き戻す可能性があるため、書き込み停止、直前export、対象時点と影響件数の確認、所有者の別途承認なしにrestoreしない。Workerの旧versionへの切り戻しは、現在のDB schemaとの互換性を確認してから行う。初回公開で互換性のある旧versionがなければ、Access保護を残したままToki origin/入口導線を閉じ、データを削除せず原因を調べる。SQL exportからのimportも自動では行わず、空のローカルDBで再現と照合を終えてから別途判断する。
 
-## Phase 45: 記録管理拡張の反映前確認（対象限定で承認済み）
+## Phase 45: 記録管理拡張の本番更新
 
 Phase 44の手動登録・完全削除は、ローカルでmigrationとWorkerを検証しても本番には自動反映しない。所有者はToki専用D1の非公開バックアップ・migrationとToki Workerの再デプロイに限って承認した。作業前に料金プラン・使用量、DB名/IDとbinding、既存の本人限定Accessを読み取り確認する。既存2製品・基盤Workerは触れない。
 
 承認後は作業中のToki保存・編集を一時停止し、Toki D1の個人データを非追跡の私有領域へSQL exportして、既存行を保持できることとローカルmigrationの結果を確認する。Toki D1だけに新migrationを適用し、既存記録・未完了計測・索引・整合性を読み取り検証してからToki Workerをdeployする。反映後は未認証の画面/API拒否と、所有者による既存記録表示・手動登録・編集・確認付き削除を検証する。削除の確認には消してよい新規記録だけを用い、確認後に保存・編集を再開する。
 
 手動記録が1件でも保存された後は、手動モードを理解しないPhase 43の旧Workerへそのまま戻さない。旧カレンダーが新記録を解釈できず読み込みに失敗するため、問題時はAccess保護を保って更新を止め、互換性のある修正版を優先する。D1全体の時点復旧は正しい後続記録も巻き戻すため、別の影響確認と承認なしに実行しない。
+
+2026-09-23に承認範囲内の更新を実施した。非追跡のmode 700ディレクトリへmode 600のSQLバックアップを保存し、実データのローカル復元・migration後の全値一致を確認した。remoteは`0002_manual_records.sql`だけを適用し、既存5行の全12列、3索引、migration履歴、削除済みrequest IDテーブルとtrigger、`PRAGMA quick_check`・`PRAGMA foreign_key_check`を検証した。続いて固定commitのToki Workerだけをdeployし、DB binding・3 secret・Access application/policy・preview無効・resource数の不変を確認した。プランは同日所有者確認のWorkers Free・Usage cost $0を根拠とし、subscription APIの取得不可を無料契約の自動確認成功とは扱っていない。課金設定の操作はない。
+
+認証済みブラウザで翌日の手動記録1件を追加し、日時と内容の編集・再読み込み後の保持・削除キャンセル・確定削除・削除後の再読み込みを確認した。この検証用記録だけを完全削除し、元の全5行（計測中1件を含む）の全項目一致を再確認した。削除済みrequest IDが1件残るのは再送による復活防止の仕様。未認証の画面・実際の静的asset・API計9経路はAccessへの302だった。通常の保存・編集を再開可能。所有者自身のPC/iPhoneでの追加機能確認は未実施で、Phase全体の完了と区別する。
+
+## API認証エラーの切り分け（再ローテーション前）
+
+2026-09-23の更新では、当日設定されたtokenは有効だった。実行プロセスの継承環境には古いtokenと制御文字を含むAccount IDが残っており、さらにsandbox内の`launchctl getenv`は値が空で返った。これを設定消失・token期限切れと扱った前の診断は誤りだった。許可されたsandbox外の読み取りでは最新設定を取得でき、tokenの`active`、Account IDとの一致、既知のWorker subdomainをCloudflare APIで確認できた。再ローテーションや再起動なしで更新を完了した。
+
+- 401だけで期限切れと断定せず、当日の成功ログと使用した資格情報の取得元を確認する。継承環境、別Terminalの`export`、OSに保存した設定は同じ値とは限らない。
+- sandbox内の`launchctl`が空でも、OS上の未設定とは断定しない。必要な権限のある実行環境で取得し、値を表示せずに存在・形式・一致だけを検査する。Account IDは32桁の16進数として厳密に検査し、不正な値を推測で補正しない。
+- 検証済みの値をWrangler子プロセスの環境へ明示的に渡す。tokenや本人emailを引数、Git、チャット、標準出力へ出さない。SQL exportの出力には署名付きdownload URLが含まれ得るため、標準出力とエラーも私有ログへ捕捉する。
+- 最新の取得元でAPI検証が失敗したときだけ、失効・期限・権限・対象アカウントを調べて必要な対応を案内する。値が見えないこととtokenが無効であることを区別する。
 
 ## Free枠と監視
 

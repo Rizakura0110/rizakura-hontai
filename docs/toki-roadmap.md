@@ -1,7 +1,7 @@
 # Toki実装フェーズ
 
 日付: 2026-09-23
-状態: Phase 35〜44を完了（2026-09-23）。Phase 44の記録管理拡張はローカル実装・検証・Toki repositoryへのpushを完了。本番のTokiと基盤入口はPhase 43時点のままで、追加機能は未反映。
+状態: Phase 35〜44を完了（2026-09-23）。Phase 45はToki専用D1のバックアップ・migrationとToki Workerへの反映、既存データの全項目照合、認証済みブラウザでの追加機能確認まで完了。所有者自身のPC/iPhone実機確認待ち。基盤と既存2製品の本番構成は変更していない。
 仕様: [Toki設計](toki-design.md)、分離理由: [ADR-0021](decisions/0021-toki-independent-product.md)、運用: [Toki本番前確認](toki-operations.md)
 
 | Phase | 目的 | 完了条件と境界 |
