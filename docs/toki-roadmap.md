@@ -1,7 +1,7 @@
 # Toki実装フェーズ
 
 日付: 2026-09-23
-状態: Phase 35〜42を完了。Phase 43はToki専用DB・Worker・本人限定Accessを公開し、PCで計測・保存・編集を確認。基盤入口リンクも本番反映済み。入口の本人確認とiPhone PWA実機確認は進行中。
+状態: Phase 35〜43を完了（2026-09-23）。Toki専用DB・Worker・本人限定Accessと基盤入口リンクを本番反映し、所有者がPCで計測・保存・編集・再読み込み、iPhone PWAでホーム画面起動・計測・保存・編集・再起動後の保持、基盤入口との往復と既存2製品の表示を確認した。
 仕様: [Toki設計](toki-design.md)、分離理由: [ADR-0021](decisions/0021-toki-independent-product.md)、運用: [Toki本番前確認](toki-operations.md)
 
 | Phase | 目的 | 完了条件と境界 |
