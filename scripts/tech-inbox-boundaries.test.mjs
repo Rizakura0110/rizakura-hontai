@@ -5,7 +5,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { describe, expect, it } from "vitest";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const product = join(root, "packages/tech-inbox");
+const product = join(root, "modules/tech-inbox");
 const manifest = JSON.parse(readFileSync(join(product, "package.json"), "utf8"));
 // Use the parser already pinned with the host's Vite/Rolldown toolchain.
 const webRequire = createRequire(join(root, "apps/web/package.json"));

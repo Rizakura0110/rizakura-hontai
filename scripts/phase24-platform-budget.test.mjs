@@ -11,8 +11,8 @@ import {
   DAYMARK_BACKUP_LIMITS,
   MAX_DAYMARK_BACKUP_FILE_BYTES,
 } from "../modules/daymark/src/contracts";
-import { MAX_BACKUP_IMPORT_FILE_BYTES } from "../packages/tech-inbox/src/contracts/api";
-import { MAX_URL_LENGTH } from "../packages/tech-inbox/src/core/url-normalization";
+import { MAX_BACKUP_IMPORT_FILE_BYTES } from "../modules/tech-inbox/src/contracts/api";
+import { MAX_URL_LENGTH } from "../modules/tech-inbox/src/core/url-normalization";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 

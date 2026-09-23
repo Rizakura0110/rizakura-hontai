@@ -1872,9 +1872,33 @@
 - `pnpm db:generate`は7 tableを認識し、schema変更なし・migration生成なし。既存migrationとWrangler設定/生成型に差分なし。隔離local D1で制約・SQL復元の全値一致・migration再適用no-op・実HTTP更新/停止も成功した。本番DBの読取/書込は行っていない。
 - artifact budgetはapp Worker raw/gzip 511.5/108.8 KiB、fetcher 586.8/88.7 KiB、client JS 422.9/122.0 KiB、CSS 35.3/7.3 KiBでpass。auditはhigh/critical 0、既存dev-only moderate 1件のみ。Daymark単体の既知脆弱性は0件。
 - phase差分review、credential scan、cache/coverage/dist/一時fileのignore確認を行い、完了記録を含むphase対象だけをcommit/pushする。
+- push後のGitHub Quality run `35816732958`は、localでは成功したartifact budgetで失敗した。独立install後のCI構成ではclient JavaScriptが500,577 bytesとなり、500,000 bytesの上限を577 bytes超過した。Phase 33開始時に結果を確認し、同phaseで共有runtimeの重複排除とclean環境の再検証を行う。本番には反映していない。
 
 ### 未実施事項・次のPhase
 
 - 本番deploy、DB migration、resource作成/削除、Access・料金・Secrets変更は未実施。利用者による実機再確認は本番反映時に行い、local E2Eを本番実機確認と扱わない。
 - Phase 33はTech Inboxの新repository名・公開範囲を所有者と確認してから、Daymarkと同じ固定commitのGit submoduleへ移す。製品側のCI/lockfileと基盤の統合gateを整え、製品commit/push後に基盤の参照commitを更新する。
 - Phase 34で分離構成を統合検証し、承認後に本番反映・PC/PWA確認を行う。旧DBの削除は引き続き別承認とする。
+
+## Phase 33: Tech Inboxの別repository・固定submodule化
+
+状態: 進行中（2026-09-23、本番未反映）。所有者が`Rizakura0110/tech-inbox`のPublic作成とpushを明示承認した。製品repository作成、独立環境と基盤の統合検証を進め、両repositoryの検証・commit/push・clean環境確認まで成功してから完了とする。
+
+### 実装と検証中の記録
+
+- `packages/tech-inbox`を`modules/tech-inbox`へ移し、別Git履歴と独立lockfile/CI/品質gateを用意した。製品の`src`・`test`の74 filesはPhase 32 commit `b6de1e62ad44ee41d52ea3586d0ad923591d0387`とbyte単位で同一。基盤の元履歴を保持し、製品snapshotだけを新repositoryへ渡す。
+- 独立lockfileの210 package/210 snapshotはPhase 32の解決内容の部分集合としてすべて一致。依存を新しいversionへ解決せず、固定済みの到達可能な依存だけを抽出した。基盤の第三者packages/snapshotsも不変。独立frozen installは成功し、初回のofflineでは製品専用storeが空のため停止した後、固定済みtarballだけを公式registryから取得した。
+- 独立CIはDaymarkの検証済み構成に揃え、公式checkoutの完全SHA・Node/pnpm checksum、contents readのみ、資格情報保持なしを維持。Cloudflare設定/credential・記事実データ・deploy/publishは含めない。
+- 製品を独立installすると基盤UI testにReactの二重読み込みを検出した。Phase 32 CIのサイズ超過と合わせ、React/React DOM/React Router/Zod/Drizzleを基盤の固定versionへ集約するbuild設定と、test側の共有renderer/Testing Library設定を追加。基盤側に既存versionの明示依存を追加したが、第三者version・供給網policy・size/coverage閾値は変更しない。
+- 調整後の製品260 tests・audit（既知脆弱性0）と基盤598 testsは成功。clientは422.9 KiBへ戻り、既存artifact budgetを通過した。最終全gate・clean環境・公開commitの検証は以下へ追記する。
+
+### 全gate・公開commit・再現性
+
+- 共有runtimeの別installを出力chunkから検出するVite guardと11件の回帰testを追加した。通常の複数subpath・Windows path・tree-shaken moduleを区別し、同じversionでも別実体が配信bundleへ混入すればbuildを失敗させる。
+- 作業コピーの最終`pnpm check`成功: Tech Inbox 22 files / 260 tests、Daymark 9 files / 69 tests、基盤65 files / 609 tests、E2E 37 passed / desktop専用mobile skip 1。format/lint、生成型、全TypeScript、coverage、fresh D1、SQL backup往復、実HTTP/maintenance、両Worker build、artifact budget、auditも通過した。
+- coverageはTech Inbox 94.09% / 89.60% / 97.46% / 94.14%、基盤89.27% / 85.30% / 89.29% / 90.69%（statements/branches/functions/lines）、Daymark対象domainは全指標100%。製品testは基盤testにも含むため件数を加算しない。基盤auditはhigh/critical 0・既存dev-only moderate 1、両製品auditは既知脆弱性0。
+- `pnpm db:generate`で7 table・schema変更なし・migration生成なし。既存migration、Daymarkの固定commit、Cloudflare設定/生成型、本番データは不変。
+- 公開前に両repositoryの対象sourceと成果物を秘密情報照合し、ignore・差分reviewを実施。Tech Inboxを先にcommit/pushし、public `Rizakura0110/tech-inbox`の`f749b0d32bf1351bdaf0cd846152096690b07ecf`を基盤へ固定した。製品GitHub Quality run `35817744911`はsuccess。
+- private `.tmp/phase33-clean-Fwferx`に基盤のclean cloneを作り、review済みstaged差分を適用してindexの完全一致を確認した。両製品はコピーではなくpublic remoteから取得し、Daymark `b6b3cdf89014c2fb71dffb5229a0f84932685df4`、Tech Inbox `f749b0d32bf1351bdaf0cd846152096690b07ecf`をcheckoutした。独立したnode_modules/storeとcredentialなしの環境でfrozen install・全`pnpm check`が成功した。
+- clean環境の初回は専用directory内の固定pnpm実体が未配置のためlocal D1 gateで停止した。既存の安全検査は変えず、検証済みNode/pnpmをそのcheckout内に配置して全gateを再実行した。再実行は製品260・Daymark69・基盤609 tests、D1/backup/HTTP、build/budget、E2E 37 passed / 意図的skip 1、auditまで成功。作業コピーの依存cacheやCloudflare資格情報は流用しない。
+- clean環境の成果物はapp Worker raw/gzip 511.5/108.8 KiB、fetcher 586.7/88.6 KiB、client JS 422.9/122.0 KiB、CSS 35.3/7.3 KiBで作業コピーと一致し、既存budget内。基盤commit/push後のGitHub CI確認を残す。

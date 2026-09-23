@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "tech-inbox:check": "pnpm --dir packages/tech-inbox check",
+    "tech-inbox:check": "pnpm --dir modules/tech-inbox install --frozen-lockfile && pnpm --dir modules/tech-inbox check",
     "tech-inbox:boundaries": "node scripts/check-tech-inbox-boundaries.mjs",
     "daymark:check": "pnpm --dir modules/daymark install --frozen-lockfile && pnpm --dir modules/daymark check",
     "daymark:boundaries": "node scripts/check-daymark-boundaries.mjs",
@@ -24,7 +24,7 @@
     "format": "biome format --write .",
     "format:check": "biome format .",
     "lint": "biome lint .",
-    "typecheck": "tsc --project tsconfig.tools.json --noEmit && tsc --project tsconfig.packages-test.json --noEmit && tsc --project apps/web/tsconfig.client.json --noEmit && tsc --project apps/web/tsconfig.client-test.json --noEmit && tsc --project apps/web/tsconfig.worker.json --noEmit && tsc --project apps/web/tsconfig.worker-test.json --noEmit && tsc --project apps/web/tsconfig.node.json --noEmit && tsc --project workers/metadata-fetcher/tsconfig.json --noEmit && tsc --project packages/contracts/tsconfig.json --noEmit && pnpm --dir packages/tech-inbox typecheck && tsc --project packages/db/tsconfig.json --noEmit",
+    "typecheck": "tsc --project tsconfig.tools.json --noEmit && tsc --project tsconfig.packages-test.json --noEmit && tsc --project apps/web/tsconfig.client.json --noEmit && tsc --project apps/web/tsconfig.client-test.json --noEmit && tsc --project apps/web/tsconfig.worker.json --noEmit && tsc --project apps/web/tsconfig.worker-test.json --noEmit && tsc --project apps/web/tsconfig.node.json --noEmit && tsc --project workers/metadata-fetcher/tsconfig.json --noEmit && tsc --project packages/contracts/tsconfig.json --noEmit && pnpm --dir modules/tech-inbox typecheck && tsc --project packages/db/tsconfig.json --noEmit",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "e2e": "playwright test",
@@ -49,8 +49,13 @@
     "@types/react-dom": "19.2.4",
     "@vitest/coverage-v8": "4.1.11",
     "drizzle-kit": "0.31.10",
+    "drizzle-orm": "0.45.2",
     "jsdom": "30.0.1",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "react-router": "8.3.0",
     "typescript": "7.0.2",
-    "vitest": "4.1.11"
+    "vitest": "4.1.11",
+    "zod": "4.4.3"
   }
 }

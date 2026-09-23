@@ -6,7 +6,7 @@
     "useIgnoreFile": true
   },
   "files": {
-    "includes": ["**", "!**/worker-configuration.d.ts", "!!modules/daymark"]
+    "includes": ["**", "!**/worker-configuration.d.ts", "!!modules/daymark", "!!modules/tech-inbox"]
   },
   "formatter": {
     "enabled": true,

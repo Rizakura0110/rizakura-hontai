@@ -3,6 +3,7 @@ packages:
   - workers/*
   - packages/*
   - modules/daymark
+  - modules/tech-inbox
 
 registries:
   default: https://registry.npmjs.org/

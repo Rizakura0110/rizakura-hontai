@@ -10,6 +10,8 @@
 
 Phase 32ではTech Inbox単体260 tests、基盤Vitest 598 tests、Daymark単体69 testsを確認した。Tech Inbox単体testは基盤Vitestにも含むため件数を単純加算しない。全gateの最終結果・phase完了状態は[Progress](progress.md)を正とし、個別test成功だけで完了扱いにしない。
 
+Phase 32のpush後のGitHub CIはclient JSの500,000 bytes上限で失敗した。Phase 33で独立install間の共有依存解決を修正し、作業コピーとclean checkoutで全gateが成功した。製品260 tests、Daymark69 tests、基盤609 tests、E2E37 passed/意図的skip1、client JS 422.9 KiBを確認済み。製品の公開commitとCIは成功し、基盤commit/push後のCI確認を残すためPhase 33はまだ完了扱いにしない。
+
 個別確認には次を使う。
 
 ```bash
@@ -53,19 +55,26 @@ local D1 gateはmigration `0002`を空DBと既存記事/タグ入りDBへ適用�
 - 種類・状態・チェック/数値shape・数値上限・名称/単位長・一意性・cascadeの制約が機能する
 - 同じmigrationの再適用が無変更になり、既存の記事・URL alias・タグ・タグ付けが保持される
 
-GitHub Actionsは`submodules: true`で基盤gitlinkの固定commitを取得する。Daymarkだけのpushで基盤参照や本番を更新しない。Phase完了時は新しい作業コピーで固定commit取得・frozen install・統合test/buildも確認する。
+GitHub Actionsは`submodules: true`で基盤gitlinkの固定commitを取得する。Phase 33ではTech Inboxも同じ方式へ移し、両製品を取得する。製品だけのpushで基盤参照や本番を更新しない。Phase完了時は新しい作業コピーで固定commit取得・frozen install・統合test/buildも確認する。
 
 ## Tech Inbox integration gate
 
-Phase 32では同一repositoryの`packages/tech-inbox`を`@rizakura-hontai/tech-inbox`として検証する。`pnpm tech-inbox:check`は製品directoryでformat、lint、source/testのTypeScript、coverage付き260 tests、宣言付きbuildを実行し、基盤の`pnpm check`にも組み込む。製品単体gateにCloudflare credentialや実DBは不要。依存監査は共用lockfileを持つ基盤の全gateで実行する。
+Phase 32の`packages/tech-inbox`を、Phase 33で承認済みpublic repositoryの`modules/tech-inbox`へ移す。package名`@rizakura-hontai/tech-inbox`は維持する。`pnpm tech-inbox:check`は製品の独立lockfileによるfrozen install後に、format、lint、source/testのTypeScript、coverage付き260 tests、宣言付きbuild、依存監査を実行する。独立CIと基盤の`pnpm check`にも同じ製品gateを組み込み、製品単体gateにCloudflare credentialや実DBを渡さない。基盤の結合lockfileも別途監査する。
 
 - 製品側には画面、記事・タグ・活動・backup・metadataの契約/処理、schema定義を置く。取得通信・HTML解析・repository・安全なerror表示・共通UIは境界に応じて注入する。
 - 製品UI単体testはclient/UIのmockだけで起動し、直接fetchしないこと、保存・既読化・route・error・abort等を検証する。既存の基盤page/component testは実HTTP adapterと共通UIを注入し、従来の操作検証とcoverageを維持する。
+- 基盤Vitestは`modules/tech-inbox`のtestと`src/**/*.{ts,tsx}`のcoverageを明示的に含める。directory移動で製品UIや契約・URL正規化・SSRF判定の90%閾値を対象外にしない。
 - `scripts/tech-inbox-boundaries.test.mjs`でsource/testのimportを構文解析し、製品外への相対参照、基盤/Daymark/workspaceへの依存、Cloudflare binding型、動的import等を拒否する。共通contractsがHTTPだけをexportし、DB側が両製品schemaを集約する構成も検証する。
 - `pnpm tech-inbox:boundaries`は実際のVite buildでapp/browser/contracts/coreのbrowser利用を確認し、server/schema/metadataはserver buildだけを許可する。package exportsに加え、相対source importで迂回したclient混入もVite pluginで拒否する。通常buildにも同じpluginを適用する。
 - 認証・Origin・Rate Limit・HTTP route・D1 adapter・migration履歴・Cloudflare entrypointは基盤に残す。DB migration差分はゼロとし、fresh D1・backup往復・両製品の実HTTP・desktop/mobile E2Eを省略しない。
 
-Phase 32では新repository、npm公開、submodule追加、本番deployを行わない。Phase 33で別repositoryへ移す際は公開範囲・対象を確認し、製品側のtest/commit/push後に基盤が固定SHAを取り込んで同じ全gateを通す。moving branchをbuild中に取得しない。
+Phase 33のpublic `Rizakura0110/tech-inbox`は所有者承認済み。製品側のtest/review/commit/push後に基盤がgitlinkで固定SHAを取り込み、全gateとclean checkout検証を通してから基盤をcommit/pushする。`git submodule update --init -- modules/daymark modules/tech-inbox`で記録済みcommitを取得し、moving branchをbuild中に取得しない。npm公開・本番deploy・Cloudflare操作は含まない。
+
+### 独立installと共有runtimeの検証
+
+製品単体installは各製品自身のworkspace・lockfile・storeを使う。同じversionでも基盤と異なる物理pathの依存を持てるため、結合時にはViteの`resolve.dedupe`で`react`、`react-dom`、`react-router`、`zod`、`drizzle-orm`を共有する。基盤Vitestも同じruntimeとTesting Libraryの3 packageをdedupeし、renderer/contextやtest cleanupの不一致を防ぐ。解決元は基盤側で同じ既存versionを明示宣言する。
+
+Phase 32後続CIでclient JSが500,577 bytesとなった原因は、独立installによるZod等の重複取り込みだった。Phase 33で解決を統一したlocal buildは422.9 KiBへ戻り、500,000 bytesのbudget自体は変更していない。両製品の独立installを先に実行し、基盤test/coverage/build/artifact gateを通すこと、さらにclean checkoutでも同じ結果になることを完了条件とする。
 
 ## Coverage policy
 

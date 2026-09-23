@@ -1,3 +1,6 @@
 [submodule "modules/daymark"]
 	path = modules/daymark
 	url = https://github.com/Rizakura0110/daymark.git
+[submodule "modules/tech-inbox"]
+	path = modules/tech-inbox
+	url = https://github.com/Rizakura0110/tech-inbox.git

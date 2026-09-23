@@ -22,7 +22,7 @@ async function bundle(entrypoint, server = false, direct = false) {
         resolveId: (id) => (id === virtualEntry ? id : undefined),
         load: (id) =>
           id === virtualEntry
-            ? `export * from "${direct ? `../../packages/tech-inbox/src/${source}` : `@rizakura-hontai/tech-inbox/${entrypoint}`}";`
+            ? `export * from "${direct ? `../../modules/tech-inbox/src/${source}` : `@rizakura-hontai/tech-inbox/${entrypoint}`}";`
             : undefined,
       },
     ],

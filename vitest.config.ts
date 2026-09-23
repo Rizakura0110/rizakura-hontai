@@ -1,12 +1,26 @@
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
+  resolve: {
+    // Keep host and independently installed product fixtures on one React renderer.
+    dedupe: [
+      "react",
+      "react-dom",
+      "react-router",
+      "zod",
+      "drizzle-orm",
+      "@testing-library/react",
+      "@testing-library/dom",
+      "@testing-library/user-event",
+    ],
+  },
   test: {
     environment: "node",
     include: [
       "apps/**/*.{test,spec}.{ts,tsx}",
       "workers/**/*.{test,spec}.{ts,tsx}",
       "packages/**/*.{test,spec}.{ts,tsx}",
+      "modules/tech-inbox/**/*.{test,spec}.{ts,tsx}",
       "scripts/**/*.{test,spec}.mjs",
     ],
     coverage: {
@@ -17,6 +31,7 @@ export default defineConfig({
         "apps/*/src/**/*.{ts,tsx}",
         "workers/*/src/**/*.ts",
         "packages/*/src/**/*.{ts,tsx}",
+        "modules/tech-inbox/src/**/*.{ts,tsx}",
       ],
       exclude: [
         "**/*.{test,spec}.{ts,tsx}",
@@ -37,9 +52,9 @@ export default defineConfig({
         functions: 80,
         lines: 80,
         "packages/contracts/src/**": { branches: 90 },
-        "packages/tech-inbox/src/contracts/**": { branches: 90 },
-        "packages/tech-inbox/src/core/url-normalization.ts": { branches: 90 },
-        "packages/tech-inbox/src/metadata/url-policy.ts": { branches: 90 },
+        "modules/tech-inbox/src/contracts/**": { branches: 90 },
+        "modules/tech-inbox/src/core/url-normalization.ts": { branches: 90 },
+        "modules/tech-inbox/src/metadata/url-policy.ts": { branches: 90 },
       },
     },
   },

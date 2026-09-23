@@ -1,6 +1,6 @@
 # rizakura-hontai
 
-rizakura-hontaiは、本人限定のツールへの入口と共通基盤です。記事管理のTech Inboxは同じrepository内の独立workspace packageへ整理し、習慣管理のDaymarkは別repositoryから統合します。Daymarkの日次記録・設定履歴・日/週/月集計、保護API、responsive画面、独立PWA、製品別JSONバックアップを実装しました。Cloudflare Accessと既存のapp Worker・D1を共有し、Phase 25で本番反映と3年分データのFree CPU境界まで検証した構成です。
+rizakura-hontaiは、本人限定のツールへの入口と共通基盤です。記事管理のTech Inboxと習慣管理のDaymarkを、別repositoryの固定commitから統合する構成です。Daymarkの連携は完了し、Tech Inboxの別repository化はPhase 33で検証中です。Daymarkの日次記録・設定履歴・日/週/月集計、保護API、responsive画面、独立PWA、製品別JSONバックアップを実装しました。Cloudflare Accessと既存のapp Worker・D1を共有し、Phase 25で本番反映と3年分データのFree CPU境界まで検証した構成です。
 
 ## 実装と本番の状態
 
@@ -14,7 +14,9 @@ Phase 30では共用D1を`tech-inbox`から新しい`rizakura-hontai`へコピ�
 
 Phase 31は完了しました。2026-09-22に既存WorkerとAccess表示名を`rizakura-hontai`へ改名し、APP_ORIGINを更新しました。Worker・AccessのID、audience、本人限定policy、D1接続先と全データを維持し、新originの未認証9経路がAccessへredirectされることを確認して、保存とQueue配送を再開しています。所有者からPCでの新URLログイン、記事・タグ・活動とDaymarkの日/週/月表示、両製品の保存・再読み込み反映の成功報告を受領しました。2026-09-23には新originからiPhone SafariでTech Inbox/DaymarkをそれぞれPWAへ追加し直し、新アイコンからの起動・ログイン・表示・保存・閉じて再起動まで成功報告を受領しています。現行originは`apps/web/wrangler.jsonc`を参照してください。
 
-Phase 32ではTech Inboxの画面、記事・タグ・活動・backup・metadata処理、契約、schema定義、単体testを`packages/tech-inbox`へ集約しました。機能・URL・API・DB migrationを変えず、認証・HTTP/D1 adapter・共通UIは基盤に残し、基盤から製品へ必要なrepository・client・UIを注入します。この整理では本番へdeployせず、新repositoryやCloudflare resourceも作成しません。Phase 33の別repository・固定submodule化は公開範囲と対象を確認してから行い、本番反映はPhase 34で別途実施します。検証結果と完了状態は[Progress](docs/progress.md)を参照してください。
+Phase 32ではTech Inboxの画面、記事・タグ・活動・backup・metadata処理、契約、schema定義、単体testを`packages/tech-inbox`へ集約しました。機能・URL・API・DB migrationを変えず、認証・HTTP/D1 adapter・共通UIは基盤に残し、基盤から製品へ必要なrepository・client・UIを注入します。ローカルgateは成功しましたが、その後のGitHub CIでclient bundleの上限超過が判明し、Phase 33で独立install時の共有依存の重複を修正しています。
+
+Phase 33は進行中です。所有者がpublic `Rizakura0110/tech-inbox`を承認し、repositoryを作成しました。製品を`modules/tech-inbox`へ移し、Daymarkと同じ固定commitのGit submoduleとして連携する準備を進めています。製品のsource/test 74ファイルはPhase 32と同一で、独立lockfile・品質CI・依存監査を追加しました。製品と基盤の全gate、固定commitのclean checkout検証、commit・push完了までは完了扱いにしません。npm公開・本番deploy・Cloudflare変更は行わず、本番はPhase 31のままです。分離構成の本番反映はPhase 34で別途承認後に実施します。最新結果は[Progress](docs/progress.md)を参照してください。
 
 ## DaymarkのPhase 21〜23機能
 
@@ -74,7 +76,7 @@ tech-inbox-metadata-fetcher Worker
 
 | 配置 | 責務 |
 |---|---|
-| `packages/tech-inbox` (`@rizakura-hontai/tech-inbox`) | 製品画面、契約、domain/service、backup、metadata処理、記事schema、単体test |
+| `modules/tech-inbox` (`@rizakura-hontai/tech-inbox`) | Tech Inbox製品画面、契約、domain/service、backup、metadata処理、記事schema、単体test。固定commit連携をPhase 33で検証中 |
 | `modules/daymark` (`@rizakura-hontai/daymark`) | 固定commitで取り込むDaymark製品 |
 | `packages/contracts` (`@rizakura-hontai/contracts`) | 製品に依存しない共通HTTP契約のみ |
 | `packages/db` (`@rizakura-hontai/db`) | 両製品schemaの集約、既存migration履歴 |
@@ -122,7 +124,7 @@ export COREPACK_HOME="$PROJECT_ROOT/.tools/corepack"
 export PLAYWRIGHT_BROWSERS_PATH="$PROJECT_ROOT/.cache/ms-playwright"
 export PNPM_CONFIG_NPMRC_AUTH_FILE="$PROJECT_ROOT/.config/pnpm-auth-empty"
 cd "$PROJECT_ROOT"
-git submodule update --init -- modules/daymark
+git submodule update --init -- modules/daymark modules/tech-inbox
 pnpm install --frozen-lockfile
 cp apps/web/.dev.vars.example apps/web/.dev.vars
 pnpm db:migrate:local
@@ -131,22 +133,25 @@ pnpm dev
 
 `apps/web/.dev.vars`はlocal用の`ENVIRONMENT=local`とloopbackの`APP_ORIGIN`だけを使用し、commitしません。通常は`http://localhost:5173`を開きます。local D1は`apps/web/.wrangler/state`へ保存されます。
 
-## Daymarkの取り込み・更新
+## 製品の取り込み・更新
 
-`modules/daymark`は[別repository](https://github.com/Rizakura0110/daymark)のGit submoduleです。初回は上記の初期化command、または`git clone --recurse-submodules`で取得します。npmログインは不要です。
+`modules/daymark`は[Daymark repository](https://github.com/Rizakura0110/daymark)、`modules/tech-inbox`は[Tech Inbox repository](https://github.com/Rizakura0110/tech-inbox)の固定commitを取り込む配置です。Tech Inboxの連携はPhase 33で検証中です。両gitlinkが記録された基盤revisionでは、初回は上記の初期化command、または`git clone --recurse-submodules`で取得します。npmログインは不要です。
 
-Daymarkの変更を単体test・reviewしてcommit/pushした後、基盤側で組み合わせを検証します。
+各製品は独立lockfileとCIを持ちます。変更した製品の単体gate・差分・秘密情報を確認して先にcommit/pushし、そのcommitを基盤のgitlinkへ記録します。次に組み合わせの全gateとclean checkoutの再現性を確認してから、基盤をcommit/pushします。
 
 ```bash
-pnpm --dir modules/daymark check
+pnpm daymark:check
+pnpm tech-inbox:check
+# 変更した製品をreview・commit・pushし、その固定commitを取り込む
+git add modules/daymark modules/tech-inbox
 pnpm check
-git add modules/daymark
-# 基盤の他のin-scope変更と参照commitをreview・commit・pushする
+# clean checkoutでも固定commit取得・frozen install・統合gateを確認する
+# 基盤の他のin-scope変更とgitlinkをreview・commit・pushする
 ```
 
-`git -C modules/daymark status`で別repositoryの変更を確認できます。基盤へ記録するのはDaymarkのsourceコピーではなくcommit SHAです。Daymarkだけのpushでは基盤・本番は変わりません。build/deploy中に`--remote`で最新版を取り込まず、reviewしたcommitだけを使います。Cloudflareへの反映は別途承認後に行います。
+`git -C modules/daymark status`と`git -C modules/tech-inbox status`で各repositoryの変更を確認できます。基盤へ記録するのは製品sourceのコピーではなくcommit SHAです。製品だけのpushでは基盤・本番は変わりません。build/deploy中に`--remote`で最新版を取り込まず、reviewしたcommitだけを使います。Cloudflareへの反映は別途承認後に行います。
 
-新cloneのsubmoduleは通常detached HEADなので、編集前に作業branchを確認します。基盤のpull後は、未commit変更がないことを確認して`git submodule update --init -- modules/daymark`で記録されたcommitへ揃えます。未保存の変更を強制的に破棄する操作はしません。
+新cloneのsubmoduleは通常detached HEADなので、編集前に作業branchを確認します。基盤のpull後は、未commit変更がないことを確認して`git submodule update --init -- modules/daymark modules/tech-inbox`で記録されたcommitへ揃えます。未保存の変更を強制的に破棄する操作はしません。
 
 ## Test and quality gates
 
@@ -158,7 +163,7 @@ pnpm check
 
 DaymarkとTech Inboxの製品単体gateに続き、format、lint、Cloudflare生成型、TypeScript、Vitest、coverage、fresh local D1、実HTTP API、production build、artifact budget、desktop/mobile Playwright、依存監査を順番に実行します。個別コマンドと基準は[Quality gates](docs/quality-gates.md)を参照してください。
 
-Tech Inboxだけのformat・lint・TypeScript・coverage付き単体test・宣言付きbuildは`pnpm tech-inbox:check`で確認できます。製品UIは注入client/UIのmockで単体検証し、実際のHTTP・共通UIとの接続は基盤の既存component/page testとE2Eでも検証します。単体gateだけでは基盤との組み合わせを保証しないため、phase完了には`pnpm check`全体が必要です。
+Tech Inboxだけのfrozen install・format・lint・TypeScript・coverage付き単体test・宣言付きbuild・依存監査は`pnpm tech-inbox:check`で確認できます。製品UIは注入client/UIのmockで単体検証し、実際のHTTP・共通UIとの接続は基盤の既存component/page testとE2Eでも検証します。単体gateだけでは基盤との組み合わせを保証しないため、phase完了には`pnpm check`全体が必要です。
 
 同じ`pnpm check`はGitHub Actionsでも`main`へのpushとpull request時に実行します。CIはCloudflare credentialやproduction secretを受け取らず、本番へ接続しません。Markdownと`docs/`だけの変更では実行しません。
 

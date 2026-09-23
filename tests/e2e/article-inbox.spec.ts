@@ -10,7 +10,7 @@ import {
   activityDateInTokyo,
   createReadActivityWindow,
   summarizeReadActivity,
-} from "../../packages/tech-inbox/src/core/activity";
+} from "../../modules/tech-inbox/src/core/activity";
 
 type MetadataTransition = "ready" | "failed";
 

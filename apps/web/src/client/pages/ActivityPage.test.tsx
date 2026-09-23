@@ -4,7 +4,7 @@ import { ActivityPage } from "@rizakura-hontai/tech-inbox/app";
 import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { articleActivityFixture } from "../../../../../packages/tech-inbox/test/contracts/fixtures";
+import { articleActivityFixture } from "../../../../../modules/tech-inbox/test/contracts/fixtures";
 import { renderTechInbox as render } from "../tech-inbox.test-support";
 
 function json(body: unknown, status = 200) {
