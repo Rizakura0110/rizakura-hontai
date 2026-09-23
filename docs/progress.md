@@ -1934,3 +1934,13 @@
 - [Tokiフェーズ計画](toki-roadmap.md)にPhase 35〜43を記録。新repositoryの名称・公開範囲は作成前、Cloudflare作成/deployと本人実機確認はPhase 43の別承認で扱う。Toki originの稼働と保護を先に確認し、基盤入口リンクを後から反映する順序とした。
 - 最終`pnpm check`成功: Daymark69 tests、Tech Inbox260 tests、基盤609 tests、E2E37 passed/desktop専用mobile skip1、format/lint/生成型/TypeScript/coverage、fresh local D1・backup往復・実HTTP、両Worker build/budget、audit high/critical0。基盤auditのdev-only moderate1は既存値。
 - 最初の全gateではモバイルE2Eの既存URL編集ケースが1件失敗し、失敗画面でURL入力値の連結を確認した。同じケースを単独10回再実行して全件成功し、その後の全`pnpm check`はE2Eを含めて成功した。再現性のある原因は特定しておらず、アプリ・テストのコード変更はしていない。
+
+## Phase 36: Tokiの別repositoryと開発基盤
+
+状態: 完了（2026-09-23）。所有者が正式名`Toki`、Public `Rizakura0110/toki`を確認した。独立Git repositoryを作成し、初期commit `2a207f4d9b698b1fe46091475239a29111d98952`を`main`へpushした。基盤の`products/toki`作業コピーは明示的にignoreし、workspace・submodule・基盤lockfileへ追加していない。
+
+- Toki単体にNode 24.19.0、pnpm 11.22.0の固定環境、公開後7日・完全固定・strict peer/integrity/install script制限付きの独立lockfile、生成型、Biome/TypeScript/Vitest、読み取り権限だけのGitHub Quality CIを用意した。CIにCloudflare資格情報・deployはない。
+- Toki Workerは本番公開URLとpreviewを無効とし、通常routeを503で閉じる。ローカル起動で明示したflagとloopbackの`GET /__local/db`だけD1の`SELECT 1`を実行する。計測table/API・画面/PWA・Access JWT本実装は未着手。Cloudflare本番DB ID、origin、本人email、secretは含めていない。
+- Tokiの最終`pnpm check`成功: 境界、format/lint、Wrangler生成型、TypeScript、10 tests/coverage全指標100%、local D1の`SELECT 1`、Worker dry-run build、audit既知脆弱性0。local HTTPでD1 probeは200/`OK`、通常routeは503を確認。remote D1・Workerへの操作はしていない。
+- 公開commitの[GitHub Quality run](https://github.com/Rizakura0110/toki/actions/runs/35829300006)も成功。基盤側の`pnpm check`はDaymark69、Tech Inbox260、基盤609 tests、E2E37 passed/意図的skip1、format/lint/生成型/TypeScript/coverage、local D1/backup/API、両Worker build/budget、audit high/critical0で成功。基盤の既知dev-only moderate1は不変。
+- Tokiと基盤の差分・ignore・資格情報を確認した。既存Tech Inbox/Daymarkのcode、DB、Worker、Access、PWA、本番URL、課金設定は変更していない。Phase 37で業務schema/APIと本人限定認証のlocal実装に進む。

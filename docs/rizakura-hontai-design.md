@@ -199,6 +199,6 @@ Phase 21〜23の完了はlocal実装と検証を対象とし、本番D1へのmig
 - 画面への入場時と明示的な「更新」で保護APIを取得し、polling・cache・記事情報の追加取得は行わない。離脱時はrequestをabortし、loading・空状態・認証/通信errorと再読み込みを表示する。更新失敗時は古い件数を隠す。
 - Phase 27ではDB・Cloudflare・PWA identity・backup形式・依存関係・Daymarkの固定commitを変更しない。本番deployとPC/iPhone確認はPhase 28へ分ける。
 
-## 10. 第3製品Toki（仮称）の分離計画
+## 10. 第3製品Tokiの分離計画
 
 Phase 35以降のTokiは、上記のTech Inbox/Daymark統合構成に加えるのではなく、**別repository・別Worker・別D1・別Access application**で開発する。rizakura-hontaiは入口メニューからTokiへリンクし、Tokiからも入口へ戻れるようにする。入口の追加時には基盤Workerの画面とdeployは変わるが、既存2製品の業務処理・DB・Access policy・PWA identityは変更しない。Tokiの計測状態、復帰、カレンダー、セキュリティ、Free枠の詳細は[Toki設計](toki-design.md)、順序は[Tokiフェーズ計画](toki-roadmap.md)、構成上の決定は[ADR-0021](decisions/0021-toki-independent-product.md)に記録する。Phase 35ではまだ製品runtimeや本番resourceを作らない。

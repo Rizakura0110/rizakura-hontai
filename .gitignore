@@ -15,6 +15,9 @@ test-results/
 .tmp/
 .wrangler/
 
+# Independent Toki repository; not a workspace package or submodule.
+/products/toki/
+
 .dev.vars
 .dev.vars.*
 !.dev.vars.example

@@ -1,13 +1,13 @@
-# Toki（仮称）実装フェーズ
+# Toki実装フェーズ
 
 日付: 2026-09-23
-状態: Phase 35の設計文書は完了。Phase 36以降の実装・本番提供は未着手。
+状態: Phase 35の設計とPhase 36の独立開発基盤は完了。Phase 37以降の業務機能・本番提供は未着手。
 仕様: [Toki設計](toki-design.md)、分離理由: [ADR-0021](decisions/0021-toki-independent-product.md)
 
 | Phase | 目的 | 完了条件と境界 |
 |---|---|---|
 | 35 | 仕様・設計の確定 | 計測/復帰/期限/未保存、PC/スマホ/集中表示、日時・編集、独立構成とFree gateを文書化。文書差分・全品質gate・commit/push。本番/resource変更なし |
-| 36 | 別repositoryと開発土台 | 製品名・repository名・公開範囲を作成前に確認。独立lockfile、供給網policy、単体test/CI、ローカルWorker/D1、基盤との境界を整える。本番resourceは作らない |
+| 36 | 別repositoryと開発土台 | 確認済みの`Rizakura0110/toki` Publicへ、独立lockfile、供給網policy、単体test/CI、ローカルWorker/D1、基盤との境界を整える。本番resourceは作らない |
 | 37 | 認証・DB・API | 本人限定Access JWTのWorker側検証、session/record schema、開始/終了/期限/保存/破棄/編集・日/週取得をlocal実装。二重開始・冪等・時刻境界・競合・認証のテスト |
 | 38 | 計測画面 | ストップウォッチ/タイマー、内容入力、閉じた後の復帰、通信失敗表示、PC/スマホの時間だけ表示を実装。毎秒のbackend通信なし |
 | 39 | アプリ内カレンダー | PC週/日、スマホ日タイムライン、保存済み記録の表示と日時・内容の編集、日またぎ・移動・空状態を検証 |

@@ -28,9 +28,11 @@ Phase 17までのTech Inboxは完了済み。以下は所有者と合意した�
 | 33 | 完了（本番未反映） | Tech Inboxの別repository化 | 承認済みpublic repositoryを固定commitで統合。全品質gate・clean checkout・両repositoryのcommit/pushとCIが成功 |
 | 34 | 完了（本番・PC・iPhone両PWA確認済み） | 分離構成の本番反映 | 両製品・草・タグ・metadata・backup・PWAの回帰確認 |
 
-## Phase 35以降: 第3製品Toki（仮称）
+## Phase 35以降: 第3製品Toki
 
 時間計測・アプリ内カレンダーの第3製品は、既存2製品と異なり別repository・別Worker・別D1として開発する。基盤は入口リンクのみを担当する。Phase 35〜43の目的と完了条件は[専用フェーズ計画](toki-roadmap.md)、計測・復帰・編集・認証の仕様は[設計書](toki-design.md)を参照する。Phase 35は文書化と全品質gateまで完了し、新resourceや本番変更は行っていない。Cloudflare側の作成・deployには別途明示承認が必要。
+
+Phase 36では所有者が`Toki`とPublic `Rizakura0110/toki`を確認し、独立repository・単体CI・local-only Worker/D1接続を整えた。基盤へのsubmodule/workspace統合は行わず、GitHub repository作成・通常push以外のremote変更はない。Cloudflare本番resourceは未作成。
 
 ## 共通ルール
 

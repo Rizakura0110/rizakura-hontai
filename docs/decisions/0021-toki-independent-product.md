@@ -1,7 +1,7 @@
 # ADR-0021: 第3製品Tokiを独立WorkerとD1に分ける
 
 日付: 2026-09-23
-状態: 採用（Phase 35の設計。remote resourceと本番提供は未実施）
+状態: 採用（Phase 36でPublic repositoryを作成。Cloudflare本番resourceと本番提供は未実施）
 
 ## 背景
 
@@ -9,11 +9,11 @@ Tech InboxとDaymarkは別repositoryの固定commitから`rizakura-hontai`へ統
 
 ## 決定
 
-- Toki（仮称）は別repositoryで開発し、UIとAPIを同一のToki Workerへ配置する。基盤へ製品submoduleとして取り込まない。
+- Tokiは所有者が確認したPublic `Rizakura0110/toki`で開発し、UIとAPIを同一のToki Workerへ配置する。基盤へ製品submoduleとして取り込まない。
 - Toki専用D1を使用する。既存`rizakura-hontai` D1へ新しい業務tableを足さず、既存データの移行も行わない。2026-09-23時点で旧`tech-inbox` DBを保持しているため、Tokiを加えたDB個数・容量とアカウント合算のFree使用量は本番作成前に確認する。
 - Toki用の本人限定Access applicationを作り、Workerでもそのapplication固有のJWT issuer/audience/本人emailを検証する。基盤入口とTokiは通常のリンクで往復し、cross-originの業務APIや共有session/DBを前提にしない。
 - タイマーの毎秒表示は端末内。状態変更、画面復帰時の未完了状態取得、期間指定カレンダー取得にWorker/D1を使う。端末を閉じた間は保存した時刻・期限・状態から復帰し、通知や定期実行の到達を前提にしない。
-- Tokiの正式名称・repository公開範囲・Cloudflare識別子は外部作成前に確定する。本番のAccess/Worker/D1作成・migration/deployはPhase 43の明示承認に分け、Phase 35では行わない。
+- Tokiの正式名称とrepository公開範囲はPhase 36開始時に所有者が確認した。Cloudflare識別子は作成前に確定し、本番のAccess/Worker/D1作成・migration/deployはPhase 43の明示承認に分ける。
 
 ## 理由と影響
 
