@@ -1,6 +1,30 @@
 import { daymarkProduct } from "@rizakura-hontai/daymark/browser";
 
-export function PortalPage() {
+function safeTokiUrl(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  try {
+    const url = new URL(value);
+    if (
+      url.protocol !== "https:" ||
+      !url.hostname.endsWith(".sx7k2p9q.workers.dev") ||
+      url.port !== "" ||
+      url.pathname !== "/" ||
+      url.search !== "" ||
+      url.hash !== "" ||
+      url.username !== "" ||
+      url.password !== ""
+    ) {
+      return null;
+    }
+    return url.href;
+  } catch {
+    return null;
+  }
+}
+
+export function PortalPage({ tokiUrl = import.meta.env.VITE_TOKI_URL }: { tokiUrl?: string } = {}) {
+  // The product appears before launch, but a link is built only after Toki is live.
+  const tokiLink = safeTokiUrl(tokiUrl);
   return (
     <div className="min-h-dvh bg-[#f7f8fa] text-slate-800">
       <header className="border-b border-slate-200 bg-white">
@@ -23,7 +47,7 @@ export function PortalPage() {
           <br />
           ここから、使いたいツールへ。
         </p>
-        <section aria-label="ツール一覧" className="mt-10 grid gap-5 sm:grid-cols-2">
+        <section aria-label="ツール一覧" className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           <article className="flex flex-col rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
             <span
               aria-hidden="true"
@@ -66,9 +90,34 @@ export function PortalPage() {
               Daymarkを開く<span aria-hidden="true">→</span>
             </a>
           </article>
+          <article className="flex flex-col rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+            <span
+              aria-hidden="true"
+              className="grid size-12 place-items-center rounded-xl bg-[#cc6843] font-semibold text-white"
+            >
+              T
+            </span>
+            <p className="mt-6 text-xs font-medium text-[#a84e30]">時間管理</p>
+            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">Toki</h2>
+            <p className="mb-8 mt-3 text-sm leading-7 text-slate-600">
+              ストップウォッチやタイマーで測った時間を記録し、カレンダーで振り返れます。
+            </p>
+            {tokiLink === null ? (
+              <span className="mt-auto flex min-h-11 items-center rounded-lg bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-600">
+                公開準備中
+              </span>
+            ) : (
+              <a
+                className="mt-auto flex min-h-11 items-center justify-between gap-3 rounded-lg bg-[#a84e30] px-4 py-3 text-sm font-semibold text-white hover:bg-[#873a22] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#a84e30]"
+                href={tokiLink}
+              >
+                Tokiを開く<span aria-hidden="true">→</span>
+              </a>
+            )}
+          </article>
         </section>
         <p className="mt-8 text-xs leading-6 text-slate-500">
-          Tech InboxとDaymarkは、それぞれホーム画面に追加して直接開くこともできます。
+          公開中のツールは、それぞれホーム画面に追加して直接開くこともできます。
         </p>
       </main>
     </div>

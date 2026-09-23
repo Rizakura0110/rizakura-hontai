@@ -1964,3 +1964,12 @@
 - 320px幅と200%拡大相当で計測・カレンダー・編集ダイアログのはみ出しを確認し、見出し・入力・操作ボタンの折り返しと最小44pxの操作領域を調整した。PC週タイムラインはキーボードで横スクロールでき、明示的なフォーカス表示を付けた。
 - ローカルChromeでmanifest/PNG配信、スマホの計測→時間だけ表示→終了→保存→カレンダー、キーボードEscape、日・週と記録、拡大表示を実操作で検証した。iPhone実機でのホーム画面追加と起動・再ログインは本番提供後のPhase 43で本人確認を依頼する。
 - Toki単体`pnpm check`は104 tests、coverage、format/lint、生成型、TypeScript、local D1とWorker dry-run build、依存監査0件まで成功。commit `bcec429b561c859da6c81bfa1961b2bc329cb555`を`main`へpushし、[公開GitHub Quality](https://github.com/Rizakura0110/toki/actions/runs/35834055751)も成功した。
+
+## Phase 41: 基盤入口とTokiの往復（ローカル実装）
+
+状態: 完了（2026-09-23、ローカルのみ）。基盤入口にTokiの第三カードを追加し、Tokiの計測・カレンダー両画面には現行`rizakura-hontai` originへの通常リンクを追加した。集中表示中は画面全体を時間だけにする既存仕様を保ち、戻りリンクを表示しない。製品間のデータ/API連携、基盤DB/WorkerへのToki業務処理、既存2製品のPWA変更はない。
+
+- Tokiの保護された本番originが稼働するまでは、基盤カードを「公開準備中」とし、無効なリンクは出さない。稼働とAccessを確認したPhase 43でのみ、ビルド時の`VITE_TOKI_URL`を指定してリンクを有効化する。HTTPS・同一Cloudflare accountのWorker origin・root path以外の設定値は拒否する。現時点の基盤本番にはカードもリンクも反映していない。
+- ローカルChromeでPC 1280pxとスマホ320pxの入口を目視・横幅確認し、3カード・リンク有効時の描画とリンク先を確認した。Tokiへの自動通信は起こさない。E2Eではリンク未設定の待機状態と、設定した場合の通常リンクを検証した。
+- Toki単体の全`pnpm check`は107 tests、format/lint・生成型・TypeScript・local D1 SQL・Worker dry-run build・audit既知脆弱性0で成功。Toki commit `bc7530359c186045ce380321e0958a68cf7feda9`を`main`へpushし、[公開GitHub Quality](https://github.com/Rizakura0110/toki/actions/runs/35834615822)も成功した。
+- 基盤の全`pnpm check`はDaymark69 tests、Tech Inbox260 tests、基盤615 tests、E2E37 passed/意図的skip1、format/lint・生成型・TypeScript・coverage・local D1/backup/API・両Worker build/budget・audit high/critical 0まで成功した。既存のdev-only moderate 1件は不変。初回はE2Eのテスト名の改行書式だけで停止したため修正し、全gateを最初から再実行した。独立レビューでTokiボタンのコントラスト不足を見つけ、通常時5.53:1・hover時7.90:1へ修正後、再び全gateを通した。Cloudflare本番resource・D1・Access・料金プランは変更していない。

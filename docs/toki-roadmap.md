@@ -1,7 +1,7 @@
 # Toki実装フェーズ
 
 日付: 2026-09-23
-状態: Phase 35〜40完了。Phase 41以降の入口連携・統合確認・本番提供は未着手。
+状態: Phase 35〜41をローカル実装。Phase 42の統合確認・Phase 43の本番提供は未着手。
 仕様: [Toki設計](toki-design.md)、分離理由: [ADR-0021](decisions/0021-toki-independent-product.md)
 
 | Phase | 目的 | 完了条件と境界 |
@@ -19,3 +19,5 @@
 共通ルール: 1フェーズずつ進め、完了時には対象repositoryの差分・ignore・秘密情報を確認し、必要な品質gateが成功した場合だけcommit/pushする。Git pushはCloudflareの作成・migration・deployを許可しない。Toki側のcommitを先に公開し、基盤側に変更があるフェーズでは結合検証後に基盤をcommit/pushする。既存のTech Inbox/Daymarkとその本番データ・認証・PWAを保つ。
 
 Phase 37で確定した詳細: タイマー1秒〜24時間、内容1〜500文字、記録と取得期間の上限366日、保存済み記録の時間重複を許可、未完了計測は1件まで。編集は`version`で競合を検出し`409`を返す。後続画面では再読込・再編集を案内する。
+
+Phase 41の入口はTokiを「公開準備中」で表示し、保護されたToki originの稼働をPhase 43で確認してから、ビルド時の`VITE_TOKI_URL`でリンクを有効にする。基盤Workerの本番再deployもPhase 43の別承認まで行わない。Toki画面の通常ヘッダーには現行のrizakura-hontai originへの戻りリンクを置き、時間だけ表示中はヘッダーごと非表示にする。

@@ -1,7 +1,7 @@
 # Toki: 時間記録アプリの設計
 
 日付: 2026-09-23
-状態: Phase 40の計測画面・アプリ内カレンダー・Toki専用PWAまでローカル実装。本番提供は未着手。
+状態: Phase 41の基盤入口との往復までローカル実装。本番提供は未着手。
 関連: [フェーズ計画](toki-roadmap.md)、[ADR-0021](decisions/0021-toki-independent-product.md)
 
 ## 1. 目的と確定した範囲

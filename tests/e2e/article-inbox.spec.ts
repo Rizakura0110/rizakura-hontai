@@ -404,12 +404,12 @@ test.beforeEach(async ({ page }) => {
   await mockArticleApi(page);
 });
 
-test("portal links to both products and Tech Inbox keeps its separate document", async ({
-  page,
-}) => {
+test("portal stages Toki and keeps product documents separate", async ({ page }) => {
   let dataRequests = 0;
+  let tokiRequests = 0;
   page.on("request", (request) => {
     if (new URL(request.url()).pathname.startsWith("/api/")) dataRequests += 1;
+    if (new URL(request.url()).hostname.endsWith(".sx7k2p9q.workers.dev")) tokiRequests += 1;
   });
   await page.goto("/");
   await expect(page).toHaveTitle("rizakura-hontai");
@@ -418,9 +418,20 @@ test("portal links to both products and Tech Inbox keeps its separate document",
     "href",
     "/daymark/",
   );
+  await expect(page.getByRole("heading", { name: "Toki" })).toBeVisible();
+  if (process.env.VITE_TOKI_URL) {
+    await expect(page.getByRole("link", { name: "Tokiを開く" })).toHaveAttribute(
+      "href",
+      process.env.VITE_TOKI_URL,
+    );
+  } else {
+    await expect(page.getByText("公開準備中")).toBeVisible();
+    await expect(page.getByRole("link", { name: "Tokiを開く" })).toHaveCount(0);
+  }
   await expect(page.locator('link[rel="manifest"]')).toHaveCount(0);
   await expect(page.locator('meta[name="apple-mobile-web-app-capable"]')).toHaveCount(0);
   expect(dataRequests).toBe(0);
+  expect(tokiRequests).toBe(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
     true,
   );
