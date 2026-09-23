@@ -1,6 +1,6 @@
 # Cloudflare名称移行とTech Inbox分離
 
-最終更新: 2026-09-23。Phase 29〜31完了。Phase 31は承認後の同一Worker改名・Access表示名・新origin反映が成功し、保存/Queue配送を再開済み。所有者のPC表示・保存と2 PWA確認も成功した。D1はPhase 30の新DBのままで、旧DBは接続せず保持し、削除は別途承認待ち。Phase 32のpackage整理、Phase 33の固定submodule化と後続CIの補修は完了（本番未反映）。Phase 34は未着手。
+最終更新: 2026-09-23。Phase 29〜34完了。Phase 31は承認後の同一Worker改名・Access表示名・新origin反映が成功し、保存/Queue配送を再開済み。所有者のPC表示・保存と2 PWA確認も成功した。D1はPhase 30の新DBのままで、旧DBは接続せず保持し、削除は別途承認待ち。Phase 32のpackage整理、Phase 33の固定submodule化と後続CIの補修、Phase 34の既存2 Workerへの本番反映と所有者確認も完了した。
 
 ## 実行順と境界
 
@@ -168,3 +168,8 @@ Phase 31の切り戻しでも新DBを維持する。Phase 30のversionは新DB�
 - Phase 32の後続CIはclient JS 500,577 bytesで500,000-byte budgetを超過した。独立install時の共有runtime重複を解決し、React/React DOM/React Router/Zod/Drizzleの共有先を明示。出力への別実体混入をbuild guardで拒否し、testではTesting Libraryも共有する。既存version・integrityとsize/coverage閾値は変更しない。
 - 作業コピーとclean cloneの全`pnpm check`は成功（製品260・Daymark69・基盤609 tests、E2E37 pass/意図的skip1、audit high/critical0）。固定submoduleのremote取得・frozen install・全gateを再現し、基盤commit `a389ee9`のGitHub Quality `35818210557`もsuccessを確認してPhase 33を完了した。詳細は[Progress](progress.md)へ記録した。
 - 本番Worker・Access・D1・Queue・PWA・料金設定は変更しない。Phase 34で分離構成を反映する場合も、現在のorigin・DBを維持して別途deploy承認と本番確認を行う。旧DB削除は別承認のまま。
+
+### Phase 34の実施結果
+
+- 所有者の既存2 Workerへの本番deploy明示承認後、非公開metadata-fetcher、次にapp Workerを更新した。D1 migration、新規resource、Access・料金設定変更は行っていない。
+- 同じorigin・PWA identity・共用D1を維持し、所有者がPCの両製品表示/保存、iPhoneの両PWA、Tech Inboxのmetadata取得と記事JSON書き出しを確認した。更新後のAccess未認証9経路・Worker/Queue健全性もread-onlyで確認した。詳細は[Progress](progress.md)。

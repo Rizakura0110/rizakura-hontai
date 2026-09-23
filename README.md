@@ -1,6 +1,6 @@
 # rizakura-hontai
 
-rizakura-hontaiは、本人限定のツールへの入口と共通基盤です。記事管理のTech Inboxと習慣管理のDaymarkを、別repositoryの固定commitから統合する構成です。Tech Inboxの別repository化もPhase 33で完了しましたが、分離構成の本番反映はPhase 34で別途行います。Daymarkの日次記録・設定履歴・日/週/月集計、保護API、responsive画面、独立PWA、製品別JSONバックアップを実装しました。Cloudflare Accessと既存のapp Worker・D1を共有し、Phase 25で本番反映と3年分データのFree CPU境界まで検証した構成です。
+rizakura-hontaiは、本人限定のツールへの入口と共通基盤です。記事管理のTech Inboxと習慣管理のDaymarkを、別repositoryの固定commitから統合する構成です。Tech Inboxの別repository化はPhase 33、分離構成の本番反映と確認はPhase 34で完了しました。Daymarkの日次記録・設定履歴・日/週/月集計、保護API、responsive画面、独立PWA、製品別JSONバックアップを実装しました。Cloudflare Accessと既存のapp Worker・D1を共有し、Phase 25で本番反映と3年分データのFree CPU境界まで検証した構成です。
 
 ## 実装と本番の状態
 
@@ -17,6 +17,8 @@ Phase 31は完了しました。2026-09-22に既存WorkerとAccess表示名を`r
 Phase 32ではTech Inboxの画面、記事・タグ・活動・backup・metadata処理、契約、schema定義、単体testを`packages/tech-inbox`へ集約しました。機能・URL・API・DB migrationを変えず、認証・HTTP/D1 adapter・共通UIは基盤に残し、基盤から製品へ必要なrepository・client・UIを注入します。ローカルgateは成功しましたが、その後のGitHub CIでclient bundleの上限超過が判明しました。Phase 33で独立install時の共有依存の重複を修正し、同じbudgetのままCIまで成功しています。
 
 Phase 33は完了しました（本番未反映）。所有者承認済みpublic `Rizakura0110/tech-inbox`を作成し、`modules/tech-inbox`に製品commit `f749b0d32bf1351bdaf0cd846152096690b07ecf`を固定しました。製品のsource/test 74ファイルはPhase 32と同一で、独立lockfile・品質CI・依存監査を追加しています。作業コピーとclean checkoutの全gate、製品と基盤のcommit・push、[製品CI](https://github.com/Rizakura0110/tech-inbox/actions/runs/35817744911)と[基盤CI](https://github.com/Rizakura0110/rizakura-hontai/actions/runs/35818210557)が成功しました。基盤609 tests・Tech Inbox260 tests・Daymark69 tests・E2E37 passed（desktop専用mobile 1件は意図的skip）を確認しています。npm公開・本番deploy・Cloudflare変更は行わず、本番はPhase 31のままです。分離構成の本番反映はPhase 34で別途承認後に実施します。詳細は[Progress](docs/progress.md)を参照してください。
+
+Phase 34では所有者の明示承認後、既存の非公開metadata-fetcherとapp Workerをこの順に更新しました。URL・本人限定Access・共用D1・PWA identityは維持し、新規resourceやremote migrationはありません。所有者がPCの両製品の表示・保存、iPhoneの両PWA、Tech Inboxのmetadata取得と記事JSON書き出しを確認しました。更新後の未認証9経路はAccessへ転送され、Worker errorと新規Queue失敗は0でした。詳細は[Progress](docs/progress.md)を参照してください。
 
 ## DaymarkのPhase 21〜23機能
 

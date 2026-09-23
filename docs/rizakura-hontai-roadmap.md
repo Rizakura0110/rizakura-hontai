@@ -26,7 +26,7 @@ Phase 17までのTech Inboxは完了済み。以下は所有者と合意した�
 | 31 | 完了（PC・2 PWA確認済み） | Worker・Access表示名・URL・PWA切替 | 本人限定認証を維持し、新originと2 PWAを確認 |
 | 32 | ローカル完了（本番未反映・後続CIの補修は33） | Tech Inboxと基盤の依存整理 | 同じrepository内の製品packageを単体検証し、既存の機能・API・DBと統合gateを維持 |
 | 33 | 完了（本番未反映） | Tech Inboxの別repository化 | 承認済みpublic repositoryを固定commitで統合。全品質gate・clean checkout・両repositoryのcommit/pushとCIが成功 |
-| 34 | 未着手 | 分離構成の本番反映 | 両製品・草・タグ・metadata・backup・PWAの回帰確認 |
+| 34 | 完了（本番・PC・iPhone両PWA確認済み） | 分離構成の本番反映 | 両製品・草・タグ・metadata・backup・PWAの回帰確認 |
 
 ## 共通ルール
 
@@ -107,7 +107,7 @@ Phase 17までのTech Inboxは完了済み。以下は所有者と合意した�
 
 ## 所有者に必要な確認
 
-- Phase 33のpublic `Rizakura0110/tech-inbox`作成・固定submodule統合は承認済みかつ完了。本番はPhase 31のまま維持する。Phase 34のdeployは別途承認を得る。
+- Phase 33のpublic `Rizakura0110/tech-inbox`作成・固定submodule統合、Phase 34の明示承認後の本番deployと所有者確認は完了。
 
 - Phase 20ではnpmアカウント操作は不要。Daymarkのpublic作成とGit submodule連携は承認済みで、繰り返し確認しない。
 - 基盤GitHubの改名先はrizakura-hontaiで確定・改名済み。ローカル作業directoryは移動しない。新repositoryの対象・衝突は作成直前に確認する。

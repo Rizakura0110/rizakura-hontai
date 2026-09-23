@@ -1904,3 +1904,23 @@
 - clean環境の成果物はapp Worker raw/gzip 511.5/108.8 KiB、fetcher 586.7/88.6 KiB、client JS 422.9/122.0 KiB、CSS 35.3/7.3 KiBで作業コピーと一致し、既存budget内。
 - 最終差分review、ignore・credential scan後に基盤commit `a389ee9dd8100061c0bf742bf52c198ffa591690`を`main`へpushした。code/config/gitlinkはclean環境で全gateを通したindexと完全一致し、差分はMarkdownの記録更新のみ。GitHub Quality run `35818210557`もsuccess（6m45s）で、Linux上の公開commitと固定submoduleから全gateを通過した。完了記録だけの最終commit/pushは既存のMarkdown-only CI除外に従う。
 - 本番deploy、remote D1操作、Cloudflare resource・Access・PWA・料金変更は行っていない。製品仕様とDB schemaを維持し、Phase 34の本番反映は別途承認後に進める。
+
+## Phase 34: 分離構成の本番反映
+
+状態: 完了（2026-09-23）。本番反映と所有者のPC表示/保存、iPhone両PWA、Tech Inboxのmetadata取得・記事JSON書き出しを確認した。対象は基盤commit `9c6529b47b87211df6131197013d6c9914db557c`、Tech Inbox固定commit `f749b0d32bf1351bdaf0cd846152096690b07ecf`、Daymark固定commit `b6b3cdf89014c2fb71dffb5229a0f84932685df4`。既存の非公開metadata-fetcher、次に既存app Workerを更新した。新規resource・remote DB migrationは行っていない。
+
+### 本番反映前の確認
+
+- `pnpm check`成功: Tech Inbox260 tests、Daymark69 tests、基盤609 tests、E2E37 passed/意図的skip1、format/lint/生成型/TypeScript/coverage、local D1・backup往復・実HTTP、両Worker buildとartifact budget、audit high/critical0。基盤auditの既知dev-only moderate1は従来どおり。
+- 保存済みAPI tokenのactive、単一accountと現行D1の一致、本人email1件だけのAccess policy、7日session・launcher非表示、appのworkers.dev有効/preview無効、fetcherの非公開、唯一のQueue consumerをread-only preflightで確認。過去24時間のappは33 requests/errors0、fetcherは0、通常Queue backlog0、新規DLQ/fail0、既存DLQ7件/851 bytesは保持されている。DBは757,760 bytes/8 tablesで400 MB停止閾値以下。当日usage集計は遅延の可能性がある。
+- 現行提供versionはapp `47e2955e-2a18-48d6-a2c9-df41617a9c6c`、fetcher `9b564607-d74a-4b98-a058-9599947e0e9a`が各100%。D1に未適用migrationはなく、Time Travelのread-only checkpointを確認した。Wrangler名、origin、DB IDとmigration、Access・Queueの設定はPhase 31から不変。未認証の入口・記事・活動・API・Daymark・両manifestの9経路はすべてAccessへの302だった。
+- Vite生成の`apps/web/dist/*/wrangler.json`を使った両Workerのdry-runは成功し、出力Worker scriptのhashはbuild成果物と一致した。app設定に`../client`の静的assets directoryを含むことを確認した。元の`apps/web/wrangler.jsonc`を直接指定するdry-runでは静的assets directoryがないため、[運用手順](operations.md)を生成設定の使用へ修正した。dry-runはremoteにアップロードしていない。
+- 最初のデプロイ試行は自動承認審査で「次やるよー」だけでは明示許可と判断されず却下され、remote更新は行われなかった。その後、所有者が既存の非公開`tech-inbox-metadata-fetcher`と公開`rizakura-hontai`の2 Workerの本番デプロイを明示承認した。対象外のDB migration・新規resource・料金・Access設定変更は行わない範囲とした。
+
+### 本番反映後の確認
+
+- Vite生成設定と直前の本人限定Access・旧versionを再照合した後、fetcherを先に更新。新version `0e36a07b-f5d1-40f6-b847-39a1ff4b4ef2`が100%となり、workers.dev/previewは非公開のまま。続いてアプリを更新し、30静的asset中の変更2件（Tech Inbox HTMLとJS）を含めて反映した。新version `bb0edad9-9f86-4b07-bb05-a504c3429bd8`が100%。両versionはread-only APIでも照合した。
+- 更新後のread-only preflight・healthは成功。Access本人限定・7日session、同じD1、Queue唯一のconsumer、Service Binding、Rate Limit、Secrets、`MAINTENANCE_MODE=off`、公開/preview境界を維持した。未認証9経路はすべてAccessへ302。通常Queue backlog0、新規DLQ/fail0、Worker errors0。既存DLQ7件は触れていない。DBは757,760 bytes/8 tablesのままで、当日集計のrowsWritten0。集計値には遅延があり、所有者の認証済み画面・保存確認を代替しない。
+- 所有者から「PC表示・保存／iPhone両PWAともOK」を受領した。直前に依頼したPCのTech Inbox記事・タグ・活動・設定、Daymark日・週・月・設定の表示、元が未読の記事の既読→未読と実際の習慣記録保存・再読み込み反映、iPhone既存2 PWAからの起動・表示を成功として記録する。端末/OS/browser versionは未提供。
+- 続いて所有者から「メタデータ取得・JSON書き出しともOK」を受領した。Tech Inboxのmetadata取得・記事JSON exportを本番実動作で確認できた。JSON復元は実行していない。
+- 所有者確認後のread-only再検査も成功。直近24時間はapp 65 requests/0 errors、fetcher 1 request/0 errors、通常Queue backlog0、新規DLQ/fail0。既存DLQ7件/851 bytesは保持し、本文は読んでいない。DBは757,760 bytes/8 tables。Cloudflareの当日usage集計は遅延の可能性があり、料金の確約とはみなさない。

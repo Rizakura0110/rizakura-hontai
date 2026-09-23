@@ -2,7 +2,7 @@
 
 最終更新: 2026-09-23
 
-名称移行: Phase 29〜31完了。Phase 31では所有者承認後、既存Worker・AccessのIDと本人限定認証を維持して名前を`rizakura-hontai`へ変更し、新originで保存/Queue配送を再開した。本番の認証・接続・健全性検査と所有者のPC表示・保存、新originでの2 PWA確認が成功した。D1はPhase 30の新DBのまま、旧DBも接続せず保持し、料金プランは変更していない。Phase 33のTech Inbox別repository・固定commit連携は完了（本番未反映）。Phase 32後続CIの補修後、作業コピー・clean checkout・製品/基盤CIの全gateが成功した。Phase 34は未着手で、本番はPhase 31のまま。[実行手順](foundation-migration.md)
+名称移行: Phase 29〜31完了。Phase 31では所有者承認後、既存Worker・AccessのIDと本人限定認証を維持して名前を`rizakura-hontai`へ変更し、新originで保存/Queue配送を再開した。本番の認証・接続・健全性検査と所有者のPC表示・保存、新originでの2 PWA確認が成功した。D1はPhase 30の新DBのまま、旧DBも接続せず保持し、料金プランは変更していない。Phase 33でTech Inbox別repository・固定commit連携と全gateが成功し、Phase 34で既存2 Workerへ反映した。所有者のPC表示・保存、iPhone両PWA、記事metadata取得・JSON書き出しも成功した。[実行手順](foundation-migration.md)
 
 状態: Phase 28完了（iPhoneは所有者判断でスキップ）。Phase 26〜27のTech Inbox既読活動集計APIと年間活動画面を、所有者承認後にproductionへ反映した。現在の既読状態と`read_at`を日本時間で集計し、DB migrationは追加していない。表示・更新、PCの主要操作、AccessとCPU確認、全自動品質gateは成功。iPhoneは後日確認へ延期し、成功扱いにはしない。
 
@@ -16,7 +16,7 @@
 |---|---|
 | 共通基盤・入口のサイト | `rizakura-hontai`。本人限定のトップページから各機能へ移動する |
 | 基盤repository | `Rizakura0110/rizakura-hontai`。旧`webclip`から履歴・repository IDを維持して改名済み。製品の固定commitと統合部分を管理する |
-| 記事管理 | `Tech Inbox`。記事、タグ、URL、metadata、記事backupを担当する。Phase 33で承認済みpublic `Rizakura0110/tech-inbox`への分離と固定commit連携を完了（本番未反映） |
+| 記事管理 | `Tech Inbox`。記事、タグ、URL、metadata、記事backupを担当する。Phase 33で承認済みpublic `Rizakura0110/tech-inbox`への分離と固定commit連携を完了し、Phase 34で本番反映済み |
 | 習慣管理 | `Daymark`。画面、API処理、domain、schema定義、testを別repository `daymark`で管理する |
 | PWA | Tech InboxとDaymarkを別々に追加・起動する。rizakura-hontai専用PWAは作らない |
 | production | 同一origin、公開app Worker 1つ、共用D1 `rizakura-hontai` 1つへ接続。旧D1は移行後の保管用に残す。記事用metadata-fetcherは引き続き非公開Workerとして分離する |
@@ -173,7 +173,7 @@ Worker名はworkers.devのhostnameに関係するため、変更にはAccess対�
 
 D1の物理名はin-place変更できないため、Phase 30で承認後に新しい`rizakura-hontai` DBへ両製品を全値copyし、bindingを切り替えた。schema/index・ID・関連・履歴を維持し、Worker/URLは変更しない。新DBにだけ接続し、旧DBは別途削除承認まで保持する。新DBで更新再開後に旧binding/versionへ直接rollbackしない。[D1 migrations](https://developers.cloudflare.com/d1/reference/migrations/)
 
-Phase 31のWorker/Access名・origin切替は反映済みで、2026-09-23に2 PWAの追加し直し・直接起動・login/表示/保存・閉じて再起動の所有者確認を受領した。旧hostnameは404で、新URLへ自動redirectしない。その後Phase 32〜33でTech Inboxの別repository・固定commit連携を完了した。基盤→Tech Inbox/Daymarkの一方向の依存、固定commitのsubmodule連携、1 app Worker/共用DBを維持する。コード分離は完了したが、本番はPhase 31のままでPhase 34の反映は未実施。移動対象・認証・更新停止・切り戻しの詳細は[実行手順](foundation-migration.md)を正とする。
+Phase 31のWorker/Access名・origin切替は反映済みで、2026-09-23に2 PWAの追加し直し・直接起動・login/表示/保存・閉じて再起動の所有者確認を受領した。旧hostnameは404で、新URLへ自動redirectしない。その後Phase 32〜33でTech Inboxの別repository・固定commit連携を完了し、Phase 34で既存app Workerと非公開metadata-fetcherへ反映した。基盤→Tech Inbox/Daymarkの一方向の依存、固定commitのsubmodule連携、1 app Worker/共用DBを維持する。所有者のPC表示・保存、iPhone両PWA、記事metadata取得とJSON書き出しも成功した。移動対象・認証・更新停止・切り戻しの詳細は[実行手順](foundation-migration.md)を正とする。
 
 ## 8. 外部操作・所有者確認
 

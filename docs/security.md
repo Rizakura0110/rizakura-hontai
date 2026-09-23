@@ -8,6 +8,8 @@ Phase 30で共用D1を新しい`rizakura-hontai`へ全値照合付きでコピ�
 
 Phase 31では所有者承認後に、同じWorker UUIDとAccess app ID/audience・本人限定policyを維持してWorker/Accessを`rizakura-hontai`へ改名し、APP_ORIGINを新hostnameへ切り替えました。Secret値は取得・変更していません。停止中のD1全値・schema一致を照合し、新originの入口・両製品・API・両manifestの9経路が未認証ではAccessへredirectすることを確認後、通常Queue配送を再開しています。previewは無効、fetcherは非公開のままです。旧hostnameは404で、旧originからの変更要求を許す互換例外は追加していません。新originのPC本人login・表示・保存と、iPhoneの2 PWA追加し直し・直接起動・login・表示・保存・再起動まで所有者確認済みです。強制logout後の再loginは個別報告がなく、実施済みとは扱いません。
 
+Phase 34ではTech Inbox分離構成を既存2 Workerへ反映しました。Accessの本人限定policy・7日session、appのpreview無効、fetcherの非公開設定、同じDB/Queue/Service Binding/Rate Limit/Secretsをread-onlyで再確認し、未認証9経路はすべてAccessへ転送されました。D1 migration、新規resource、Access/Secret/料金設定の変更はありません。所有者のPC・iPhone確認とmetadata取得・JSON書き出しが成功しました。
+
 ## 保護対象と境界
 
 Tech Inboxが扱う主なprivate dataは保存した記事URL、タイトル等のメタデータ、既読状態、タグ、Daymarkが扱う主なprivate dataは習慣名、目標、状態履歴、日次記録です。Accessで検証された所有者識別情報は認証に使います。記事本文、画像、Access JWT、Cloudflare設定値、API tokenはD1へ保存しません。

@@ -17,6 +17,7 @@
 | Android Google Chrome | スキップ | 所有者判断でPhase 9では実施しない。成功扱いにはしない |
 | Phase 31 新origin PC browser | 成功 | 2026-09-22に本人login、記事/タグ/活動・Daymark日週月表示、両製品の保存と再読み込み反映を所有者確認 |
 | Phase 31 新origin iPhone Safari / 2 PWA | 成功 | 2026-09-23に所有者が両PWAの再追加・新アイコン起動・login・表示・保存・閉じて再起動を確認。旧originの過去成功とは区別 |
+| Phase 34 分離構成 PC / iPhone両PWA | 成功 | 2026-09-23に所有者がPCの両製品表示・保存とiPhone両PWAを確認。記事metadata取得とJSON書き出しも成功 |
 
 実機を操作していない状態を「確認済み」と記録しない。OS、Chrome、端末、向き、実施者、日時を結果に残す。個人情報や秘密値をスクリーンショット、issue、commitへ含めない。
 
@@ -32,7 +33,17 @@
 
 Android実機は従来の所有者判断でskipを維持する。PC・iPhoneそれぞれの報告を区別して記録する。
 
-Phase 19〜24の入口・URL整理・DaymarkはPhase 25でproductionへ反映済みです。上記の既存iPhone成功を新構成の移行成功とは扱いません。最後に入口と両製品の往復、既存PWAが新`/tech-inbox/`へ起動できること、Daymarkを別PWAとして追加・直接起動できることを確認します。Daymark JSONの書き出しと復元previewは本番ブラウザで確認済みです。3年fixtureはpreviewだけを行い、確定復元しません。
+## Phase 34: 分離構成反映後の確認
+
+2026-09-23に既存originへ分離構成を反映した。アプリversionは`bb0edad9-9f86-4b07-bb05-a504c3429bd8`、記事metadata-fetcherは`0e36a07b-f5d1-40f6-b847-39a1ff4b4ef2`。同じoriginとPWA identityを維持するため、既存の2アイコンを起動して確認する。所有者からPCの表示・保存とiPhone両PWAの成功報告を受領した。端末/OS/browser versionと操作時刻は未提供。
+
+1. PCで現行originへloginし、Tech Inboxの記事・タグ・活動・設定、Daymarkの日・週・月・設定を再読み込みして表示する。
+2. 元が未読の記事1件だけを既読にしてから未読へ戻し、Daymarkで今日の実際の記録を保存する。再読み込み後も結果が残ることを確認する。既存の既読記事は検査用に未読へ戻さない。
+3. iPhone Safariの既存Tech Inbox/Daymark PWAアイコンから各画面を直接開き、記事と日・週・月の表示を確認する。再追加は画面が壊れた場合だけ検討する。
+
+上記1〜3は、所有者の「PC表示・保存／iPhone両PWAともOK」の報告をもって成功として記録した。続いて所有者から「メタデータ取得・JSON書き出しともOK」を受領し、Tech Inboxの新規URL保存後のtitle取得または既存失敗記事の再取得、設定からの記事JSON書き出しが成功したと記録した。どちらのmetadata経路を使用したか、端末・時刻の詳細は未提供。JSON復元は依頼も実行もしていない。Android実機は従来の所有者判断でskipを維持する。
+
+Phase 19〜24の入口・URL整理・DaymarkはPhase 25でproductionへ反映済みです。Phase 25当時のiPhone成功を、その後のPhase 31/34移行確認と混同しません。Daymark JSONの書き出しと復元previewは本番ブラウザで確認済みです。3年fixtureはpreviewだけを行い、確定復元しません。
 
 ## Phase 25: iPhone Safariで行う最終確認
 

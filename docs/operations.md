@@ -181,14 +181,20 @@ destructive migrationは1回で削除せず、column/table追加、移行、検�
 
 ### 3. Deploy
 
-metadata-fetcherに変更がある場合だけ先にdeployします。
+`pnpm build`後、Viteが生成した`apps/web/dist/*/wrangler.json`を対象にします。元の`apps/web/wrangler.jsonc`にはビルド済み静的画面のdirectoryがなく、そこから直接`wrangler deploy`すると画面fileを配信対象へ含められません。生成設定のWorker名、`APP_ORIGIN`、D1 ID、`ASSETS`のdirectory、Queue・Service Binding・Rate Limit、`MAINTENANCE_MODE=off`を照合し、dry-runを通します。
+
+metadata-fetcherに変更がある場合だけ先にdeployします。Phase 34では製品へのimport先が変わったため、fetcherも対象です。
 
 ```bash
-pnpm --dir apps/web exec wrangler deploy --config ../../workers/metadata-fetcher/wrangler.jsonc
-pnpm --dir apps/web exec wrangler deploy
+pnpm build
+pnpm --dir apps/web exec wrangler deploy --config dist/tech_inbox_metadata_fetcher/wrangler.json --dry-run --outdir ../../.tmp/release-dry-fetcher --strict --no-autoconfig
+pnpm --dir apps/web exec wrangler deploy --config dist/rizakura_hontai/wrangler.json --dry-run --outdir ../../.tmp/release-dry-app --strict --no-autoconfig
+# 承認・既存version・Access/DB/Queueの再照合後に、同じ生成設定で実行
+pnpm --dir apps/web exec wrangler deploy --config dist/tech_inbox_metadata_fetcher/wrangler.json --strict --no-autoconfig
+pnpm --dir apps/web exec wrangler deploy --config dist/rizakura_hontai/wrangler.json --strict --no-autoconfig
 ```
 
-app deploy outputで既存のD1、Queue、Service Binding、Rate Limiting、production変数が維持されていることを確認します。deployment version IDを控えます。新規resource作成、remote migration、billing変更はdeploy許可へ暗黙に含めません。
+app deploy outputで既存のD1、Queue、Service Binding、Rate Limiting、production変数と静的assetsが維持されていることを確認します。deployment version IDを控えます。新規resource作成、remote migration、billing変更はdeploy許可へ暗黙に含めません。
 
 ### 4. Smoke test
 
