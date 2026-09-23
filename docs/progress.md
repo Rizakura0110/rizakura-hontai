@@ -1843,3 +1843,38 @@
 - 2026-09-23に所有者から「PWA確認できた」を受領し、直前に依頼した新originでのTech Inbox/Daymark再追加・新アイコン起動・login・表示・保存・閉じて再起動を成功として記録した。OS/browser version・向き・強制logout後の再loginは個別未提供。旧アイコン削除は任意で、今回の完了条件には含めない。Android実機skipは維持する。
 - PWA報告後のread-only preflight/healthも成功。appは33 requests / errors 0、通常Queue backlog 0、新規DLQ/fail 0、既存DLQ 7件のまま。D1は757,760 bytes、当日UTC集計はread 20,831 / write 36で停止閾値内だった。PWA操作を含むCPUは全15 groupsがsuccess・errors 0、後続の開始付近にもP99 21.193 / 22.475 msを観測したが、最後のgroupはP99 5.393 msだった。観測範囲では25 ms超過や継続した超過はなく、cold由来かは直接traceしていない。
 - 全差分・生成物/運用記録のignore・credential scanを再確認し、完了記録を含めてphase-end commit/pushする。本番の追加deploy、DB削除、Phase 32の実装はこの確認に混ぜない。
+
+## Phase 32: Tech Inboxの依存方向・package境界整理
+
+状態: 完了（2026-09-23、本番未反映）。既存repository内でTech Inboxを独立したworkspace packageへ整理し、単体・統合の全品質gateを通過した。別repository作成、submodule化、Cloudflare操作はこのPhaseでは行わない。本番はPhase 31のまま。
+
+### 実施内容・変更ファイル
+
+- `packages/tech-inbox`（`@rizakura-hontai/tech-inbox`）へ記事・タグ・活動・backupの画面/契約/domain/service/repository interface、記事schema定義、metadata取得/consumer処理と対応testを集約した。旧`packages/core`は製品の`core` entrypointへ移動した。
+- 基盤の`apps/web`には認証・Origin検査・HTTP応答・D1実装・共通UI・portal・PWA・maintenanceを残す。製品へtyped client/UI/repositoryを注入し、製品sourceから基盤・Daymark・Cloudflare生成型への参照をなくした。`packages/contracts`は共通HTTP契約だけとし、`packages/db`は両製品のschemaを集約する。
+- 製品errorをHTTP非依存のcodeにし、基盤adapterで既存の400/404/409とsafe messageへ変換する。metadataの外部fetch・HTMLRewriter・Queue・D1はhost側から渡し、frozen時の早期停止、canonical統合、retry、SSRF/timeout/容量/redirect制限を維持する。fetchのruntime receiverを変えないwrapperも維持した。
+- 製品専用のTypeScript設定・宣言付きbuild・coverage付き単体testを追加。`scripts/tech-inbox-boundaries.test.mjs`と`check-tech-inbox-boundaries.mjs`でsource依存と実browser/server buildを検査する。`app/browser/contracts/core`だけをbrowserへ許可し、`server/schema/metadata`のentrypointと直接source importを拒否する。
+- README、[ADR 0019](decisions/0019-tech-inbox-package-boundary.md)、設計・roadmap・移行手順・品質gate・依存基準を更新した。旧sourceの移動はGitで追跡し、利用者の記事・タグ・習慣データは変更していない。
+
+### 採用判断
+
+- 同一repository内で先に依存を整理し、Phase 33でそのまま切り出せる境界を検証する。新repository、npm公開、CI追加、Cloudflare設定の変更を先行させない。
+- 製品UIは注入client/UIのmockで単体検証し、実HTTP adapter・共通UIとの接続は基盤component/page testとE2Eで継続検証する。製品単体coverageはdomain/契約/service/metadata/schemaを対象とし、UIは基盤coverageへ含める。基盤全体の既存coverage閾値は下げていない。
+- source依存検査の初版regexはtest名の文字列をimportと誤認した。固定TypeScript 7 packageはcompiler APIを公開していないため、既存Viteが利用する固定RolldownのAST parserで構文として判定した。最終reviewでtype importのAST field参照も修正し、static/type importの抽出・文字列/JSXの除外・dynamic import/require拒否を合成fixtureで確認した。追加のregistry依存は導入していない。
+- `pnpm-lock.yaml`はworkspace importersの整理だけで、registry packageのversion・integrity・snapshotと`pnpm-workspace.yaml`の供給網policyは不変。Daymarkの固定gitlinkも`b6b3cdf89014c2fb71dffb5229a0f84932685df4`を維持した。
+
+### 実行したコマンド・検証結果
+
+- Phase 31のGitHub Quality runがsuccessであることをread-onlyで確認した。Phase 32では`pnpm install --offline`、`pnpm install --frozen-lockfile --offline`、個別の型/単体/境界/build検査、最後に全`pnpm check`を実行して成功した。
+- format、lint、Cloudflare生成型整合、全TypeScript、Daymark単体、Tech Inbox単体、基盤統合test/coverage、fresh local D1、SQL backup往復復元、実HTTP、両Worker build、artifact budget、desktop/mobile E2E、dependency auditをすべて通過した。
+- Tech Inbox単体は22 files / 260 tests。coverageはstatements 94.09%、branches 89.60%、functions 97.46%、lines 94.14%。基盤統合は64 files / 598 tests、coverageは89.27% / 85.30% / 89.29% / 90.69%。統合testには製品testを含むため件数は単純加算しない。
+- Daymark単体は9 files / 69 tests、domain/契約/backup coverageは全指標100%。Playwrightは37 passed、desktop専用sidebarのmobile 1件のみ意図的skip。記事・タグ・活動・復元・Daymark・PWA等の既存回帰を維持した。
+- `pnpm db:generate`は7 tableを認識し、schema変更なし・migration生成なし。既存migrationとWrangler設定/生成型に差分なし。隔離local D1で制約・SQL復元の全値一致・migration再適用no-op・実HTTP更新/停止も成功した。本番DBの読取/書込は行っていない。
+- artifact budgetはapp Worker raw/gzip 511.5/108.8 KiB、fetcher 586.8/88.7 KiB、client JS 422.9/122.0 KiB、CSS 35.3/7.3 KiBでpass。auditはhigh/critical 0、既存dev-only moderate 1件のみ。Daymark単体の既知脆弱性は0件。
+- phase差分review、credential scan、cache/coverage/dist/一時fileのignore確認を行い、完了記録を含むphase対象だけをcommit/pushする。
+
+### 未実施事項・次のPhase
+
+- 本番deploy、DB migration、resource作成/削除、Access・料金・Secrets変更は未実施。利用者による実機再確認は本番反映時に行い、local E2Eを本番実機確認と扱わない。
+- Phase 33はTech Inboxの新repository名・公開範囲を所有者と確認してから、Daymarkと同じ固定commitのGit submoduleへ移す。製品側のCI/lockfileと基盤の統合gateを整え、製品commit/push後に基盤の参照commitを更新する。
+- Phase 34で分離構成を統合検証し、承認後に本番反映・PC/PWA確認を行う。旧DBの削除は引き続き別承認とする。

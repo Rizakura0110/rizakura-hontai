@@ -1,6 +1,6 @@
+import type { ApplyMetadataInput } from "@rizakura-hontai/tech-inbox/server";
 import worker from "./index";
 import { createD1ArticleRepository } from "./repositories/d1-article-repository";
-import type { ApplyMetadataInput } from "./repositories/article-repository";
 
 type IntegrationBindings = Parameters<typeof worker.fetch>[1];
 

@@ -1,11 +1,5 @@
-import type { MetadataQueueMessage } from "@rizakura-hontai/contracts";
-
-export const MAX_METADATA_ATTEMPTS = 3;
-export const METADATA_RETRY_DELAYS_SECONDS = [5, 15] as const;
-
-export type MetadataQueueProducer = {
-  send(message: MetadataQueueMessage, options?: { readonly delaySeconds?: number }): Promise<void>;
-};
+import type { MetadataQueueMessage } from "@rizakura-hontai/tech-inbox/contracts";
+import type { MetadataQueueProducer } from "@rizakura-hontai/tech-inbox/server";
 
 export function createMetadataQueueProducer(
   queue: Queue<MetadataQueueMessage>,

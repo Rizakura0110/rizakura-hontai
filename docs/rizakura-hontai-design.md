@@ -2,7 +2,7 @@
 
 最終更新: 2026-09-23
 
-名称移行: Phase 29〜31完了。Phase 31では所有者承認後、既存Worker・AccessのIDと本人限定認証を維持して名前を`rizakura-hontai`へ変更し、新originで保存/Queue配送を再開した。本番の認証・接続・健全性検査と所有者のPC表示・保存、新originでの2 PWA確認が成功した。D1はPhase 30の新DBのまま、旧DBも接続せず保持し、料金プランは変更していない。Phase 32〜34は未着手。[実行手順](foundation-migration.md)
+名称移行: Phase 29〜31完了。Phase 31では所有者承認後、既存Worker・AccessのIDと本人限定認証を維持して名前を`rizakura-hontai`へ変更し、新originで保存/Queue配送を再開した。本番の認証・接続・健全性検査と所有者のPC表示・保存、新originでの2 PWA確認が成功した。D1はPhase 30の新DBのまま、旧DBも接続せず保持し、料金プランは変更していない。Phase 32の同一repository内の製品package整理は完了（本番未反映）、Phase 33〜34は未着手。[実行手順](foundation-migration.md)
 
 状態: Phase 28完了（iPhoneは所有者判断でスキップ）。Phase 26〜27のTech Inbox既読活動集計APIと年間活動画面を、所有者承認後にproductionへ反映した。現在の既読状態と`read_at`を日本時間で集計し、DB migrationは追加していない。表示・更新、PCの主要操作、AccessとCPU確認、全自動品質gateは成功。iPhoneは後日確認へ延期し、成功扱いにはしない。
 
@@ -41,6 +41,8 @@ repository、PWA、deployment、databaseの単位は独立して考える。Daym
 - 入口ページ、共通UI部品、HTML entrypoint、機能へのnavigation、PWA配信を組み立てる。共通UIを使っても各製品の名前・icon・画面内navigationは独立させる。
 - D1 binding、全schemaの組み立て、migration履歴、backupの入口、統合test、CI、production設定・deployを管理する。
 - Tech Inboxの業務処理は共通基盤とは別moduleへ置く。タグやmetadata取得を汎用基盤へ持ち上げない。
+
+Phase 32で`packages/tech-inbox`（`@rizakura-hontai/tech-inbox`）へ記事の画面・契約・core・service・repository port・schema・metadata業務を移した。基盤は型付きclient/UI/DB/Queue/fetch/parserを渡し、製品側から基盤やDaymarkへ依存しない。共通`packages/contracts`はHTTP error/health契約だけになり、`packages/db`は両製品schemaを集約する。既存HTTP API・物理table・migration・画面/PWA identityは維持した。別repository/submoduleへの移動はPhase 33、本番反映はPhase 34。詳細は[ADR-0019](decisions/0019-tech-inbox-package-boundary.md)。
 
 ### Daymark repository
 

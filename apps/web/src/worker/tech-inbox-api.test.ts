@@ -1,5 +1,48 @@
+import { apiErrorResponseSchema } from "@rizakura-hontai/contracts/http";
+import { TechInboxError, type TechInboxErrorCode } from "@rizakura-hontai/tech-inbox/server";
 import { describe, expect, it } from "vitest";
+import { type AppBindings, createApp } from "./app";
 import { techInboxRoutePolicy } from "./tech-inbox-api";
+
+describe("Tech Inbox domain error adapter", () => {
+  async function responseFor(error: Error) {
+    const app = createApp({
+      authenticateAccess: async () => ({
+        subject: "test-owner",
+        email: "owner@example.test",
+        provider: "cloudflare-access",
+      }),
+      enforceRateLimit: async () => undefined,
+      log: () => undefined,
+      repositoryFactory: () => {
+        throw error;
+      },
+    });
+    return app.request("https://example.test/api/v1/articles", {}, {} as AppBindings);
+  }
+
+  it.each<[TechInboxErrorCode, number]>([
+    ["VALIDATION_ERROR", 400],
+    ["NOT_FOUND", 404],
+    ["URL_CONFLICT", 409],
+    ["TAG_CONFLICT", 409],
+  ])("preserves %s as HTTP %i at the protected boundary", async (code, status) => {
+    const response = await responseFor(new TechInboxError(code, "安全な製品エラー"));
+    expect(response.status).toBe(status);
+    expect(response.headers.get("Cache-Control")).toBe("no-store");
+    expect(apiErrorResponseSchema.parse(await response.json())).toMatchObject({
+      error: { code, message: "安全な製品エラー", requestId: response.headers.get("X-Request-Id") },
+    });
+  });
+
+  it("does not expose unexpected adapter failures as domain errors", async () => {
+    const response = await responseFor(new Error("private database details"));
+    expect(response.status).toBe(500);
+    const body = await response.text();
+    expect(body).not.toContain("private database details");
+    expect(apiErrorResponseSchema.parse(JSON.parse(body)).error.code).toBe("INTERNAL_ERROR");
+  });
+});
 
 describe("Tech Inbox route policies", () => {
   it.each([

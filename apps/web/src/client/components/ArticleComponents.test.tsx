@@ -1,15 +1,19 @@
 // @vitest-environment jsdom
 
-import type { ArticleDto, TagDto } from "@rizakura-hontai/contracts";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  AppLayout,
+  ArticleCard,
+  ArticleComposer,
+  DeleteArticleDialog,
+  EditArticleDialog,
+} from "@rizakura-hontai/tech-inbox/app";
+import type { ArticleDto, TagDto } from "@rizakura-hontai/tech-inbox/contracts";
+import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it, vi } from "vitest";
 import { MemoryRouter } from "react-router";
-import { AppLayout } from "./AppLayout";
-import { ArticleCard } from "./ArticleCard";
-import { ArticleComposer } from "./ArticleComposer";
-import { DeleteArticleDialog, EditArticleDialog } from "./ArticleDialogs";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { Modal } from "../platform/Modal";
+import { renderTechInbox as render } from "../tech-inbox.test-support";
 
 const now = "2026-08-27T01:02:03.000Z";
 const article: ArticleDto = {

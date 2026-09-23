@@ -1,0 +1,6 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": { "types": ["node", "react"] },
+  "include": ["src/**/*.test.ts", "src/**/*.test.tsx", "test", "vitest.config.ts"],
+  "exclude": []
+}

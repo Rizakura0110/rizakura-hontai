@@ -1,48 +1,57 @@
 import {
   type ArticleActivityResponse,
-  type ArticleTagsResponse,
   type ArticleResponse,
+  type ArticleTagsResponse,
   articleIdParamsSchema,
   type BackupImportPreviewResponse,
-  backupImportRequestSchema,
   type BackupImportResponse,
-  createArticleRequestSchema,
-  createTagRequestSchema,
+  backupImportRequestSchema,
   type CreateArticleResponse,
   type CreateTagResponse,
+  createArticleRequestSchema,
+  createTagRequestSchema,
   type DeleteArticleResponse,
   type DeleteTagResponse,
   type ExportResponse,
-  listArticlesQuerySchema,
   type ListArticlesResponse,
   type ListTagsResponse,
+  listArticlesQuerySchema,
   MAX_BACKUP_IMPORT_BYTES,
-  retryMetadataRequestSchema,
   type RetryMetadataResponse,
   replaceArticleTagsRequestSchema,
-  tagIdParamsSchema,
+  retryMetadataRequestSchema,
   type TagResponse,
+  tagIdParamsSchema,
   updateArticleRequestSchema,
   updateTagRequestSchema,
-} from "@rizakura-hontai/contracts";
-import { Hono, type Context } from "hono";
-import { ActivityService } from "./activity-service";
+} from "@rizakura-hontai/tech-inbox/contracts";
+import type {
+  ActivityRepository,
+  ArticleRepository,
+  BackupRepository,
+  MetadataQueueProducer,
+  TagRepository,
+} from "@rizakura-hontai/tech-inbox/server";
+import {
+  ActivityService,
+  ArticleService,
+  BackupService,
+  type Clock,
+  type IdGenerator,
+  TagService,
+  TechInboxError,
+  toArticleDto,
+} from "@rizakura-hontai/tech-inbox/server";
+import { type Context, Hono } from "hono";
 import type { AppBindings } from "./bindings";
+import { createMetadataQueueProducer } from "./metadata-queue";
 import type { ApiEnvironment, ApiRoutePolicy } from "./platform/api";
-import { ArticleService, type Clock, type IdGenerator } from "./article-service";
-import { BackupService } from "./backup-service";
-import { toArticleDto } from "./article-dto";
-import { createMetadataQueueProducer, type MetadataQueueProducer } from "./metadata-queue";
+import { ApiError, validationError } from "./platform/errors";
 import { parseQuery, parseWithSchema, readJsonBody } from "./platform/request-validation";
-import type { ActivityRepository } from "./repositories/activity-repository";
 import { createD1ActivityRepository } from "./repositories/d1-activity-repository";
 import { createD1ArticleRepository } from "./repositories/d1-article-repository";
-import { createD1TagRepository } from "./repositories/d1-tag-repository";
-import type { ArticleRepository } from "./repositories/article-repository";
-import type { BackupRepository } from "./repositories/backup-repository";
 import { createD1BackupRepository } from "./repositories/d1-backup-repository";
-import type { TagRepository } from "./repositories/tag-repository";
-import { TagService } from "./tag-service";
+import { createD1TagRepository } from "./repositories/d1-tag-repository";
 
 type AppEnvironment = ApiEnvironment<AppBindings>;
 
@@ -168,18 +177,37 @@ export const defaultTechInboxDependencies: TechInboxDependencies = {
   metadataQueueFactory: (bindings) => createMetadataQueueProducer(bindings.METADATA_QUEUE),
 };
 
+async function techInboxResult<T>(operation: () => Promise<T>): Promise<T> {
+  try {
+    return await operation();
+  } catch (error: unknown) {
+    if (!(error instanceof TechInboxError)) throw error;
+    switch (error.code) {
+      case "VALIDATION_ERROR":
+        throw validationError(error.message);
+      case "NOT_FOUND":
+        throw new ApiError(404, error.code, error.message);
+      case "URL_CONFLICT":
+      case "TAG_CONFLICT":
+        throw new ApiError(409, error.code, error.message);
+    }
+    const unreachable: never = error.code;
+    throw new Error(`Unexpected Tech Inbox error code: ${unreachable}`);
+  }
+}
+
 export function createTechInboxApi(dependencies: TechInboxDependencies) {
   const app = new Hono<AppEnvironment>();
   app.get("/v1/activity", async (context) => {
     context.set("routeName", "activity.get");
     return context.json<ArticleActivityResponse>(
-      await activityService(context, dependencies).get(),
+      await techInboxResult(() => activityService(context, dependencies).get()),
     );
   });
 
   app.get("/v1/export", async (context) => {
     context.set("routeName", "export.get");
-    const response = await articleService(context, dependencies).exportAll();
+    const response = await techInboxResult(() => articleService(context, dependencies).exportAll());
     const utcDate = response.exportedAt.slice(0, 10);
     context.header(
       "Content-Disposition",
@@ -195,7 +223,7 @@ export function createTechInboxApi(dependencies: TechInboxDependencies) {
       await readJsonBody(context.req.raw, MAX_BACKUP_IMPORT_BYTES),
     );
     return context.json<BackupImportPreviewResponse>(
-      await backupService(context, dependencies).preview(request),
+      await techInboxResult(() => backupService(context, dependencies).preview(request)),
     );
   });
 
@@ -206,7 +234,7 @@ export function createTechInboxApi(dependencies: TechInboxDependencies) {
       await readJsonBody(context.req.raw, MAX_BACKUP_IMPORT_BYTES),
     );
     return context.json<BackupImportResponse>(
-      await backupService(context, dependencies).apply(request),
+      await techInboxResult(() => backupService(context, dependencies).apply(request)),
     );
   });
 
@@ -216,7 +244,7 @@ export function createTechInboxApi(dependencies: TechInboxDependencies) {
       listArticlesQuerySchema,
       parseQuery(new URL(context.req.url).searchParams),
     );
-    const response = await articleService(context, dependencies).list(query);
+    const response = await techInboxResult(() => articleService(context, dependencies).list(query));
     return context.json<ListArticlesResponse>(response);
   });
 
@@ -226,20 +254,24 @@ export function createTechInboxApi(dependencies: TechInboxDependencies) {
       createArticleRequestSchema,
       await readJsonBody(context.req.raw),
     );
-    const response = await articleService(context, dependencies).create(request);
+    const response = await techInboxResult(() =>
+      articleService(context, dependencies).create(request),
+    );
     const status = response.result === "created" ? 201 : 200;
     return context.json<CreateArticleResponse>(response, status);
   });
 
   app.get("/v1/tags", async (context) => {
     context.set("routeName", "tags.list");
-    return context.json<ListTagsResponse>(await tagService(context, dependencies).list());
+    return context.json<ListTagsResponse>(
+      await techInboxResult(() => tagService(context, dependencies).list()),
+    );
   });
 
   app.post("/v1/tags", async (context) => {
     context.set("routeName", "tags.create");
     const request = parseWithSchema(createTagRequestSchema, await readJsonBody(context.req.raw));
-    const response = await tagService(context, dependencies).create(request);
+    const response = await techInboxResult(() => tagService(context, dependencies).create(request));
     const status = response.result === "created" ? 201 : 200;
     return context.json<CreateTagResponse>(response, status);
   });
@@ -248,20 +280,22 @@ export function createTechInboxApi(dependencies: TechInboxDependencies) {
     context.set("routeName", "tags.update");
     const { id } = parseWithSchema(tagIdParamsSchema, context.req.param());
     const request = parseWithSchema(updateTagRequestSchema, await readJsonBody(context.req.raw));
-    return context.json<TagResponse>(await tagService(context, dependencies).update(id, request));
+    return context.json<TagResponse>(
+      await techInboxResult(() => tagService(context, dependencies).update(id, request)),
+    );
   });
 
   app.delete("/v1/tags/:id", async (context) => {
     context.set("routeName", "tags.delete");
     const { id } = parseWithSchema(tagIdParamsSchema, context.req.param());
-    await tagService(context, dependencies).delete(id);
+    await techInboxResult(() => tagService(context, dependencies).delete(id));
     return context.json<DeleteTagResponse>({ result: "deleted" });
   });
 
   app.get("/v1/articles/:id", async (context) => {
     context.set("routeName", "articles.get");
     const { id } = parseWithSchema(articleIdParamsSchema, context.req.param());
-    const article = await articleService(context, dependencies).get(id);
+    const article = await techInboxResult(() => articleService(context, dependencies).get(id));
     return context.json<ArticleResponse>({ article: toArticleDto(article) });
   });
 
@@ -269,7 +303,7 @@ export function createTechInboxApi(dependencies: TechInboxDependencies) {
     context.set("routeName", "article_tags.list");
     const { id } = parseWithSchema(articleIdParamsSchema, { id: context.req.param("id") });
     return context.json<ArticleTagsResponse>(
-      await tagService(context, dependencies).listForArticle(id),
+      await techInboxResult(() => tagService(context, dependencies).listForArticle(id)),
     );
   });
 
@@ -281,7 +315,9 @@ export function createTechInboxApi(dependencies: TechInboxDependencies) {
       await readJsonBody(context.req.raw),
     );
     return context.json<ArticleTagsResponse>(
-      await tagService(context, dependencies).replaceArticleTags(id, request),
+      await techInboxResult(() =>
+        tagService(context, dependencies).replaceArticleTags(id, request),
+      ),
     );
   });
 
@@ -292,14 +328,16 @@ export function createTechInboxApi(dependencies: TechInboxDependencies) {
       updateArticleRequestSchema,
       await readJsonBody(context.req.raw),
     );
-    const article = await articleService(context, dependencies).update(id, request);
+    const article = await techInboxResult(() =>
+      articleService(context, dependencies).update(id, request),
+    );
     return context.json<ArticleResponse>({ article: toArticleDto(article) });
   });
 
   app.delete("/v1/articles/:id", async (context) => {
     context.set("routeName", "articles.delete");
     const { id } = parseWithSchema(articleIdParamsSchema, context.req.param());
-    await articleService(context, dependencies).delete(id);
+    await techInboxResult(() => articleService(context, dependencies).delete(id));
     return context.json<DeleteArticleResponse>({ result: "deleted" });
   });
 
@@ -307,7 +345,9 @@ export function createTechInboxApi(dependencies: TechInboxDependencies) {
     context.set("routeName", "articles.retry_metadata");
     const { id } = parseWithSchema(articleIdParamsSchema, { id: context.req.param("id") });
     parseWithSchema(retryMetadataRequestSchema, await readJsonBody(context.req.raw));
-    const article = await articleService(context, dependencies).retryMetadata(id);
+    const article = await techInboxResult(() =>
+      articleService(context, dependencies).retryMetadata(id),
+    );
     return context.json<RetryMetadataResponse>({ article: toArticleDto(article) });
   });
 

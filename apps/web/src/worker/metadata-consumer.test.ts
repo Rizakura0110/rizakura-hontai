@@ -1,12 +1,13 @@
-import type { FetchedMetadata, MetadataQueueMessage } from "@rizakura-hontai/contracts";
-import type { Article } from "@tech-inbox/core/article";
+import type { FetchedMetadata, MetadataQueueMessage } from "@rizakura-hontai/tech-inbox/contracts";
+import type { Article } from "@rizakura-hontai/tech-inbox/core/article";
+import type { ArticleRepository } from "@rizakura-hontai/tech-inbox/server";
 import { describe, expect, it, vi } from "vitest";
 import {
   consumeMetadataQueue,
+  fetchMetadataThroughService,
   type MetadataConsumerDependencies,
   processMetadataQueueMessage,
 } from "./metadata-consumer";
-import type { ArticleRepository } from "./repositories/article-repository";
 
 const fetchedMetadata: FetchedMetadata = {
   title: "Fetched title",
@@ -424,5 +425,40 @@ describe("processMetadataQueueMessage", () => {
     expect(ack).toHaveBeenCalledOnce();
     expect(retry).toHaveBeenCalledWith({ delaySeconds: 5 });
     expect(log).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("metadata service binding adapter", () => {
+  it("posts a validated contract request and accepts a valid metadata response", async () => {
+    const fetch = vi.fn(async (_request: Request) =>
+      Response.json({ ok: true, metadata: fetchedMetadata }),
+    );
+    const binding = { fetch } as unknown as Fetcher;
+    await expect(
+      fetchMetadataThroughService(binding, "https://example.org/article"),
+    ).resolves.toEqual({
+      ok: true,
+      metadata: fetchedMetadata,
+    });
+    const outbound = fetch.mock.calls[0]?.[0];
+    expect(outbound).toBeInstanceOf(Request);
+    if (outbound === undefined) throw new Error("service request was not sent");
+    expect(outbound.url).toBe("https://metadata-fetcher.internal/fetch");
+    expect(outbound.method).toBe("POST");
+    expect(await outbound.json()).toEqual({ url: "https://example.org/article" });
+  });
+
+  it.each([
+    () => Promise.resolve(new Response("private service failure", { status: 500 })),
+    () => Promise.resolve(new Response("invalid json")),
+    () => Promise.resolve(Response.json({ private: "unexpected payload" })),
+    () => Promise.reject(new Error("private transport failure")),
+  ])("maps invalid service replies and failures to a sanitized network error", async (fetch) => {
+    await expect(
+      fetchMetadataThroughService({ fetch } as unknown as Fetcher, "https://example.org/article"),
+    ).resolves.toEqual({
+      ok: false,
+      error: { code: "NETWORK_ERROR" },
+    });
   });
 });

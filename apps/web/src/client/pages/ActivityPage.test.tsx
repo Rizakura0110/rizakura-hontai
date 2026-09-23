@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { ActivityPage } from "@rizakura-hontai/tech-inbox/app";
+import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { articleActivityFixture } from "../../../../../packages/contracts/test/fixtures";
-import { ActivityPage } from "./ActivityPage";
+import { articleActivityFixture } from "../../../../../packages/tech-inbox/test/contracts/fixtures";
+import { renderTechInbox as render } from "../tech-inbox.test-support";
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {

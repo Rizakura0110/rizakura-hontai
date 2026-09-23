@@ -1,16 +1,20 @@
 # Quality gates
 
-最終更新: 2026-09-12
+最終更新: 2026-09-23
 
 ## 標準ゲート
 
-`pnpm check`はformat、lint、Cloudflare生成型、TypeScript、unit/component/integration test、coverage、fresh local D1、実HTTP API、production build、artifact budget、desktop/mobile Chrome E2E、dependency auditを順に実行する。
+`pnpm check`はDaymark単体gate、Tech Inbox単体gate、format、lint、Cloudflare生成型、TypeScript、unit/component/integration test、coverage、fresh local D1、実HTTP API、production build、artifact budget、desktop/mobile Chrome E2E、dependency auditを順に実行する。
 
 2026-09-12のPhase 27最終実行では、Daymark単体9 files・69 tests、基盤Vitest 51 files・477 tests、Playwright desktop/mobile 37 testsが成功した。desktop専用sidebar testのmobile実行1件は意図どおりskipした。
+
+Phase 32ではTech Inbox単体260 tests、基盤Vitest 598 tests、Daymark単体69 testsを確認した。Tech Inbox単体testは基盤Vitestにも含むため件数を単純加算しない。全gateの最終結果・phase完了状態は[Progress](progress.md)を正とし、個別test成功だけで完了扱いにしない。
 
 個別確認には次を使う。
 
 ```bash
+pnpm tech-inbox:check
+pnpm tech-inbox:boundaries
 pnpm test:coverage
 pnpm api:verify:local
 pnpm build
@@ -51,6 +55,18 @@ local D1 gateはmigration `0002`を空DBと既存記事/タグ入りDBへ適用�
 
 GitHub Actionsは`submodules: true`で基盤gitlinkの固定commitを取得する。Daymarkだけのpushで基盤参照や本番を更新しない。Phase完了時は新しい作業コピーで固定commit取得・frozen install・統合test/buildも確認する。
 
+## Tech Inbox integration gate
+
+Phase 32では同一repositoryの`packages/tech-inbox`を`@rizakura-hontai/tech-inbox`として検証する。`pnpm tech-inbox:check`は製品directoryでformat、lint、source/testのTypeScript、coverage付き260 tests、宣言付きbuildを実行し、基盤の`pnpm check`にも組み込む。製品単体gateにCloudflare credentialや実DBは不要。依存監査は共用lockfileを持つ基盤の全gateで実行する。
+
+- 製品側には画面、記事・タグ・活動・backup・metadataの契約/処理、schema定義を置く。取得通信・HTML解析・repository・安全なerror表示・共通UIは境界に応じて注入する。
+- 製品UI単体testはclient/UIのmockだけで起動し、直接fetchしないこと、保存・既読化・route・error・abort等を検証する。既存の基盤page/component testは実HTTP adapterと共通UIを注入し、従来の操作検証とcoverageを維持する。
+- `scripts/tech-inbox-boundaries.test.mjs`でsource/testのimportを構文解析し、製品外への相対参照、基盤/Daymark/workspaceへの依存、Cloudflare binding型、動的import等を拒否する。共通contractsがHTTPだけをexportし、DB側が両製品schemaを集約する構成も検証する。
+- `pnpm tech-inbox:boundaries`は実際のVite buildでapp/browser/contracts/coreのbrowser利用を確認し、server/schema/metadataはserver buildだけを許可する。package exportsに加え、相対source importで迂回したclient混入もVite pluginで拒否する。通常buildにも同じpluginを適用する。
+- 認証・Origin・Rate Limit・HTTP route・D1 adapter・migration履歴・Cloudflare entrypointは基盤に残す。DB migration差分はゼロとし、fresh D1・backup往復・両製品の実HTTP・desktop/mobile E2Eを省略しない。
+
+Phase 32では新repository、npm公開、submodule追加、本番deployを行わない。Phase 33で別repositoryへ移す際は公開範囲・対象を確認し、製品側のtest/commit/push後に基盤が固定SHAを取り込んで同じ全gateを通す。moving branchをbuild中に取得しない。
+
 ## Coverage policy
 
 V8 coverageはstatements、branches、functions、linesの全指標に80%の最低値を設定する。さらにURL正規化、metadata-fetcherのSSRF URL判定、契約schemaはbranch coverage 90%以上を必須にする。
@@ -66,7 +82,9 @@ V8 coverageはstatements、branches、functions、linesの全指標に80%の最�
 
 Phase 24追加後の基盤全体はstatements 87.80%、branches 83.67%、functions 87.94%、lines 89.31%。Daymarkのdomain・契約・日付・backup処理は全指標100%で、最低値を変更していない。React画面はcomponent testとdesktop/mobile E2Eの操作・表示検証を必須とする。
 
-V8 unit coverageから次だけを除外する。
+Phase 32のTech Inbox単体domain/契約/metadata coverageはstatements 94.09%、branches 89.60%、functions 97.46%、lines 94.14%。最低値80%と、契約・URL正規化・SSRF判定のbranch 90%条件を維持する。単体coverageは`src/app.tsx`・`src/browser.ts`・`src/client/**`を対象外とするが、UIは単体mock testに含め、移動した`.tsx`も基盤全体のcoverage対象へ追加した。従来の画面coverageを分離によって免除しない。
+
+基盤全体のV8 unit coverageから次だけを除外する。
 
 - `modules/daymark/src/app.tsx`: Daymark単体component testと基盤側desktop/mobile E2Eで画面の操作・表示を検証する。domain・契約・日付処理は除外せず100%を維持する。
 - `apps/web/src/worker/repositories/d1-article-repository.ts`: fake DBではなく、`pnpm api:verify:local`でfreshな実D1と実HTTPを検証する。

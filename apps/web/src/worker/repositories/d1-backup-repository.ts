@@ -1,7 +1,6 @@
-import type { Article } from "@tech-inbox/core/article";
-import type { Tag } from "@tech-inbox/core/tag";
-import type { BackupImportPlan } from "../backup-import";
-import type { BackupRepository } from "./backup-repository";
+import type { Article } from "@rizakura-hontai/tech-inbox/core/article";
+import type { Tag } from "@rizakura-hontai/tech-inbox/core/tag";
+import type { BackupImportPlan, BackupRepository } from "@rizakura-hontai/tech-inbox/server";
 import { createD1ArticleRepository } from "./d1-article-repository";
 
 function articleInsert(binding: D1Database, article: Article): D1PreparedStatement {

@@ -1,4 +1,4 @@
-import type { TagDto } from "@rizakura-hontai/contracts";
+import type { TagDto } from "@rizakura-hontai/tech-inbox/contracts";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createTag, deleteTag, listTags, replaceArticleTags, updateTag } from "./tags";
 

@@ -1,7 +1,7 @@
-import { articleActivityResponseSchema } from "@rizakura-hontai/contracts";
+import { articleActivityResponseSchema } from "@rizakura-hontai/tech-inbox/contracts";
+import type { ActivityRepository } from "@rizakura-hontai/tech-inbox/server";
 import { describe, expect, it, vi } from "vitest";
-import { createApp, type AppBindings, type RequestLogEvent } from "./app";
-import type { ActivityRepository } from "./repositories/activity-repository";
+import { type AppBindings, createApp, type RequestLogEvent } from "./app";
 
 const origin = "http://localhost";
 

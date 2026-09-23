@@ -1,6 +1,6 @@
 # rizakura-hontai
 
-rizakura-hontaiは、本人限定のツールへの入口と共通基盤です。記事管理のTech Inboxを含み、習慣管理のDaymarkは別repositoryから統合します。Daymarkの日次記録・設定履歴・日/週/月集計、保護API、responsive画面、独立PWA、製品別JSONバックアップを実装しました。Cloudflare Accessと既存のapp Worker・D1を共有し、Phase 25で本番反映と3年分データのFree CPU境界まで検証した構成です。
+rizakura-hontaiは、本人限定のツールへの入口と共通基盤です。記事管理のTech Inboxは同じrepository内の独立workspace packageへ整理し、習慣管理のDaymarkは別repositoryから統合します。Daymarkの日次記録・設定履歴・日/週/月集計、保護API、responsive画面、独立PWA、製品別JSONバックアップを実装しました。Cloudflare Accessと既存のapp Worker・D1を共有し、Phase 25で本番反映と3年分データのFree CPU境界まで検証した構成です。
 
 ## 実装と本番の状態
 
@@ -13,6 +13,8 @@ Phase 26〜27で実装・検証したTech Inboxの既読活動APIと`/tech-inbox
 Phase 30では共用D1を`tech-inbox`から新しい`rizakura-hontai`へコピーし、全データ・schema/index・migration履歴の一致を確認して接続先を切り替えました。保存とQueue配送を再開し、所有者の表示・保存確認まで完了しました。旧DBは接続せず保持しています。Phase 30時点ではWorker名・URL・Access・PWA・料金プランとローカルdirectoryを変更していません。以後、旧DBを指すversionへ直接rollbackしないでください。[移行手順](docs/foundation-migration.md)
 
 Phase 31は完了しました。2026-09-22に既存WorkerとAccess表示名を`rizakura-hontai`へ改名し、APP_ORIGINを更新しました。Worker・AccessのID、audience、本人限定policy、D1接続先と全データを維持し、新originの未認証9経路がAccessへredirectされることを確認して、保存とQueue配送を再開しています。所有者からPCでの新URLログイン、記事・タグ・活動とDaymarkの日/週/月表示、両製品の保存・再読み込み反映の成功報告を受領しました。2026-09-23には新originからiPhone SafariでTech Inbox/DaymarkをそれぞれPWAへ追加し直し、新アイコンからの起動・ログイン・表示・保存・閉じて再起動まで成功報告を受領しています。現行originは`apps/web/wrangler.jsonc`を参照してください。
+
+Phase 32ではTech Inboxの画面、記事・タグ・活動・backup・metadata処理、契約、schema定義、単体testを`packages/tech-inbox`へ集約しました。機能・URL・API・DB migrationを変えず、認証・HTTP/D1 adapter・共通UIは基盤に残し、基盤から製品へ必要なrepository・client・UIを注入します。この整理では本番へdeployせず、新repositoryやCloudflare resourceも作成しません。Phase 33の別repository・固定submodule化は公開範囲と対象を確認してから行い、本番反映はPhase 34で別途実施します。検証結果と完了状態は[Progress](docs/progress.md)を参照してください。
 
 ## DaymarkのPhase 21〜23機能
 
@@ -68,7 +70,18 @@ tech-inbox-metadata-fetcher Worker
 
 アプリWorkerがStatic Assets、API、D1、Queueを担当します。metadata-fetcherは公開URL、D1、Queue、Secretsを持たず、Service Binding経由でのみ呼び出されます。
 
-共通の認証・request検証・Rate Limit・安全なlogは`apps/web/src/worker/platform/`、記事APIは`tech-inbox-api.ts`へ分離しています。共通layout・dialog・通知・HTTP clientは`apps/web/src/client/platform/`にあります。内部package名は`rizakura-hontai`、`@rizakura-hontai/web`、`@rizakura-hontai/contracts`、`@rizakura-hontai/db`です。記事domainの`@tech-inbox/core`と記事専用Queue・metadata-fetcher名は維持し、共用D1をPhase 30で、app Worker名とAccess表示名をPhase 31で`rizakura-hontai`へ切り替えました。
+共通の認証・request検証・Rate Limit・安全なlogは`apps/web/src/worker/platform/`、記事HTTP接続は`tech-inbox-api.ts`へ分離しています。共通layout・dialog・通知・HTTP clientは`apps/web/src/client/platform/`にあります。共用D1をPhase 30で、app Worker名とAccess表示名をPhase 31で`rizakura-hontai`へ切り替えました。記事専用Queue・metadata-fetcherのresource名は維持します。
+
+| 配置 | 責務 |
+|---|---|
+| `packages/tech-inbox` (`@rizakura-hontai/tech-inbox`) | 製品画面、契約、domain/service、backup、metadata処理、記事schema、単体test |
+| `modules/daymark` (`@rizakura-hontai/daymark`) | 固定commitで取り込むDaymark製品 |
+| `packages/contracts` (`@rizakura-hontai/contracts`) | 製品に依存しない共通HTTP契約のみ |
+| `packages/db` (`@rizakura-hontai/db`) | 両製品schemaの集約、既存migration履歴 |
+| `apps/web` (`@rizakura-hontai/web`) | 入口、認証・HTTP/UI接続、D1 adapter、Queue/runtime接続、結合test |
+| `workers/metadata-fetcher` | Cloudflare用の薄いentrypointと設定。取得・解析処理は製品packageへ委譲 |
+
+旧`@tech-inbox/core`はPhase 32で製品packageの`core` entrypointへ統合しました。製品packageから基盤・Daymark・Cloudflare設定を参照せず、server/schema/metadataをbrowserへ混入させないsource検査とbuild検査を設けています。
 
 主要バージョンと採用理由は[Dependency baseline](docs/dependency-baseline.md)を参照してください。
 
@@ -143,7 +156,9 @@ git add modules/daymark
 pnpm check
 ```
 
-format、lint、Cloudflare生成型、TypeScript、Vitest、coverage、fresh local D1、実HTTP API、production build、artifact budget、desktop/mobile Playwright、依存監査を順番に実行します。個別コマンドと基準は[Quality gates](docs/quality-gates.md)を参照してください。
+DaymarkとTech Inboxの製品単体gateに続き、format、lint、Cloudflare生成型、TypeScript、Vitest、coverage、fresh local D1、実HTTP API、production build、artifact budget、desktop/mobile Playwright、依存監査を順番に実行します。個別コマンドと基準は[Quality gates](docs/quality-gates.md)を参照してください。
+
+Tech Inboxだけのformat・lint・TypeScript・coverage付き単体test・宣言付きbuildは`pnpm tech-inbox:check`で確認できます。製品UIは注入client/UIのmockで単体検証し、実際のHTTP・共通UIとの接続は基盤の既存component/page testとE2Eでも検証します。単体gateだけでは基盤との組み合わせを保証しないため、phase完了には`pnpm check`全体が必要です。
 
 同じ`pnpm check`はGitHub Actionsでも`main`へのpushとpull request時に実行します。CIはCloudflare credentialやproduction secretを受け取らず、本番へ接続しません。Markdownと`docs/`だけの変更では実行しません。
 

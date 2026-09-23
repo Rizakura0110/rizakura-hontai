@@ -4,6 +4,7 @@ import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 import { daymarkBoundary } from "./daymark-boundary.ts";
+import { techInboxBoundary } from "./tech-inbox-boundary.ts";
 
 export default defineConfig({
   appType: "mpa",
@@ -25,6 +26,7 @@ export default defineConfig({
   },
   plugins: [
     daymarkBoundary(),
+    techInboxBoundary(),
     react(),
     tailwindcss(),
     cloudflare({

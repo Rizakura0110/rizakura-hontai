@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { articleActivityFixture } from "../../../../../packages/contracts/test/fixtures";
+import { articleActivityFixture } from "../../../../../packages/tech-inbox/test/contracts/fixtures";
 import { getArticleActivity } from "./activity";
 
 function json(body: unknown, status = 200) {

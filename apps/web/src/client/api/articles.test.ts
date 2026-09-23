@@ -1,4 +1,4 @@
-import type { ArticleDto, ExportResponse } from "@rizakura-hontai/contracts";
+import type { ArticleDto, ExportResponse } from "@rizakura-hontai/tech-inbox/contracts";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   ApiClientError,

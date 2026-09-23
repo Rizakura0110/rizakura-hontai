@@ -1,5 +1,8 @@
-import type { ReadActivityDayCount } from "@tech-inbox/core/activity";
-import type { ActivityRepository, ActivityRepositoryRange } from "./activity-repository";
+import type { ReadActivityDayCount } from "@rizakura-hontai/tech-inbox/core/activity";
+import type {
+  ActivityRepository,
+  ActivityRepositoryRange,
+} from "@rizakura-hontai/tech-inbox/server";
 
 type ActivityResultRow = {
   readonly total_read_count?: unknown;

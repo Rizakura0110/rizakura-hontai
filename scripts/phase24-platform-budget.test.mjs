@@ -3,16 +3,16 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
+  DAYMARK_BACKUP_D1_BOUND_VALUE_BYTES,
+  DAYMARK_BACKUP_D1_MAX_WRITE_STATEMENTS,
+} from "../apps/web/src/worker/repositories/d1-daymark-backup-repository";
+import {
   DAYMARK_BACKUP_IMPORT_RECORD_BATCH_SIZE,
   DAYMARK_BACKUP_LIMITS,
   MAX_DAYMARK_BACKUP_FILE_BYTES,
 } from "../modules/daymark/src/contracts";
-import { MAX_BACKUP_IMPORT_FILE_BYTES } from "../packages/contracts/src/api";
-import { MAX_URL_LENGTH } from "../packages/core/src/url-normalization";
-import {
-  DAYMARK_BACKUP_D1_BOUND_VALUE_BYTES,
-  DAYMARK_BACKUP_D1_MAX_WRITE_STATEMENTS,
-} from "../apps/web/src/worker/repositories/d1-daymark-backup-repository";
+import { MAX_BACKUP_IMPORT_FILE_BYTES } from "../packages/tech-inbox/src/contracts/api";
+import { MAX_URL_LENGTH } from "../packages/tech-inbox/src/core/url-normalization";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 

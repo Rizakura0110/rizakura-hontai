@@ -1,14 +1,14 @@
 import {
-  articleResponseSchema,
   type ArticleDto,
   type ArticleListStatus,
   type ArticleSort,
+  articleResponseSchema,
   createArticleResponseSchema,
   deleteArticleResponseSchema,
   exportResponseSchema,
   listArticlesResponseSchema,
   retryMetadataResponseSchema,
-} from "@rizakura-hontai/contracts";
+} from "@rizakura-hontai/tech-inbox/contracts";
 import { apiFetch, assertSuccess } from "../platform/http";
 
 export { ApiClientError, userFacingError } from "../platform/http";

@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
 
-import type { ArticleDto, TagDto } from "@rizakura-hontai/contracts";
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { ArticlesPage } from "@rizakura-hontai/tech-inbox/app";
+import type { ArticleDto, TagDto } from "@rizakura-hontai/tech-inbox/contracts";
+import { act, cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ArticlesPage } from "./ArticlesPage";
+import { renderTechInbox as render } from "../tech-inbox.test-support";
 
 const baseArticle: ArticleDto = {
   id: "article-1",

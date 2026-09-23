@@ -24,7 +24,7 @@ Phase 17までのTech Inboxは完了済み。以下は所有者と合意した�
 | 29 | 完了 | Cloudflare名称移行の準備 | 読み取りinventory、非公開backupのlocal復元・全値照合、全自動gate、費用/停止/切り戻し手順を確認。remote変更なし |
 | 30 | 完了（旧DBは削除せず保持） | 共用D1をrizakura-hontaiへ移行 | 全値copy・binding切替・全自動gate・所有者の表示/保存確認が成功。URL/認証は維持し、旧DB接続なし |
 | 31 | 完了（PC・2 PWA確認済み） | Worker・Access表示名・URL・PWA切替 | 本人限定認証を維持し、新originと2 PWAを確認 |
-| 32 | 未着手 | Tech Inboxと基盤の依存整理 | 同じrepository内で機能・API・DBを変えず製品単体testを可能にする |
+| 32 | 完了（本番未反映） | Tech Inboxと基盤の依存整理 | 同じrepository内の製品packageを単体検証し、既存の機能・API・DBと統合gateを維持 |
 | 33 | 未着手 | Tech Inboxの別repository化 | 公開範囲確認後、固定commitのsubmoduleとworkspaceで統合 |
 | 34 | 未着手 | 分離構成の本番反映 | 両製品・草・タグ・metadata・backup・PWAの回帰確認 |
 
@@ -98,6 +98,8 @@ Phase 17までのTech Inboxは完了済み。以下は所有者と合意した�
 - Cloudflare resourceの名称移行はこの機能へ混ぜず、Phase 28完了後の別計画として扱う。
 
 ## 所有者に必要な確認
+
+- Phase 32は同一repositoryの`packages/tech-inbox`への整理まで完了。本番はPhase 31のまま。Phase 33では新repositoryの対象名・公開範囲を確認してから固定submodule化し、Phase 34のdeployは別途承認を得る。
 
 - Phase 20ではnpmアカウント操作は不要。Daymarkのpublic作成とGit submodule連携は承認済みで、繰り返し確認しない。
 - 基盤GitHubの改名先はrizakura-hontaiで確定・改名済み。ローカル作業directoryは移動しない。新repositoryの対象・衝突は作成直前に確認する。

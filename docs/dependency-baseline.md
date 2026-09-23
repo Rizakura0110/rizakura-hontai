@@ -1,6 +1,7 @@
 # Dependency baseline
 
 確認日: 2026-09-11
+構成追記: 2026-09-23（Phase 32のworkspace整理。下記の第三者version選定を更新するものではない）
 対象環境: macOS arm64 / Cloudflare Workers / Node.js 24 LTS / pnpm 11
 
 ## 選定ルール
@@ -99,6 +100,8 @@ Phase 1の初回installで報告されたbuild scriptを確認し、次だけを
 
 ## Lockfileと監査結果
 
+- Phase 32ではTech Inboxの製品コードを同一repositoryの`packages/tech-inbox`へ集約し、`@rizakura-hontai/tech-inbox`を`workspace:0.0.0`で参照する。旧`@tech-inbox/core`と記事専用contractsはこのpackageへ移し、共通`@rizakura-hontai/contracts`はHTTP契約だけを保持する。製品packageは`private: true`で、npm公開・Git URL dependency・新repository・新submoduleを追加しない。
+- この整理のlockfile変更はworkspace importerと参照の配置変更だけで、第三者packageの完全version・integrity、7日gate、peer検査、install script許可、override、pnpm供給網設定を維持する。製品のReact 19.2.8/React Router 8.3.0 peerと単体test用依存も既存baselineの固定versionを使い、新しい第三者versionを導入しない。製品単体gateは`pnpm tech-inbox:check`、依存監査を含む結合gateは基盤の`pnpm check`で行う。
 - 2026-09-11のPhase 26監査で、Miniflareが固定する`sharp 0.35.2`にhigh advisory [GHSA-rgj7-g3m4-5g8c](https://github.com/advisories/GHSA-rgj7-g3m4-5g8c)が検出された。親version限定overrideで修正版`sharp 0.35.4`へ更新し、同時にruntime direct dependencyのHonoを既知moderate advisory修正版`4.13.5`へ更新した。更新後はhigh 0・critical 0で、既知の開発用推移依存moderate 1件だけを継続する。
 - 2026-09-01のPhase 23最終監査でも`pnpm audit --audit-level high`は成功し、高0件・重大0件だった。Phase 23では第三者dependencyとlockfileを変更していない。既知の開発専用・中程度1件は下記baselineから不変。
 - Phase 22のDaymark画面は基盤と同じReact 19.2.8をpeerとして使用し、単体component testへ既存baselineのReact DOM、Testing Library、jsdom、React型定義を追加した。新しいversion・install script例外・runtime network依存は導入せず、Daymark単体と基盤のlockfileで同じ完全versionを固定した。

@@ -1,7 +1,7 @@
-import type { Article } from "@tech-inbox/core/article";
-import type { NormalizedUrl } from "@tech-inbox/core/url-normalization";
+import type { Article } from "@rizakura-hontai/tech-inbox/core/article";
+import type { NormalizedUrl } from "@rizakura-hontai/tech-inbox/core/url-normalization";
+import type { BackupImportPlan } from "@rizakura-hontai/tech-inbox/server";
 import { describe, expect, it, vi } from "vitest";
-import type { BackupImportPlan } from "../backup-import";
 import { createD1BackupRepository } from "./d1-backup-repository";
 
 const now = "2026-08-29T00:00:00.000Z";

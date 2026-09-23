@@ -6,7 +6,7 @@
   "exports": "./src/index.ts",
   "dependencies": {
     "@rizakura-hontai/daymark": "workspace:0.0.0",
-    "@tech-inbox/core": "workspace:0.0.0",
+    "@rizakura-hontai/tech-inbox": "workspace:0.0.0",
     "drizzle-orm": "0.45.2"
   }
 }

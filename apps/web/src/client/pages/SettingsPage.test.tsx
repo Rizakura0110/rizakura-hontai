@@ -1,16 +1,17 @@
 // @vitest-environment jsdom
 
+import { SettingsPage } from "@rizakura-hontai/tech-inbox/app";
 import type {
   ArticleDto,
   BackupImportSnapshot,
   BackupImportSummary,
   ExportResponse,
   TagDto,
-} from "@rizakura-hontai/contracts";
-import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
+} from "@rizakura-hontai/tech-inbox/contracts";
+import { cleanup, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { SettingsPage } from "./SettingsPage";
+import { renderTechInbox as render } from "../tech-inbox.test-support";
 
 const unreadArticle: ArticleDto = {
   id: "article-1",

@@ -1,6 +1,6 @@
 # Cloudflare名称移行とTech Inbox分離
 
-最終更新: 2026-09-23。Phase 29〜31完了。Phase 31は承認後の同一Worker改名・Access表示名・新origin反映が成功し、保存/Queue配送を再開済み。所有者のPC表示・保存と2 PWA確認も成功した。D1はPhase 30の新DBのままで、旧DBは接続せず保持し、削除は別途承認待ち。Phase 32〜34は未着手。
+最終更新: 2026-09-23。Phase 29〜31完了。Phase 31は承認後の同一Worker改名・Access表示名・新origin反映が成功し、保存/Queue配送を再開済み。所有者のPC表示・保存と2 PWA確認も成功した。D1はPhase 30の新DBのままで、旧DBは接続せず保持し、削除は別途承認待ち。Phase 32の同一repository内の製品package整理は完了（本番未反映）、Phase 33〜34は未着手。
 
 ## 実行順と境界
 
@@ -151,3 +151,12 @@ Phase 31の切り戻しでも新DBを維持する。Phase 30のversionは新DB�
 - 同じrepo内で分離を確認してから別repoへ移す。workspace/lockfile・CSS source・型/test/CI・browser/server境界を更新し、DB migration差分はゼロとする。
 - Tech Inboxのtest/commit/pushを先に完了し、基盤が固定SHAを取り込み全gateを通す。npm公開・資格情報共有・moving branch追従・元履歴の書き換えはしない。
 - Phase 34で結合版をdeployし、既存両製品を確認。分離のための追加production Worker/DBは不要。
+
+### Phase 32の実施結果
+
+- `packages/tech-inbox`を通常のworkspace packageとして作成し、製品側の画面・contracts/core・service/port・schema・metadataと単体testを集約。`modules/tech-inbox`や新Git repositoryはまだ作成していない。
+- client/UIとmetadata取得/保存能力を注入し、製品から基盤/Daymarkのsource・generated type・資格情報への参照を排除。共通HTTP契約と製品契約を分離した。
+- domain errorは基盤で既存のHTTP形式へ変換。metadata consumerの更新停止判定とQueue retry/ack、service bindingやHTMLRewriterの生成は基盤側に残した。
+- 独立単体260 testsと型/declaration build、逆向きimport検査、browserへのserver/schema/metadata混入を拒否する実buildを確認。既存UI結合testは基盤側で維持し、全体598 tests・Daymark69 tests・E2E37 passed/desktop専用mobile skip1件を含む`pnpm check`が成功した。
+- `pnpm db:generate`は`No schema changes`。local D1のmigration/制約、backup往復全値照合、実HTTPの両製品操作/復元/maintenanceも成功。migration・Daymark gitlink・Cloudflare設定・供給網policy・第三者versionは不変。
+- 本番deploy/remote D1操作・旧DB削除・新repository作成は行っていない。本番のコードはPhase 31のまま維持する。

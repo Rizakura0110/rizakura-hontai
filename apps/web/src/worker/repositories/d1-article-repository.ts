@@ -1,3 +1,4 @@
+import { type ArticleRow, articles, articleTags, articleUrls, tags } from "@rizakura-hontai/db";
 import type {
   Article,
   ArticleChanges,
@@ -6,22 +7,21 @@ import type {
   ArticleUrlAlias,
   CreateArticleInput,
   UpdateArticleInput,
-} from "@tech-inbox/core/article";
-import { MAX_TAGS_PER_ARTICLE, type Tag } from "@tech-inbox/core/tag";
-import type { NormalizedUrl } from "@tech-inbox/core/url-normalization";
-import { articles, articleTags, articleUrls, type ArticleRow, tags } from "@rizakura-hontai/db";
-import { and, asc, desc, eq, gt, inArray, isNull, lt, or, type SQL, sql } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/d1";
+} from "@rizakura-hontai/tech-inbox/core/article";
+import { MAX_TAGS_PER_ARTICLE, type Tag } from "@rizakura-hontai/tech-inbox/core/tag";
+import type { NormalizedUrl } from "@rizakura-hontai/tech-inbox/core/url-normalization";
 import type {
-  ArticleRepository,
   ApplyMetadataInput,
   ApplyMetadataResult,
+  ArticleRepository,
   CreateArticleResult,
   DeleteArticleResult,
   RecordMetadataFailureInput,
   RecordMetadataFailureResult,
   UpdateArticleResult,
-} from "./article-repository";
+} from "@rizakura-hontai/tech-inbox/server";
+import { and, asc, desc, eq, gt, inArray, isNull, lt, or, type SQL, sql } from "drizzle-orm";
+import { drizzle } from "drizzle-orm/d1";
 import { mapArticleRow } from "./article-mapper";
 import { mapTagRow } from "./tag-mapper";
 

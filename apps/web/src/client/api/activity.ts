@@ -1,4 +1,4 @@
-import { articleActivityResponseSchema } from "@rizakura-hontai/contracts";
+import { articleActivityResponseSchema } from "@rizakura-hontai/tech-inbox/contracts";
 import { apiFetch, assertSuccess } from "../platform/http";
 
 export async function getArticleActivity(options: { readonly signal?: AbortSignal } = {}) {

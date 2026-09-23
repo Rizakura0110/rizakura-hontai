@@ -1,16 +1,16 @@
 import { readFile } from "node:fs/promises";
+import { expect, type Page, test } from "@playwright/test";
 import type {
   ArticleDto,
   BackupImportSnapshot,
   BackupImportSummary,
   TagDto,
-} from "@rizakura-hontai/contracts";
-import { expect, type Page, test } from "@playwright/test";
+} from "@rizakura-hontai/tech-inbox/contracts";
 import {
   activityDateInTokyo,
   createReadActivityWindow,
   summarizeReadActivity,
-} from "../../packages/core/src/activity";
+} from "../../packages/tech-inbox/src/core/activity";
 
 type MetadataTransition = "ready" | "failed";
 

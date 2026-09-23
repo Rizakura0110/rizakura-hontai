@@ -1,9 +1,9 @@
-import type { BackupImportSnapshot } from "@rizakura-hontai/contracts";
-import type { Article } from "@tech-inbox/core/article";
-import type { NormalizedUrl } from "@tech-inbox/core/url-normalization";
+import type { BackupImportSnapshot } from "@rizakura-hontai/tech-inbox/contracts";
+import type { Article } from "@rizakura-hontai/tech-inbox/core/article";
+import type { NormalizedUrl } from "@rizakura-hontai/tech-inbox/core/url-normalization";
+import type { BackupRepository } from "@rizakura-hontai/tech-inbox/server";
 import { describe, expect, it, vi } from "vitest";
-import { createApp, type AppBindings } from "./app";
-import type { BackupRepository } from "./repositories/backup-repository";
+import { type AppBindings, createApp } from "./app";
 
 const origin = "http://localhost";
 const now = "2026-08-29T00:00:00.000Z";

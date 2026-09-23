@@ -1,9 +1,9 @@
 import {
+  type MetadataFetchResponse,
   metadataFetchRequestSchema,
   metadataFetchResponseSchema,
-  type MetadataFetchResponse,
-} from "@rizakura-hontai/contracts";
-import { fetchMetadata } from "./fetch-metadata";
+} from "@rizakura-hontai/tech-inbox/contracts";
+import { fetchMetadata, parseHtmlMetadata } from "@rizakura-hontai/tech-inbox/metadata";
 
 function jsonResponse(body: MetadataFetchResponse, status = 200): Response {
   return Response.json(metadataFetchResponseSchema.parse(body), {
@@ -13,7 +13,7 @@ function jsonResponse(body: MetadataFetchResponse, status = 200): Response {
 }
 
 export default {
-  async fetch(request): Promise<Response> {
+  async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
     if (request.method !== "POST" || url.pathname !== "/fetch") {
       return new Response(null, { status: 404 });
@@ -36,6 +36,15 @@ export default {
       return jsonResponse({ ok: false, error: { code: "INVALID_URL" } }, 400);
     }
 
-    return jsonResponse(await fetchMetadata(parsed.data.url));
+    return jsonResponse(
+      await fetchMetadata(parsed.data.url, {
+        // Workers fetch must be called without rebinding its runtime receiver.
+        fetch: (input, init) => fetch(input, init),
+        parse: (response, finalUrl) =>
+          parseHtmlMetadata(response, finalUrl, () => new HTMLRewriter()),
+        setTimeout,
+        clearTimeout,
+      }),
+    );
   },
 } satisfies ExportedHandler;

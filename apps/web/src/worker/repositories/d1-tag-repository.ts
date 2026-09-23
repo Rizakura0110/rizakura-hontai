@@ -1,6 +1,4 @@
 import { articles, articleTags, tags } from "@rizakura-hontai/db";
-import { asc, eq, inArray } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/d1";
 import type {
   ArticleTagsResult,
   CreateTagInput,
@@ -11,7 +9,9 @@ import type {
   TagRepository,
   UpdateTagNameInput,
   UpdateTagNameResult,
-} from "./tag-repository";
+} from "@rizakura-hontai/tech-inbox/server";
+import { asc, eq, inArray } from "drizzle-orm";
+import { drizzle } from "drizzle-orm/d1";
 import { mapTagRow } from "./tag-mapper";
 
 type TagDatabase = ReturnType<typeof drizzle>;

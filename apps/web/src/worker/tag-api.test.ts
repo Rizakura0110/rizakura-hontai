@@ -1,10 +1,9 @@
-import type { Article } from "@tech-inbox/core/article";
-import type { Tag } from "@tech-inbox/core/tag";
+import type { Article } from "@rizakura-hontai/tech-inbox/core/article";
+import type { Tag } from "@rizakura-hontai/tech-inbox/core/tag";
+import type { ArticleRepository, TagRepository } from "@rizakura-hontai/tech-inbox/server";
 import { describe, expect, it, vi } from "vitest";
-import { createApp, type AppBindings, type RequestLogEvent } from "./app";
+import { type AppBindings, createApp, type RequestLogEvent } from "./app";
 import { ApiError } from "./platform/errors";
-import type { ArticleRepository } from "./repositories/article-repository";
-import type { TagRepository } from "./repositories/tag-repository";
 
 const origin = "http://localhost";
 const now = "2026-08-28T00:00:00.000Z";

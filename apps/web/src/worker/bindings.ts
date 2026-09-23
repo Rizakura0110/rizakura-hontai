@@ -1,7 +1,7 @@
-import type { MetadataQueueMessage } from "@rizakura-hontai/contracts";
+import type { MetadataQueueMessage } from "@rizakura-hontai/tech-inbox/contracts";
 import type { AccessAuthBindings } from "./platform/access-auth";
-import type { RateLimitBindings } from "./platform/rate-limit";
 import type { MaintenanceBindings } from "./platform/maintenance";
+import type { RateLimitBindings } from "./platform/rate-limit";
 
 export type AppBindings = Omit<
   CloudflareBindings,
