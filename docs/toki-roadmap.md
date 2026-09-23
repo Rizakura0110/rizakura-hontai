@@ -1,7 +1,7 @@
 # Toki実装フェーズ
 
 日付: 2026-09-23
-状態: Phase 35〜42をローカル実装・検証。Phase 43の本番提供は未着手。
+状態: Phase 35〜42を完了。Phase 43はToki専用DB・Worker・本人限定Accessを公開し、PCで計測・保存・編集を確認。基盤入口リンクも本番反映済み。入口の本人確認とiPhone PWA実機確認は進行中。
 仕様: [Toki設計](toki-design.md)、分離理由: [ADR-0021](decisions/0021-toki-independent-product.md)、運用: [Toki本番前確認](toki-operations.md)
 
 | Phase | 目的 | 完了条件と境界 |
@@ -20,4 +20,4 @@
 
 Phase 37で確定した詳細: タイマー1秒〜24時間、内容1〜500文字、記録と取得期間の上限366日、保存済み記録の時間重複を許可、未完了計測は1件まで。編集は`version`で競合を検出し`409`を返す。後続画面では再読込・再編集を案内する。
 
-Phase 41の入口はTokiを「公開準備中」で表示し、保護されたToki originの稼働をPhase 43で確認してから、ビルド時の`VITE_TOKI_URL`でリンクを有効にする。基盤Workerの本番再deployもPhase 43の別承認まで行わない。Toki画面の通常ヘッダーには現行のrizakura-hontai originへの戻りリンクを置き、時間だけ表示中はヘッダーごと非表示にする。
+Phase 41の入口はTokiを「公開準備中」で表示し、保護されたToki originの稼働をPhase 43で確認してから、ビルド時の`VITE_TOKI_URL`でリンクを有効にする計画とした。基盤Workerの本番再deployはPhase 43の別承認を得て実施した。Toki画面の通常ヘッダーには現行のrizakura-hontai originへの戻りリンクを置き、時間だけ表示中はヘッダーごと非表示にする。

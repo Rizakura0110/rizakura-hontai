@@ -1984,3 +1984,16 @@
 - Toki commit `a71333737e80fd2ee5a28f36c866c265639c3ed3`を`main`へpushし、[公開GitHub Quality](https://github.com/Rizakura0110/toki/actions/runs/35836571237)も成功した。
 - 基盤の`pnpm check`はDaymark69、Tech Inbox260、基盤615 tests、E2E37 passed/意図的skip1、format/lint・生成型・TypeScript・coverage・local D1/backup/API・両Worker build/budget・audit high/critical 0で成功。既存のdev-only moderate 1件は不変。既存アプリのruntimeやDB schemaは変えていない。
 - [Toki本番前確認・運用手順](toki-operations.md)に独立Worker/D1/Accessの安全な公開順序、TokiのSQL exportとDB全体Time Travelの違い、失敗時の導線停止・切り戻し、Free枠と監視を記載。Tokiにはアプリ内JSON復元機能がなく、Tech Inbox/DaymarkのJSONにもTokiデータが入らない。公式のFree上限は文書化したが、実際のアカウントプラン・当日使用量は作成直前のPhase 43でread-only再確認する。
+
+## Phase 43: Toki専用リソースの本番提供（進行中）
+
+状態: 2026-09-23時点で所有者はWorkers Free・Usage cost $0を管理画面で確認し、Toki専用Access application・D1・Workerの作成、初期migration、Toki本番deployを承認した。その後、基盤入口にTokiリンクを出すための既存`rizakura-hontai` Workerの再deployも別途承認した。既存DB・認証policyと料金プランは変更対象外。
+
+- 既存アカウントのAPI tokenと対象アカウントを読み取り確認し、作成前にTokiと同名のWorker/D1/Access applicationがなく、Workers 2件・D1 2件・Access application 1件であることを確認した。
+- Toki専用の空D1を作成し、`0001_initial.sql`をそのDBのみに適用。remoteでmigration 1件、`time_sessions` 0件、期待する3 indexを確認した。既存DBのschemaとデータは変更していない。
+- 本番用の非追跡`stage`設定を生成・dry-runし、Toki Workerを`workers_dev:false`、preview無効、設定上route/custom domain指定なしで非公開配置した。実際のWorker設定は新Toki D1の`DB` bindingと`ASSETS` bindingのみで、匿名でTokiの`workers.dev` URLは404だった。
+- Cloudflare API tokenにzoneの`Workers Routes Read`がなく、zone route一覧のGETが403だった。所有者が公開前のToki WorkerのOverview画面で対象URLの`workers.dev: Disabled`、`No URLs enabled`、Custom domainsなし、Routesなしを確認した。API権限不足のこの項目だけを手動確認で補い、その他の本人限定Access検査は維持した。
+- Toki専用のWorker単位Access applicationを作成し、本人のemailだけを許可する単一policy、7日session、launcher非表示、Worker不変IDを照合。`TEAM_DOMAIN`、`POLICY_AUD`、`ALLOWED_EMAIL`の3 secretをToki Workerにだけ設定し、値は出力・追跡していない。
+- 専用の`live`設定を別途生成してdry-runした後、Toki Workerだけを公開。公開後にToki D1のbinding、3 secret、Access policy、preview URL無効を再確認した。匿名の入口・カレンダー・manifest・JS/CSS・アイコン・API計8経路はすべてAccessへ302となった。本人PCではストップウォッチの計測→保存→カレンダー編集→再読み込み、タイマーの集中表示→満了→未保存破棄を確認。D1では保存済み1件と編集versionを内容なしで照合した。
+- 所有者の別途承認後、`VITE_TOKI_URL`入りの基盤入口をPC/スマホ幅のローカルE2E 2件とWorker-only dry-runで確認し、既存`rizakura-hontai` Workerだけを再deployした。metadata fetcher、既存DB migration、Queue、Access policy、料金プランは変更していない。反映後の`cloudflare:preflight`・`cloudflare:health`と、匿名の基盤入口・Tech Inbox・Daymark・API計5経路のAccess 302を確認した。本人による入口往復とiPhone PWAの確認は進行中。
+- Tokiのローカル`pnpm check`は単体183件、ブラウザE2E 3件、audit 0件まで成功。最初の独立repositoryのGitHub Actionsでは開発フォルダ名に依存するテスト2件が失敗したため、実ファイル位置を基準に厳密照合するテストへ修正した。Toki commit `663889bcf402a5293aa8ab0251f7547014ed5017`を`main`へpushし、[修正後のGitHub Quality](https://github.com/Rizakura0110/toki/actions/runs/35841347692)は成功した。本番Workerのソースはこの修正で変えていない。
