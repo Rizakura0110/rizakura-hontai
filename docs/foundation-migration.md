@@ -1,6 +1,6 @@
 # Cloudflare名称移行とTech Inbox分離
 
-最終更新: 2026-09-23。Phase 29〜31完了。Phase 31は承認後の同一Worker改名・Access表示名・新origin反映が成功し、保存/Queue配送を再開済み。所有者のPC表示・保存と2 PWA確認も成功した。D1はPhase 30の新DBのままで、旧DBは接続せず保持し、削除は別途承認待ち。Phase 32の同一repository内の製品package整理はローカル完了（本番未反映）。Phase 33の固定submodule化と後続CIの補修を検証中で、Phase 34は未着手。
+最終更新: 2026-09-23。Phase 29〜31完了。Phase 31は承認後の同一Worker改名・Access表示名・新origin反映が成功し、保存/Queue配送を再開済み。所有者のPC表示・保存と2 PWA確認も成功した。D1はPhase 30の新DBのままで、旧DBは接続せず保持し、削除は別途承認待ち。Phase 32のpackage整理、Phase 33の固定submodule化と後続CIの補修は完了（本番未反映）。Phase 34は未着手。
 
 ## 実行順と境界
 
@@ -166,5 +166,5 @@ Phase 31の切り戻しでも新DBを維持する。Phase 30のversionは新DB�
 - 所有者がpublic `Rizakura0110/tech-inbox`の作成とpushを明示承認し、製品専用repositoryを作成した。Phase 32から移した74 source/test filesは内容不変で、元の基盤履歴も維持する。独立lockfile、CI、監査、作業規約、ignoreだけを製品側へ追加した。
 - 製品の単体・基盤統合gate、公開物/credential検査後に、製品commit `f749b0d32bf1351bdaf0cd846152096690b07ecf`を先にpushした。製品GitHub Quality `35817744911`はsuccess。基盤は`modules/tech-inbox`のgitlinkで同じcommitを固定し、既存Daymarkの固定commitも維持する。
 - Phase 32の後続CIはclient JS 500,577 bytesで500,000-byte budgetを超過した。独立install時の共有runtime重複を解決し、React/React DOM/React Router/Zod/Drizzleの共有先を明示。出力への別実体混入をbuild guardで拒否し、testではTesting Libraryも共有する。既存version・integrityとsize/coverage閾値は変更しない。
-- 作業コピーの全`pnpm check`は成功（製品260・Daymark69・基盤609 tests、E2E37 pass/意図的skip1、audit high/critical0）。clean cloneで固定submoduleのremote取得・frozen install・全gateを再現し、基盤側の公開commit/CIまで確認してからPhase 33を完了とする。最終結果は[Progress](progress.md)へ記録する。
+- 作業コピーとclean cloneの全`pnpm check`は成功（製品260・Daymark69・基盤609 tests、E2E37 pass/意図的skip1、audit high/critical0）。固定submoduleのremote取得・frozen install・全gateを再現し、基盤commit `a389ee9`のGitHub Quality `35818210557`もsuccessを確認してPhase 33を完了した。詳細は[Progress](progress.md)へ記録した。
 - 本番Worker・Access・D1・Queue・PWA・料金設定は変更しない。Phase 34で分離構成を反映する場合も、現在のorigin・DBを維持して別途deploy承認と本番確認を行う。旧DB削除は別承認のまま。

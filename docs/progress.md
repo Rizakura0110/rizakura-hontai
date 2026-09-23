@@ -1882,9 +1882,9 @@
 
 ## Phase 33: Tech Inboxの別repository・固定submodule化
 
-状態: 進行中（2026-09-23、本番未反映）。所有者が`Rizakura0110/tech-inbox`のPublic作成とpushを明示承認した。製品repository作成、独立環境と基盤の統合検証を進め、両repositoryの検証・commit/push・clean環境確認まで成功してから完了とする。
+状態: 完了（2026-09-23、本番未反映）。所有者がPublic作成とpushを承認した`Rizakura0110/tech-inbox`へ製品を切り出し、基盤から固定commitのsubmoduleで統合した。両repositoryのcommit/push、作業コピーとclean環境の全品質gate、製品と基盤のGitHub CIが成功した。本番はPhase 31のまま、Phase 34は未着手。
 
-### 実装と検証中の記録
+### 実装と検証の記録
 
 - `packages/tech-inbox`を`modules/tech-inbox`へ移し、別Git履歴と独立lockfile/CI/品質gateを用意した。製品の`src`・`test`の74 filesはPhase 32 commit `b6de1e62ad44ee41d52ea3586d0ad923591d0387`とbyte単位で同一。基盤の元履歴を保持し、製品snapshotだけを新repositoryへ渡す。
 - 独立lockfileの210 package/210 snapshotはPhase 32の解決内容の部分集合としてすべて一致。依存を新しいversionへ解決せず、固定済みの到達可能な依存だけを抽出した。基盤の第三者packages/snapshotsも不変。独立frozen installは成功し、初回のofflineでは製品専用storeが空のため停止した後、固定済みtarballだけを公式registryから取得した。
@@ -1901,4 +1901,6 @@
 - 公開前に両repositoryの対象sourceと成果物を秘密情報照合し、ignore・差分reviewを実施。Tech Inboxを先にcommit/pushし、public `Rizakura0110/tech-inbox`の`f749b0d32bf1351bdaf0cd846152096690b07ecf`を基盤へ固定した。製品GitHub Quality run `35817744911`はsuccess。
 - private `.tmp/phase33-clean-Fwferx`に基盤のclean cloneを作り、review済みstaged差分を適用してindexの完全一致を確認した。両製品はコピーではなくpublic remoteから取得し、Daymark `b6b3cdf89014c2fb71dffb5229a0f84932685df4`、Tech Inbox `f749b0d32bf1351bdaf0cd846152096690b07ecf`をcheckoutした。独立したnode_modules/storeとcredentialなしの環境でfrozen install・全`pnpm check`が成功した。
 - clean環境の初回は専用directory内の固定pnpm実体が未配置のためlocal D1 gateで停止した。既存の安全検査は変えず、検証済みNode/pnpmをそのcheckout内に配置して全gateを再実行した。再実行は製品260・Daymark69・基盤609 tests、D1/backup/HTTP、build/budget、E2E 37 passed / 意図的skip 1、auditまで成功。作業コピーの依存cacheやCloudflare資格情報は流用しない。
-- clean環境の成果物はapp Worker raw/gzip 511.5/108.8 KiB、fetcher 586.7/88.6 KiB、client JS 422.9/122.0 KiB、CSS 35.3/7.3 KiBで作業コピーと一致し、既存budget内。基盤commit/push後のGitHub CI確認を残す。
+- clean環境の成果物はapp Worker raw/gzip 511.5/108.8 KiB、fetcher 586.7/88.6 KiB、client JS 422.9/122.0 KiB、CSS 35.3/7.3 KiBで作業コピーと一致し、既存budget内。
+- 最終差分review、ignore・credential scan後に基盤commit `a389ee9dd8100061c0bf742bf52c198ffa591690`を`main`へpushした。code/config/gitlinkはclean環境で全gateを通したindexと完全一致し、差分はMarkdownの記録更新のみ。GitHub Quality run `35818210557`もsuccess（6m45s）で、Linux上の公開commitと固定submoduleから全gateを通過した。完了記録だけの最終commit/pushは既存のMarkdown-only CI除外に従う。
+- 本番deploy、remote D1操作、Cloudflare resource・Access・PWA・料金変更は行っていない。製品仕様とDB schemaを維持し、Phase 34の本番反映は別途承認後に進める。

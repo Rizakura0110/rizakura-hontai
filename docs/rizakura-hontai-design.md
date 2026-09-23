@@ -2,7 +2,7 @@
 
 最終更新: 2026-09-23
 
-名称移行: Phase 29〜31完了。Phase 31では所有者承認後、既存Worker・AccessのIDと本人限定認証を維持して名前を`rizakura-hontai`へ変更し、新originで保存/Queue配送を再開した。本番の認証・接続・健全性検査と所有者のPC表示・保存、新originでの2 PWA確認が成功した。D1はPhase 30の新DBのまま、旧DBも接続せず保持し、料金プランは変更していない。Phase 32の同一repository内の製品package整理はローカル完了（本番未反映）。Phase 33は承認済みpublic Tech Inbox repositoryの作成後、固定commit連携とPhase 32後続CIの補修を検証中。Phase 34は未着手。[実行手順](foundation-migration.md)
+名称移行: Phase 29〜31完了。Phase 31では所有者承認後、既存Worker・AccessのIDと本人限定認証を維持して名前を`rizakura-hontai`へ変更し、新originで保存/Queue配送を再開した。本番の認証・接続・健全性検査と所有者のPC表示・保存、新originでの2 PWA確認が成功した。D1はPhase 30の新DBのまま、旧DBも接続せず保持し、料金プランは変更していない。Phase 33のTech Inbox別repository・固定commit連携は完了（本番未反映）。Phase 32後続CIの補修後、作業コピー・clean checkout・製品/基盤CIの全gateが成功した。Phase 34は未着手で、本番はPhase 31のまま。[実行手順](foundation-migration.md)
 
 状態: Phase 28完了（iPhoneは所有者判断でスキップ）。Phase 26〜27のTech Inbox既読活動集計APIと年間活動画面を、所有者承認後にproductionへ反映した。現在の既読状態と`read_at`を日本時間で集計し、DB migrationは追加していない。表示・更新、PCの主要操作、AccessとCPU確認、全自動品質gateは成功。iPhoneは後日確認へ延期し、成功扱いにはしない。
 
@@ -16,7 +16,7 @@
 |---|---|
 | 共通基盤・入口のサイト | `rizakura-hontai`。本人限定のトップページから各機能へ移動する |
 | 基盤repository | `Rizakura0110/rizakura-hontai`。旧`webclip`から履歴・repository IDを維持して改名済み。製品の固定commitと統合部分を管理する |
-| 記事管理 | `Tech Inbox`。記事、タグ、URL、metadata、記事backupを担当する。Phase 33で承認済みpublic `Rizakura0110/tech-inbox`への分離を検証中 |
+| 記事管理 | `Tech Inbox`。記事、タグ、URL、metadata、記事backupを担当する。Phase 33で承認済みpublic `Rizakura0110/tech-inbox`への分離と固定commit連携を完了（本番未反映） |
 | 習慣管理 | `Daymark`。画面、API処理、domain、schema定義、testを別repository `daymark`で管理する |
 | PWA | Tech InboxとDaymarkを別々に追加・起動する。rizakura-hontai専用PWAは作らない |
 | production | 同一origin、公開app Worker 1つ、共用D1 `rizakura-hontai` 1つへ接続。旧D1は移行後の保管用に残す。記事用metadata-fetcherは引き続き非公開Workerとして分離する |
@@ -46,7 +46,7 @@ Phase 32で`packages/tech-inbox`（`@rizakura-hontai/tech-inbox`）へ記事の�
 
 ### Tech Inbox repository
 
-- 所有者承認済みpublic `Rizakura0110/tech-inbox`を作成し、ローカル配置を`modules/tech-inbox`へ移した。Phase 33は統合検証中で、全gate・固定commitのclean checkout・commit/pushが済むまで完了としない。
+- 所有者承認済みpublic `Rizakura0110/tech-inbox`を作成し、ローカル配置を`modules/tech-inbox`へ移した。製品commit `f749b0d32bf1351bdaf0cd846152096690b07ecf`を固定し、Phase 33は全gate・clean checkout・両repositoryのcommit/pushとCI成功を確認して完了した。本番反映はPhase 34。
 - `src`と`test`の74ファイルはPhase 32と同一で、記事・タグ・活動・backup・metadataの業務仕様を変更しない。独立lockfile、品質CI、監査、tool/cacheのignore設定を加え、基盤の生成型や資格情報なしで単体検証できるようにする。
 - package名`@rizakura-hontai/tech-inbox`と各entrypointを維持する。基盤からclient/UI/repository/Queue/fetch/parser等を注入し、基盤やDaymarkの内部実装をimportしない。server/schema/metadataをbrowserへ混入させない。
 - migration履歴、D1/Queue/HTTP adapter、認証、PWA配信、Cloudflare設定、統合testとdeployは基盤だけが所有する。製品repositoryから独立した本番サービスを作らない。
@@ -61,7 +61,7 @@ Phase 32で`packages/tech-inbox`（`@rizakura-hontai/tech-inbox`）へ記事の�
 
 ### Git submoduleとworkspaceによる取り込み
 
-- `modules/daymark`と`modules/tech-inbox`のGit submoduleを完全commit SHAで固定し、各`@rizakura-hontai/*`を`workspace:0.0.0`として取り込む。Tech Inboxの連携はPhase 33で検証中。gitlinkが自作source、root lockfileが第三者依存の組み合わせを固定する。sourceを手作業でコピーして二重編集しない。
+- `modules/daymark`と`modules/tech-inbox`のGit submoduleを完全commit SHAで固定し、各`@rizakura-hontai/*`を`workspace:0.0.0`として取り込む。Tech Inboxの連携もPhase 33で検証済み。gitlinkが自作source、root lockfileが第三者依存の組み合わせを固定する。sourceを手作業でコピーして二重編集しない。
 - React等の共有runtimeは互換peerを宣言し、基盤の固定versionへ揃える。各製品の独立install後も同じruntimeを使うようVite/Vitestの解決を統一し、同一versionの別コピーによるbundle増加やReact contextの不一致を防ぐ。秘密情報、実データ、Cloudflare設定、不要なtest成果物は配布物へ含めない。
 - Git URL、直接tarball URL、moving branch/tag、`latest`、未審査のinstall scriptをdependency指定に使わない。
 - [既存の供給網ルール](dependency-baseline.md)を基盤と両製品で維持する。registry依存には公開後7日gateを適用し、例外設定を追加しない。自作sourceはnpm配布せず、既存のworkspace sourceと同じくGit reviewと品質gateを通す。各製品の独立lockfile/CI/auditと、基盤のlockfile/統合CIを分ける。
@@ -173,7 +173,7 @@ Worker名はworkers.devのhostnameに関係するため、変更にはAccess対�
 
 D1の物理名はin-place変更できないため、Phase 30で承認後に新しい`rizakura-hontai` DBへ両製品を全値copyし、bindingを切り替えた。schema/index・ID・関連・履歴を維持し、Worker/URLは変更しない。新DBにだけ接続し、旧DBは別途削除承認まで保持する。新DBで更新再開後に旧binding/versionへ直接rollbackしない。[D1 migrations](https://developers.cloudflare.com/d1/reference/migrations/)
 
-Phase 31のWorker/Access名・origin切替は反映済みで、2026-09-23に2 PWAの追加し直し・直接起動・login/表示/保存・閉じて再起動の所有者確認を受領した。旧hostnameは404で、新URLへ自動redirectしない。その後Phase 32〜34でTech Inboxを別repositoryへ切り出す。基盤→Tech Inbox/Daymarkの一方向の依存、固定commitのsubmodule連携、1 app Worker/共用DBを維持する。移動対象・認証・更新停止・切り戻しの詳細は[実行手順](foundation-migration.md)を正とし、現在の製品分離を完了済みとは扱わない。
+Phase 31のWorker/Access名・origin切替は反映済みで、2026-09-23に2 PWAの追加し直し・直接起動・login/表示/保存・閉じて再起動の所有者確認を受領した。旧hostnameは404で、新URLへ自動redirectしない。その後Phase 32〜33でTech Inboxの別repository・固定commit連携を完了した。基盤→Tech Inbox/Daymarkの一方向の依存、固定commitのsubmodule連携、1 app Worker/共用DBを維持する。コード分離は完了したが、本番はPhase 31のままでPhase 34の反映は未実施。移動対象・認証・更新停止・切り戻しの詳細は[実行手順](foundation-migration.md)を正とする。
 
 ## 8. 外部操作・所有者確認
 
@@ -183,7 +183,7 @@ Phase 31のWorker/Access名・origin切替は反映済みで、2026-09-23に2 PW
 4. Phase 23でDaymarkのbackup・復元をlocal実装・検証した。
 5. Phase 24で3年分fixture、統合互換、D1 bound/query/write、構成・PWA・bundle・Free境界をlocal検証した。
 6. Phase 25でproduction DB更新・deployを行い、名称を維持した既存リソースとURL、Access、統合版の本番CPU、iPhoneの2 PWAを確認した。
-7. Phase 33のpublic `Rizakura0110/tech-inbox`作成は別途所有者承認済み。製品の公開commit/CIと、基盤の単体・統合・clean checkout全gateが成功した。基盤commit/push後のCI確認を残す。npm公開、本番deploy、Cloudflare resource・DB・料金設定の変更は行わない。
+7. Phase 33のpublic `Rizakura0110/tech-inbox`作成は別途所有者承認済み。製品CI `35817744911`と基盤commit `a389ee9dd8100061c0bf742bf52c198ffa591690`のCI `35818210557`が成功し、作業コピー・clean checkoutの全gateも通過した。基盤609 tests・製品260 tests・Daymark69 tests・E2E37 passed/意図的skip1を確認してPhase 33を完了した。Phase 32後続CIのbundle超過は共有runtimeの重複排除で修正し、size/coverage閾値を維持した。npm公開、本番deploy、Cloudflare resource・DB・料金設定の変更は行っていない。
 
 Phase 21〜23の完了はlocal実装と検証を対象とし、本番D1へのmigrationやdeploy承認には読み替えない。
 

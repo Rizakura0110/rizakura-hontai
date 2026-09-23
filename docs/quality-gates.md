@@ -10,7 +10,7 @@
 
 Phase 32ではTech Inbox単体260 tests、基盤Vitest 598 tests、Daymark単体69 testsを確認した。Tech Inbox単体testは基盤Vitestにも含むため件数を単純加算しない。全gateの最終結果・phase完了状態は[Progress](progress.md)を正とし、個別test成功だけで完了扱いにしない。
 
-Phase 32のpush後のGitHub CIはclient JSの500,000 bytes上限で失敗した。Phase 33で独立install間の共有依存解決を修正し、作業コピーとclean checkoutで全gateが成功した。製品260 tests、Daymark69 tests、基盤609 tests、E2E37 passed/意図的skip1、client JS 422.9 KiBを確認済み。製品の公開commitとCIは成功し、基盤commit/push後のCI確認を残すためPhase 33はまだ完了扱いにしない。
+Phase 32のpush後のGitHub CIはclient JSの500,000 bytes上限で失敗した。Phase 33で独立install間の共有依存解決を修正し、作業コピーとclean checkoutで全gateが成功した。製品260 tests、Daymark69 tests、基盤609 tests、E2E37 passed/意図的skip1、client JS 422.9 KiBを確認済み。製品と基盤のcommit/push後のGitHub CIも成功し、Phase 33は完了（本番未反映）。
 
 個別確認には次を使う。
 
@@ -75,6 +75,8 @@ Phase 33のpublic `Rizakura0110/tech-inbox`は所有者承認済み。製品側�
 製品単体installは各製品自身のworkspace・lockfile・storeを使う。同じversionでも基盤と異なる物理pathの依存を持てるため、結合時にはViteの`resolve.dedupe`で`react`、`react-dom`、`react-router`、`zod`、`drizzle-orm`を共有する。基盤Vitestも同じruntimeとTesting Libraryの3 packageをdedupeし、renderer/contextやtest cleanupの不一致を防ぐ。解決元は基盤側で同じ既存versionを明示宣言する。
 
 Phase 32後続CIでclient JSが500,577 bytesとなった原因は、独立installによるZod等の重複取り込みだった。Phase 33で解決を統一したlocal buildは422.9 KiBへ戻り、500,000 bytesのbudget自体は変更していない。両製品の独立installを先に実行し、基盤test/coverage/build/artifact gateを通すこと、さらにclean checkoutでも同じ結果になることを完了条件とする。
+
+`shared-runtime.ts`のbuild guardは出力chunkに残る共有runtimeのinstall元を検査し、同一versionでも複数実体を検出したらbuildを止める。11件の回帰testでsubpath、query/proxy、Windows path、tree-shaken module等を区別する。Phase 33のclean checkoutと基盤GitHub Quality `35818210557`はこのguardを含めて成功した。
 
 ## Coverage policy
 

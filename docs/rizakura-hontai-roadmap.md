@@ -25,7 +25,7 @@ Phase 17までのTech Inboxは完了済み。以下は所有者と合意した�
 | 30 | 完了（旧DBは削除せず保持） | 共用D1をrizakura-hontaiへ移行 | 全値copy・binding切替・全自動gate・所有者の表示/保存確認が成功。URL/認証は維持し、旧DB接続なし |
 | 31 | 完了（PC・2 PWA確認済み） | Worker・Access表示名・URL・PWA切替 | 本人限定認証を維持し、新originと2 PWAを確認 |
 | 32 | ローカル完了（本番未反映・後続CIの補修は33） | Tech Inboxと基盤の依存整理 | 同じrepository内の製品packageを単体検証し、既存の機能・API・DBと統合gateを維持 |
-| 33 | 進行中 | Tech Inboxの別repository化 | 承認済みpublic repositoryを固定commitのsubmoduleとworkspaceで統合し、単体・全統合・clean checkout gateを通す |
+| 33 | 完了（本番未反映） | Tech Inboxの別repository化 | 承認済みpublic repositoryを固定commitで統合。全品質gate・clean checkout・両repositoryのcommit/pushとCIが成功 |
 | 34 | 未着手 | 分離構成の本番反映 | 両製品・草・タグ・metadata・backup・PWAの回帰確認 |
 
 ## 共通ルール
@@ -42,12 +42,12 @@ Phase 17までのTech Inboxは完了済み。以下は所有者と合意した�
 
 所有者と合意した順序はCloudflare整理→コード境界整理→別repository化→結合版反映。詳細・現状snapshot・backup予行・書込停止と切り戻し条件は[実行手順](foundation-migration.md)に記録する。Phase 29では後続のDB作成/移行・Worker改名・deploy・新repository作成を実行しない。
 
-### Phase 33の現在位置
+### Phase 33の完了結果
 
-- 所有者がpublic `Rizakura0110/tech-inbox`を明示承認し、repositoryを作成した。製品は`modules/tech-inbox`へ移し、Daymarkと同じ固定commitのGit submodule＋workspace方式で統合する。npm公開はしない。
+- 所有者がpublic `Rizakura0110/tech-inbox`を明示承認し、repositoryを作成した。製品は`modules/tech-inbox`へ移し、Daymarkと同じ固定commitのGit submodule＋workspace方式で統合した。npm公開はしない。
 - 移動したsource/test 74ファイルはPhase 32と同一。独立lockfile・CI・auditを用意し、基盤側のtest/coverage/CSS/boundary検査も移動先へ追従させる。
-- Phase 32のpush後CIはclient JSが500,577 bytesとなり、500,000 bytesのbudgetで失敗した。独立install間のZod等の重複解決を修正し、local buildは422.9 KiBへ戻った。budgetを緩和せず、両製品を独立installした状態で再現性を検証する。
-- Tech Inbox単体260 testsとaudit、基盤598 testsは成功。全品質gate・clean checkout・両repositoryのcommit/push完了は確認中で、Phase 33を完了扱いにしない。
+- Phase 32のpush後CIはclient JSが500,577 bytesとなり、500,000 bytesのbudgetで失敗した。独立install間のZod等の重複解決を修正し、local/clean buildは422.9 KiBへ戻った。budgetを緩和せず、両製品を独立installした状態とLinux CIで再現性を検証した。
+- Tech Inbox単体260 tests、Daymark69 tests、基盤609 tests、E2E37 passed/意図的skip1を含む全品質gateが作業コピーとclean checkoutで成功。製品`f749b0d`、基盤`a389ee9`をpushし、両GitHub CIもsuccessを確認した。
 - 製品のtest/review/commit/push→基盤gitlinkへ固定SHAを記録→統合・clean checkout gate→基盤commit/pushの順を守る。本番はPhase 31のままで、Cloudflare操作・DB変更・deployはPhase 33へ含めない。
 
 ## Phase 18: 共通基盤・命名・連携境界の設計
@@ -107,7 +107,7 @@ Phase 17までのTech Inboxは完了済み。以下は所有者と合意した�
 
 ## 所有者に必要な確認
 
-- Phase 33のpublic `Rizakura0110/tech-inbox`作成は所有者承認済みで、同じ確認を繰り返さない。固定submoduleの統合検証を進め、本番はPhase 31のまま維持する。Phase 34のdeployは別途承認を得る。
+- Phase 33のpublic `Rizakura0110/tech-inbox`作成・固定submodule統合は承認済みかつ完了。本番はPhase 31のまま維持する。Phase 34のdeployは別途承認を得る。
 
 - Phase 20ではnpmアカウント操作は不要。Daymarkのpublic作成とGit submodule連携は承認済みで、繰り返し確認しない。
 - 基盤GitHubの改名先はrizakura-hontaiで確定・改名済み。ローカル作業directoryは移動しない。新repositoryの対象・衝突は作成直前に確認する。

@@ -1,6 +1,6 @@
 # rizakura-hontai
 
-rizakura-hontaiは、本人限定のツールへの入口と共通基盤です。記事管理のTech Inboxと習慣管理のDaymarkを、別repositoryの固定commitから統合する構成です。Daymarkの連携は完了し、Tech Inboxの別repository化はPhase 33で検証中です。Daymarkの日次記録・設定履歴・日/週/月集計、保護API、responsive画面、独立PWA、製品別JSONバックアップを実装しました。Cloudflare Accessと既存のapp Worker・D1を共有し、Phase 25で本番反映と3年分データのFree CPU境界まで検証した構成です。
+rizakura-hontaiは、本人限定のツールへの入口と共通基盤です。記事管理のTech Inboxと習慣管理のDaymarkを、別repositoryの固定commitから統合する構成です。Tech Inboxの別repository化もPhase 33で完了しましたが、分離構成の本番反映はPhase 34で別途行います。Daymarkの日次記録・設定履歴・日/週/月集計、保護API、responsive画面、独立PWA、製品別JSONバックアップを実装しました。Cloudflare Accessと既存のapp Worker・D1を共有し、Phase 25で本番反映と3年分データのFree CPU境界まで検証した構成です。
 
 ## 実装と本番の状態
 
@@ -14,9 +14,9 @@ Phase 30では共用D1を`tech-inbox`から新しい`rizakura-hontai`へコピ�
 
 Phase 31は完了しました。2026-09-22に既存WorkerとAccess表示名を`rizakura-hontai`へ改名し、APP_ORIGINを更新しました。Worker・AccessのID、audience、本人限定policy、D1接続先と全データを維持し、新originの未認証9経路がAccessへredirectされることを確認して、保存とQueue配送を再開しています。所有者からPCでの新URLログイン、記事・タグ・活動とDaymarkの日/週/月表示、両製品の保存・再読み込み反映の成功報告を受領しました。2026-09-23には新originからiPhone SafariでTech Inbox/DaymarkをそれぞれPWAへ追加し直し、新アイコンからの起動・ログイン・表示・保存・閉じて再起動まで成功報告を受領しています。現行originは`apps/web/wrangler.jsonc`を参照してください。
 
-Phase 32ではTech Inboxの画面、記事・タグ・活動・backup・metadata処理、契約、schema定義、単体testを`packages/tech-inbox`へ集約しました。機能・URL・API・DB migrationを変えず、認証・HTTP/D1 adapter・共通UIは基盤に残し、基盤から製品へ必要なrepository・client・UIを注入します。ローカルgateは成功しましたが、その後のGitHub CIでclient bundleの上限超過が判明し、Phase 33で独立install時の共有依存の重複を修正しています。
+Phase 32ではTech Inboxの画面、記事・タグ・活動・backup・metadata処理、契約、schema定義、単体testを`packages/tech-inbox`へ集約しました。機能・URL・API・DB migrationを変えず、認証・HTTP/D1 adapter・共通UIは基盤に残し、基盤から製品へ必要なrepository・client・UIを注入します。ローカルgateは成功しましたが、その後のGitHub CIでclient bundleの上限超過が判明しました。Phase 33で独立install時の共有依存の重複を修正し、同じbudgetのままCIまで成功しています。
 
-Phase 33は進行中です。所有者がpublic `Rizakura0110/tech-inbox`を承認し、repositoryを作成しました。製品を`modules/tech-inbox`へ移し、Daymarkと同じ固定commitのGit submoduleとして連携する準備を進めています。製品のsource/test 74ファイルはPhase 32と同一で、独立lockfile・品質CI・依存監査を追加しました。製品と基盤の全gate、固定commitのclean checkout検証、commit・push完了までは完了扱いにしません。npm公開・本番deploy・Cloudflare変更は行わず、本番はPhase 31のままです。分離構成の本番反映はPhase 34で別途承認後に実施します。最新結果は[Progress](docs/progress.md)を参照してください。
+Phase 33は完了しました（本番未反映）。所有者承認済みpublic `Rizakura0110/tech-inbox`を作成し、`modules/tech-inbox`に製品commit `f749b0d32bf1351bdaf0cd846152096690b07ecf`を固定しました。製品のsource/test 74ファイルはPhase 32と同一で、独立lockfile・品質CI・依存監査を追加しています。作業コピーとclean checkoutの全gate、製品と基盤のcommit・push、[製品CI](https://github.com/Rizakura0110/tech-inbox/actions/runs/35817744911)と[基盤CI](https://github.com/Rizakura0110/rizakura-hontai/actions/runs/35818210557)が成功しました。基盤609 tests・Tech Inbox260 tests・Daymark69 tests・E2E37 passed（desktop専用mobile 1件は意図的skip）を確認しています。npm公開・本番deploy・Cloudflare変更は行わず、本番はPhase 31のままです。分離構成の本番反映はPhase 34で別途承認後に実施します。詳細は[Progress](docs/progress.md)を参照してください。
 
 ## DaymarkのPhase 21〜23機能
 
@@ -76,7 +76,7 @@ tech-inbox-metadata-fetcher Worker
 
 | 配置 | 責務 |
 |---|---|
-| `modules/tech-inbox` (`@rizakura-hontai/tech-inbox`) | Tech Inbox製品画面、契約、domain/service、backup、metadata処理、記事schema、単体test。固定commit連携をPhase 33で検証中 |
+| `modules/tech-inbox` (`@rizakura-hontai/tech-inbox`) | 固定commitで取り込むTech Inbox製品画面、契約、domain/service、backup、metadata処理、記事schema、単体test |
 | `modules/daymark` (`@rizakura-hontai/daymark`) | 固定commitで取り込むDaymark製品 |
 | `packages/contracts` (`@rizakura-hontai/contracts`) | 製品に依存しない共通HTTP契約のみ |
 | `packages/db` (`@rizakura-hontai/db`) | 両製品schemaの集約、既存migration履歴 |
@@ -135,7 +135,7 @@ pnpm dev
 
 ## 製品の取り込み・更新
 
-`modules/daymark`は[Daymark repository](https://github.com/Rizakura0110/daymark)、`modules/tech-inbox`は[Tech Inbox repository](https://github.com/Rizakura0110/tech-inbox)の固定commitを取り込む配置です。Tech Inboxの連携はPhase 33で検証中です。両gitlinkが記録された基盤revisionでは、初回は上記の初期化command、または`git clone --recurse-submodules`で取得します。npmログインは不要です。
+`modules/daymark`は[Daymark repository](https://github.com/Rizakura0110/daymark)、`modules/tech-inbox`は[Tech Inbox repository](https://github.com/Rizakura0110/tech-inbox)の固定commitを取り込む配置です。両製品の連携は完了し、基盤にgitlinkを記録しています。初回は上記の初期化command、または`git clone --recurse-submodules`で取得します。npmログインは不要です。
 
 各製品は独立lockfileとCIを持ちます。変更した製品の単体gate・差分・秘密情報を確認して先にcommit/pushし、そのcommitを基盤のgitlinkへ記録します。次に組み合わせの全gateとclean checkoutの再現性を確認してから、基盤をcommit/pushします。
 
