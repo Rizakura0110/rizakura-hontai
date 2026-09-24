@@ -36,12 +36,12 @@ Phase 36では所有者が`Toki`とPublic `Rizakura0110/toki`を確認し、独�
 
 ## Phase 46: Daymarkの習慣削除
 
-状態: 2026-09-24、ローカル実装・検証完了。本番未反映。
+状態: 2026-09-24、実装・検証・所有者承認後の本番反映済み。
 
 - 習慣管理→編集から、名称・履歴消去の説明付き確認画面を経て完全削除する。休止/アーカイブも維持する。
 - 保護された削除APIと既存D1のcascadeを使い、日/週/月集計・exportから除外する。DB migrationは追加しない。
 - Daymark 75 tests、基盤618 tests、実local D1での3年分履歴削除・他の習慣/記事の保持、desktop/mobile E2E 39 pass/1対象外skipと全品質gateを検証済み。週表示の既存mobile横幅不具合も修正した。
-- Daymarkを先にcommit/pushし、基盤gitlinkを検証済みSHAへ更新してcommit/pushする。本番deployは対象を明示した別承認後。Toki Phase 45の実機確認待ちは別件として維持する。
+- Daymark `c5afa87`→基盤`e45dcff`の順でpushし、両CI success後に所有者承認を得て既存基盤Workerだけへdeployした。本番version `5c6f6360-6937-4c27-9cf2-28d2b0889289`は100%配信。DB schema/Access/他Workerは不変で、認証済みの削除確認→キャンセルまで検証済み。本番削除確定・所有者のPC/iPhone操作は未確認。Toki Phase 45の実機確認待ちは別件として維持する。
 
 ## 共通ルール
 

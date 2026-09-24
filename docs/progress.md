@@ -1,6 +1,6 @@
 # Progress
 
-## Phase 46: Daymarkの習慣削除（ローカル実装・検証完了、本番未反映）
+## Phase 46: Daymarkの習慣削除（実装・検証・本番反映済み）
 
 2026-09-24の所有者指示により、習慣管理→編集から確認後に習慣・過去の全記録・設定履歴を完全削除する。日/週/月の履歴と達成率、以後のJSON exportから除外し、休止/アーカイブは従来どおり残す。
 
@@ -8,7 +8,15 @@
 - mobile E2Eで週表示の読み上げ用ラベルがscroll領域外に影響してページ幅・固定navigationを広げる既存不具合を発見し、positioned ancestorを追加して修正。週表示から習慣管理への通常クリックと320pxの実表示幅を回帰検証する。
 - 全体`pnpm check`が成功。Daymarkは9 files/75 tests・対象coverage全項目100%、Tech Inboxは22 files/260 tests、基盤は65 files/618 tests。format/lint/生成型/TypeScript・local D1/migration・SQL backup round-trip・実HTTP・両Worker build/dry-run・artifact budgetも通過。3年分の記録のcascadeと他の習慣/記事が不変なことをlocal fixtureで照合した。
 - PC/mobile E2Eは39 pass・desktop専用1 skip。初回のmobile失敗は上記表示修正で解消し、全gateを再実行した。auditは両製品0、基盤は既知の開発依存moderate 1件のみ（high/critical 0）。ネットワーク制限による初回audit失敗は許可された実行環境で再確認した。差分・生成物ignore・tracked content 234 filesの資格情報scanを確認した。
-- Daymark→基盤gitlinkの順にcommit/pushする。本番deployは対象を明示した別承認後。Tokiの既存承認は流用せず、Phase 45の所有者実機確認待ちも完了扱いにしない。remote DB・Cloudflare・料金・Accessは変更していない。
+- Daymark `c5afa87`→基盤`e45dcff`の順にcommit/pushし、製品CI `35997954240`・基盤CI `35997981707`のsuccessを確認した。続いて所有者から既存基盤Workerへの「反映して」という明示承認を受け、下記の本番更新を実施した。Tokiの過去の承認を流用せず、Phase 45の所有者実機確認待ちも完了扱いにしない。
+
+### 2026-09-24の本番反映
+
+- 継承環境は古いtoken・形式不正のAccount IDのままだったため、前回の再発防止手順どおり許可された実行環境からOS保存の最新資格情報を取得。APIのactive・account一致・既知subdomainを確認してWrangler子プロセスへ明示した。再ローテーション・再入力・再起動は依頼せず、値は出力・追跡していない。
+- 反映前のread-only preflight/health、D1 Time Travel bookmark取得、`VITE_TOKI_URL`を維持したbuild/artifact budget、生成設定のstrict dry-runが成功。共有D1は757,760 bytes、Worker 3・D1 3・Access application 2で新規resourceなし。旧稼働versionは`e7946fca-82e7-480b-974d-8ea5dbd5e879`（100%）。復元点と検査ログはGit対象外のprivate directoryへ保存した。
+- 検証済み基盤`e45dcff34e633e569e87aeabb6b1073b24d7b122`（Daymark `c5afa87863e66bf51b5fd39e8bc421e6f7087ec3`）を既存`rizakura-hontai` Workerだけへdeploy。新version `5c6f6360-6937-4c27-9cf2-28d2b0889289`の100%配信を確認した。DB migration・データ変更・料金操作・Secrets/Access変更はなく、Tokiとmetadata-fetcherの提供versionも不変。
+- 反映後のpreflight/healthが成功。DB schema・bindings・Access application/policy・公開範囲・resource identity/countを反映前後のfingerprintで照合。入口・両製品・設定/活動・API・両manifestの未認証9経路はすべてAccessへ302となる。
+- 認証済みの本番ブラウザでDaymarkの一覧、編集の削除ボタン、確認画面の対象名・不可逆警告・キャンセル初期focus、キャンセル後の編集復帰、再読み込み後の既存習慣表示を確認した。削除確定は押さず、習慣・記録の作成/更新/削除は実行していない。所有者のPC/iPhone実機操作と本番の削除確定は未確認。localのcascade/E2E成功を本番データ削除の実績とは扱わない。
 
 現在の基盤名は`rizakura-hontai`。2026-08-31のPhase 20命名移行で変更し、過去の記録にある`rizakura-me`は当時の名前として保持する。現行の[フェーズ計画](rizakura-hontai-roadmap.md)・[設計書](rizakura-hontai-design.md)を参照する。
 

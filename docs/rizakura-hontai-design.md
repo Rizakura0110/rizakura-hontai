@@ -144,7 +144,7 @@ manifest linkの`crossorigin="use-credentials"`を維持する。Service Worker�
 - `DELETE /api/v1/daymark/habits/:id`は共通の本人認証・Origin/JSON/client header・mutate Rate Limit・maintenance制御を通す。厳密な空JSON bodyを要求し、存在しないIDも成功として安全に再試行できる。
 - 削除は親tableへの単一のparameterized SQLと既存の外部キー`ON DELETE CASCADE`で、習慣・設定履歴・日次記録をまとめて反映する。新tableやmigration、他製品のデータ変更は不要。削除後の古い画面からの記録保存では習慣を再作成しない。
 - 休止・アーカイブは履歴を保持する従来の選択肢として残す。削除後のJSON exportには対象を含めないが、既に端末へ保存したバックアップは変更しない。古いバックアップを明示的に復元すれば削除済み習慣が再登録される場合がある。ゴミ箱・取り消し機能は設けない。
-- Phase 46はローカル実装・検証と固定submodule更新まで。本番の基盤Workerへのdeployは、Tokiの過去の承認を流用せず別途承認を得る。
+- Phase 46ではローカル実装・検証と固定submodule更新後、2026-09-24に所有者の別途承認を得て既存基盤Workerへ本番反映した。Tokiの過去の承認は流用せず、DB migration・Access・料金・他Workerの変更は行っていない。
 
 ### 表示用集計と画面
 
