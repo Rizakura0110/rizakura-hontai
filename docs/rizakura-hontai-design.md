@@ -1,6 +1,6 @@
 # rizakura-hontai: 共通基盤とDaymarkの設計
 
-最終更新: 2026-09-23
+最終更新: 2026-09-24
 
 名称移行: Phase 29〜31完了。Phase 31では所有者承認後、既存Worker・AccessのIDと本人限定認証を維持して名前を`rizakura-hontai`へ変更し、新originで保存/Queue配送を再開した。本番の認証・接続・健全性検査と所有者のPC表示・保存、新originでの2 PWA確認が成功した。D1はPhase 30の新DBのまま、旧DBも接続せず保持し、料金プランは変更していない。Phase 33でTech Inbox別repository・固定commit連携と全gateが成功し、Phase 34で既存2 Workerへ反映した。所有者のPC表示・保存、iPhone両PWA、記事metadata取得・JSON書き出しも成功した。[実行手順](foundation-migration.md)
 
@@ -136,6 +136,15 @@ manifest linkの`crossorigin="use-credentials"`を維持する。Service Worker�
 - 種類は作成後に変更しない。名称は現在名を更新できる。
 - 目標、単位、比較条件、状態は適用開始日付きversionとして保存する。変更の適用日は今日以降だけとし、過去日を以前の設定で再評価できるようにする。
 - 習慣作成前の日は対象外。週途中で作成した場合、その週の作成日以降だけを習慣別集計へ含める。
+
+### 習慣の削除（Phase 46）
+
+- 2026-09-24の所有者指示により、習慣管理の編集画面から確認後に習慣を完全削除できるようにする。チェック式・数値式、有効・休止・アーカイブのいずれも対象。
+- 確認画面には習慣名と、過去の全記録・設定履歴を削除し日・週・月の表示/集計からも除外することを明示する。最初のfocusはキャンセル側とし、送信中は閉じる・重複送信を防ぐ。失敗時は確認画面を残して再試行を案内する。
+- `DELETE /api/v1/daymark/habits/:id`は共通の本人認証・Origin/JSON/client header・mutate Rate Limit・maintenance制御を通す。厳密な空JSON bodyを要求し、存在しないIDも成功として安全に再試行できる。
+- 削除は親tableへの単一のparameterized SQLと既存の外部キー`ON DELETE CASCADE`で、習慣・設定履歴・日次記録をまとめて反映する。新tableやmigration、他製品のデータ変更は不要。削除後の古い画面からの記録保存では習慣を再作成しない。
+- 休止・アーカイブは履歴を保持する従来の選択肢として残す。削除後のJSON exportには対象を含めないが、既に端末へ保存したバックアップは変更しない。古いバックアップを明示的に復元すれば削除済み習慣が再登録される場合がある。ゴミ箱・取り消し機能は設けない。
+- Phase 46はローカル実装・検証と固定submodule更新まで。本番の基盤Workerへのdeployは、Tokiの過去の承認を流用せず別途承認を得る。
 
 ### 表示用集計と画面
 

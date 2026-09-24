@@ -1,5 +1,15 @@
 # Progress
 
+## Phase 46: Daymarkの習慣削除（ローカル実装・検証完了、本番未反映）
+
+2026-09-24の所有者指示により、習慣管理→編集から確認後に習慣・過去の全記録・設定履歴を完全削除する。日/週/月の履歴と達成率、以後のJSON exportから除外し、休止/アーカイブは従来どおり残す。
+
+- Daymarkの契約・domain/UI/client portと、基盤の保護API・HTTP client・D1 adapterを更新。単一の親DELETEと既存のcascadeで処理するためschema/migrationは不要。認証・Origin/JSON/client header・mutate Rate Limit・maintenance制御を継承する。
+- mobile E2Eで週表示の読み上げ用ラベルがscroll領域外に影響してページ幅・固定navigationを広げる既存不具合を発見し、positioned ancestorを追加して修正。週表示から習慣管理への通常クリックと320pxの実表示幅を回帰検証する。
+- 全体`pnpm check`が成功。Daymarkは9 files/75 tests・対象coverage全項目100%、Tech Inboxは22 files/260 tests、基盤は65 files/618 tests。format/lint/生成型/TypeScript・local D1/migration・SQL backup round-trip・実HTTP・両Worker build/dry-run・artifact budgetも通過。3年分の記録のcascadeと他の習慣/記事が不変なことをlocal fixtureで照合した。
+- PC/mobile E2Eは39 pass・desktop専用1 skip。初回のmobile失敗は上記表示修正で解消し、全gateを再実行した。auditは両製品0、基盤は既知の開発依存moderate 1件のみ（high/critical 0）。ネットワーク制限による初回audit失敗は許可された実行環境で再確認した。差分・生成物ignore・tracked content 234 filesの資格情報scanを確認した。
+- Daymark→基盤gitlinkの順にcommit/pushする。本番deployは対象を明示した別承認後。Tokiの既存承認は流用せず、Phase 45の所有者実機確認待ちも完了扱いにしない。remote DB・Cloudflare・料金・Accessは変更していない。
+
 現在の基盤名は`rizakura-hontai`。2026-08-31のPhase 20命名移行で変更し、過去の記録にある`rizakura-me`は当時の名前として保持する。現行の[フェーズ計画](rizakura-hontai-roadmap.md)・[設計書](rizakura-hontai-design.md)を参照する。
 
 ## Phase 0: 作業境界確認、環境監査、依存バージョン決定

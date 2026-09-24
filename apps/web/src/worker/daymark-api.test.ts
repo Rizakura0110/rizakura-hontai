@@ -46,6 +46,12 @@ class MemoryDaymarkRepository {
     this.versions.push(version);
   }
 
+  async deleteHabit(id: string) {
+    this.habits = this.habits.filter((habit) => habit.id !== id);
+    this.versions = this.versions.filter((version) => version.habitId !== id);
+    this.records = this.records.filter((record) => record.habitId !== id);
+  }
+
   async updateHabitName(id: string, name: string, updatedAt: string) {
     const habit = this.habits.find((candidate) => candidate.id === id);
     if (habit === undefined) return false;
@@ -161,6 +167,10 @@ describe("Daymark shared protection and routing", () => {
       rateLimit: "read",
     });
     expect(daymarkRoutePolicy("POST", "/api/v1/daymark/habits")?.rateLimit).toBe("mutate");
+    expect(daymarkRoutePolicy("DELETE", "/api/v1/daymark/habits/a")).toEqual({
+      name: "daymark.habits.delete",
+      rateLimit: "mutate",
+    });
     expect(daymarkRoutePolicy("GET", "/api/v1/daymark/export")).toEqual({
       name: "daymark.export.get",
       rateLimit: "export",
@@ -198,6 +208,104 @@ describe("Daymark shared protection and routing", () => {
 });
 
 describe("Daymark habit API", () => {
+  it("deletes only the selected habit and excludes its history and backup rows, with safe retries", async () => {
+    const { app, repository, enforceRateLimit } = createFixture();
+    const create = async (name: string) => {
+      const response = await app.request(
+        `${origin}/api/v1/daymark/habits`,
+        jsonRequest("POST", { name, kind: "check" }),
+        bindings,
+      );
+      return ((await response.json()) as { habit: { id: string } }).habit.id;
+    };
+    const id = await create("削除する習慣");
+    const keep = await create("残す習慣");
+    await app.request(
+      `${origin}/api/v1/daymark/habits/${id}/records/2026-09-01`,
+      jsonRequest("PUT", { kind: "check", checked: true }),
+      bindings,
+    );
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const response = await app.request(
+        `${origin}/api/v1/daymark/habits/${id}`,
+        jsonRequest("DELETE", {}),
+        bindings,
+      );
+      expect(response.status).toBe(200);
+      await expect(response.json()).resolves.toEqual({ result: "deleted" });
+    }
+    expect(enforceRateLimit).toHaveBeenLastCalledWith(bindings, principal, "mutate");
+    expect(repository.habits.map((habit) => habit.id)).toEqual([keep]);
+    expect(repository.versions.map((version) => version.habitId)).toEqual([keep]);
+    expect(repository.records).toEqual([]);
+    const backup = await app.request(`${origin}/api/v1/daymark/export`, undefined, bindings);
+    const exported = (await backup.json()) as DaymarkBackupSnapshot;
+    expect(exported.habits.map((habit) => habit.id)).toEqual([keep]);
+    expect(exported.records).toEqual([]);
+    const stale = await app.request(
+      `${origin}/api/v1/daymark/habits/${id}/records/2026-09-01`,
+      jsonRequest("PUT", { kind: "check", checked: true }),
+      bindings,
+    );
+    expect(stale.status).toBe(404);
+  });
+
+  it("protects deletion from unauthenticated, cross-origin, malformed and unvalidated requests", async () => {
+    const { app, repository } = createFixture();
+    const deleteHabit = vi.spyOn(repository, "deleteHabit");
+    const path = `${origin}/api/v1/daymark/habits/test-id`;
+    const cases: Array<[RequestInit, number]> = [
+      [jsonRequest("DELETE", { all: true }), 400],
+      [{ method: "DELETE", headers: mutationHeaders, body: "{" }, 400],
+      [
+        {
+          method: "DELETE",
+          headers: { ...mutationHeaders, Origin: "https://other.invalid" },
+          body: "{}",
+        },
+        403,
+      ],
+      [
+        {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json", Origin: origin },
+          body: "{}",
+        },
+        403,
+      ],
+      [
+        {
+          method: "DELETE",
+          headers: { ...mutationHeaders, "Content-Type": "text/plain" },
+          body: "{}",
+        },
+        415,
+      ],
+    ];
+    for (const [init, status] of cases)
+      expect((await app.request(path, init, bindings)).status).toBe(status);
+    expect(
+      (
+        await app.request(
+          `${origin}/api/v1/daymark/habits/${"a".repeat(129)}`,
+          jsonRequest("DELETE", {}),
+          bindings,
+        )
+      ).status,
+    ).toBe(400);
+    const unauthenticated = createApp({
+      authenticateAccess: async () => {
+        throw new ApiError(401, "UNAUTHORIZED", "認証が必要です。");
+      },
+      daymarkRepositoryFactory: () => repository,
+      log: () => undefined,
+    });
+    expect((await unauthenticated.request(path, jsonRequest("DELETE", {}), bindings)).status).toBe(
+      401,
+    );
+    expect(deleteHabit).not.toHaveBeenCalled();
+  });
+
   it("creates, lists, renames, records, clears, and aggregates a habit", async () => {
     const { app, enforceRateLimit } = createFixture();
     const createdResponse = await app.request(

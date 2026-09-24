@@ -529,6 +529,59 @@ try {
   assert.equal(daymarkCleared.response.status, 200);
   assert.deepEqual(daymarkCleared.body, { result: "deleted" });
 
+  // Exercise the actual D1 cascade, including a habit with three years of records.
+  const beforeHabitDelete = (await requestJson("/api/v1/daymark/export")).body;
+  const deletedHabitIds = new Set([restoredHabitId, longTermBackup.habits[0].id]);
+  for (const id of deletedHabitIds) {
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const deletedHabit = await requestJson(`/api/v1/daymark/habits/${encodeURIComponent(id)}`, {
+        method: "DELETE",
+        headers: mutationHeaders,
+        body: "{}",
+      });
+      assert.equal(deletedHabit.response.status, 200);
+      assert.deepEqual(deletedHabit.body, { result: "deleted" });
+    }
+    const staleRecord = await requestJson(
+      `/api/v1/daymark/habits/${encodeURIComponent(id)}/records/${today}`,
+      {
+        method: "PUT",
+        headers: mutationHeaders,
+        body: JSON.stringify({ kind: "check", checked: true }),
+      },
+    );
+    assert.equal(staleRecord.response.status, 404);
+  }
+  const afterHabitDelete = (await requestJson("/api/v1/daymark/export")).body;
+  assert.deepEqual(
+    afterHabitDelete.habits,
+    beforeHabitDelete.habits.filter(({ id }) => !deletedHabitIds.has(id)),
+  );
+  assert.deepEqual(
+    afterHabitDelete.habitVersions,
+    beforeHabitDelete.habitVersions.filter(({ habitId }) => !deletedHabitIds.has(habitId)),
+  );
+  assert.deepEqual(
+    afterHabitDelete.records,
+    beforeHabitDelete.records.filter(({ habitId }) => !deletedHabitIds.has(habitId)),
+  );
+  for (const path of [
+    `/api/v1/daymark/day?date=${today}`,
+    `/api/v1/daymark/history/week?start=${monday}`,
+  ]) {
+    const result = await requestJson(path);
+    assert.equal(result.response.status, 200);
+    assert.ok(result.body.habits.every(({ habitId }) => !deletedHabitIds.has(habitId)));
+  }
+  assert.equal(
+    (await requestJson(`/api/v1/daymark/history/month?month=${month}`)).response.status,
+    200,
+  );
+  const { exportedAt: _afterDeleteExportedAt, ...articlesAfterHabitDelete } = (
+    await requestJson("/api/v1/export")
+  ).body;
+  assert.deepEqual(articlesAfterHabitDelete, articleDataBefore);
+
   const first = await createArticle("https://Example.com/first/?utm_source=test");
   assert.equal(
     first.response.status,
@@ -1055,6 +1108,7 @@ try {
       ["POST", "/import/preview", {}],
       ["POST", "/daymark/habits", {}],
       ["PUT", "/daymark/habits/habit-1/records/2026-09-19", {}],
+      ["DELETE", "/daymark/habits/habit-1", {}],
       ["POST", "/daymark/import", {}],
       ["POST", "/daymark/import/preview", {}],
     ]) {

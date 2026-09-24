@@ -229,6 +229,19 @@ describe("Daymark API client", () => {
     await expect(daymarkClient.listHabits()).rejects.toMatchObject({ name: "ZodError" });
   });
 
+  it("sends an encoded habit delete through the protected client and validates its response", async () => {
+    const fetchMock = vi.fn(async () => jsonResponse({ result: "deleted" }));
+    vi.stubGlobal("fetch", fetchMock);
+    const controller = new AbortController();
+    await expect(daymarkClient.deleteHabit(habit.id, controller.signal)).resolves.toBeUndefined();
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/v1/daymark/habits/habit%2Fwater",
+      expect.objectContaining({ method: "DELETE", body: "{}", signal: controller.signal }),
+    );
+    fetchMock.mockResolvedValueOnce(jsonResponse({ result: "saved" }));
+    await expect(daymarkClient.deleteHabit(habit.id)).rejects.toMatchObject({ name: "ZodError" });
+  });
+
   it("splits long restores into bounded requests and returns one aggregate summary", async () => {
     const records = Array.from(
       { length: DAYMARK_BACKUP_IMPORT_RECORD_BATCH_SIZE + 1 },

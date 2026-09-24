@@ -125,6 +125,11 @@ class D1DaymarkRepository implements DaymarkRepository {
     ]);
   }
 
+  async deleteHabit(id: string): Promise<void> {
+    // Existing foreign keys cascade to configurations and records in the same statement.
+    await this.#database.prepare("DELETE FROM daymark_habits WHERE id = ?").bind(id).run();
+  }
+
   async updateHabitName(id: string, name: string, updatedAt: string): Promise<boolean> {
     const result = await this.#database
       .prepare("UPDATE daymark_habits SET name = ?, updated_at = ? WHERE id = ?")

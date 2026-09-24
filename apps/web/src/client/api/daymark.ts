@@ -10,6 +10,7 @@ import {
   daymarkBackupSnapshotSchema,
   dayResponseSchema,
   deleteHabitRecordResponseSchema,
+  deleteHabitResponseSchema,
   habitResponseSchema,
   listHabitsResponseSchema,
   monthResponseSchema,
@@ -67,6 +68,10 @@ export const daymarkClient: DaymarkClient = {
       signal,
     );
     return habitResponseSchema.parse(await assertSuccess(response)).habit;
+  },
+  async deleteHabit(id, signal) {
+    const response = await apiFetch(habitPath(id), { method: "DELETE", body: "{}" }, signal);
+    deleteHabitResponseSchema.parse(await assertSuccess(response));
   },
   async renameHabit(id, name, signal) {
     const response = await apiFetch(

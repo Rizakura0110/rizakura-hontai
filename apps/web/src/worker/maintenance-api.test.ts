@@ -55,6 +55,7 @@ describe("maintenance API protection", () => {
         ["PUT", "/daymark/habits/habit-1/configurations/2026-09-19"],
         ["PUT", "/daymark/habits/habit-1/records/2026-09-19"],
         ["DELETE", "/daymark/habits/habit-1/records/2026-09-19"],
+        ["DELETE", "/daymark/habits/habit-1"],
         ["POST", "/daymark/import"],
         ["POST", "/daymark/import/preview"],
         ["POST", "/future-product"],

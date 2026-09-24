@@ -1,6 +1,6 @@
 # rizakura-hontai / Daymark フェーズ計画
 
-最終更新: 2026-09-23
+最終更新: 2026-09-24
 
 Phase 17までのTech Inboxは完了済み。以下は所有者と合意した次期計画であり、未実装の機能を本番提供済みとは扱わない。詳細は[設計書](rizakura-hontai-design.md)、実行結果は[Progress](progress.md)へ記録する。
 
@@ -33,6 +33,15 @@ Phase 17までのTech Inboxは完了済み。以下は所有者と合意した�
 時間計測・アプリ内カレンダーの第3製品は、既存2製品と異なり別repository・別Worker・別D1として開発する。基盤は入口リンクのみを担当する。Phase 35〜43の目的と完了条件は[専用フェーズ計画](toki-roadmap.md)、計測・復帰・編集・認証の仕様は[設計書](toki-design.md)を参照する。Phase 35は文書化と全品質gateまで完了し、新resourceや本番変更は行っていない。Cloudflare側の作成・deployには別途明示承認が必要。
 
 Phase 36では所有者が`Toki`とPublic `Rizakura0110/toki`を確認し、独立repository・単体CI・local-only Worker/D1接続を整えた。基盤へのsubmodule/workspace統合は行わず、GitHub repository作成・通常push以外のremote変更はない。Cloudflare本番resourceは未作成。
+
+## Phase 46: Daymarkの習慣削除
+
+状態: 2026-09-24、ローカル実装・検証完了。本番未反映。
+
+- 習慣管理→編集から、名称・履歴消去の説明付き確認画面を経て完全削除する。休止/アーカイブも維持する。
+- 保護された削除APIと既存D1のcascadeを使い、日/週/月集計・exportから除外する。DB migrationは追加しない。
+- Daymark 75 tests、基盤618 tests、実local D1での3年分履歴削除・他の習慣/記事の保持、desktop/mobile E2E 39 pass/1対象外skipと全品質gateを検証済み。週表示の既存mobile横幅不具合も修正した。
+- Daymarkを先にcommit/pushし、基盤gitlinkを検証済みSHAへ更新してcommit/pushする。本番deployは対象を明示した別承認後。Toki Phase 45の実機確認待ちは別件として維持する。
 
 ## 共通ルール
 

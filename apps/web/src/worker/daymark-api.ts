@@ -10,6 +10,8 @@ import {
   daymarkMonthQuerySchema,
   daymarkWeekQuerySchema,
   type DeleteHabitRecordResponse,
+  deleteHabitRequestSchema,
+  type DeleteHabitResponse,
   type DayResponse,
   type HabitResponse,
   type ListHabitsResponse,
@@ -88,6 +90,9 @@ export function daymarkRoutePolicy(method: string, pathname: string): ApiRoutePo
   }
   if (/^\/api\/v1\/daymark\/habits\/[^/]+$/u.test(pathname) && normalizedMethod === "PATCH") {
     return { name: "daymark.habits.rename", rateLimit: "mutate" };
+  }
+  if (/^\/api\/v1\/daymark\/habits\/[^/]+$/u.test(pathname) && normalizedMethod === "DELETE") {
+    return { name: "daymark.habits.delete", rateLimit: "mutate" };
   }
   if (
     /^\/api\/v1\/daymark\/habits\/[^/]+\/configurations\/[^/]+$/u.test(pathname) &&
@@ -171,6 +176,12 @@ export function createDaymarkApi(dependencies: DaymarkDependencies) {
       await daymarkResult(() => service(context, dependencies).createHabit(request)),
       201,
     );
+  });
+  app.delete("/v1/daymark/habits/:id", async (context) => {
+    const { id } = parseWithSchema(daymarkHabitParamsSchema, context.req.param());
+    parseWithSchema(deleteHabitRequestSchema, await readJsonBody(context.req.raw));
+    await daymarkResult(() => service(context, dependencies).deleteHabit(id));
+    return context.json<DeleteHabitResponse>({ result: "deleted" });
   });
   app.patch("/v1/daymark/habits/:id", async (context) => {
     const { id } = parseWithSchema(daymarkHabitParamsSchema, context.req.param());

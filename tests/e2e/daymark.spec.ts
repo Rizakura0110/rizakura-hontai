@@ -256,6 +256,13 @@ async function mockDaymarkApi(page: Page) {
       await route.fulfill({ json: { habit }, status: 201 });
       return;
     }
+    if (habitMatch !== null && method === "DELETE") {
+      const id = decodeURIComponent(habitMatch[1] ?? "");
+      habits = habits.filter((habit) => habit.id !== id);
+      records.delete(id);
+      await route.fulfill({ json: { result: "deleted" } });
+      return;
+    }
     if (habitMatch !== null && method === "PATCH") {
       const id = decodeURIComponent(habitMatch[1] ?? "");
       const body = request.postDataJSON() as { name: string };
@@ -290,6 +297,7 @@ async function mockDaymarkApi(page: Page) {
       return;
     }
     if (url.pathname === "/api/v1/daymark/history/week") {
+      const daily = dayFor(habits, records);
       const start = url.searchParams.get("start") ?? today;
       const dates = Array.from({ length: 7 }, (_, index) => addDays(start, index));
       await route.fulfill({
@@ -298,19 +306,28 @@ async function mockDaymarkApi(page: Page) {
           end: dates[6],
           days: dates.map((date) => ({
             date,
-            complete: date === today ? 1 : 0,
-            incomplete: 0,
-            unentered: date === today ? 1 : 0,
-            due: date === today ? 2 : 0,
-            rate: date === today ? 50 : null,
+            complete: date === today ? daily.summary.complete : 0,
+            incomplete: date === today ? daily.summary.incomplete : 0,
+            unentered: date === today ? daily.summary.unentered : 0,
+            due: date === today ? daily.summary.due : 0,
+            rate: date === today ? daily.summary.rate : null,
           })),
-          habits: [],
+          habits: daily.habits.map((habit) => ({
+            habitId: habit.habitId,
+            name: habit.name,
+            days: [habit],
+            summary: {
+              complete: habit.state === "complete" ? 1 : 0,
+              due: 1,
+              rate: habit.state === "complete" ? 100 : 0,
+            },
+          })),
           summary: {
-            complete: 1,
-            incomplete: 0,
-            unentered: 1,
-            due: 2,
-            rate: 50,
+            complete: daily.summary.complete,
+            incomplete: daily.summary.incomplete,
+            unentered: daily.summary.unentered,
+            due: daily.summary.due,
+            rate: daily.summary.rate,
             perfectDays: 0,
           },
         },
@@ -318,16 +335,17 @@ async function mockDaymarkApi(page: Page) {
       return;
     }
     if (url.pathname === "/api/v1/daymark/history/month") {
+      const daily = dayFor(habits, records);
       const requestedMonth = url.searchParams.get("month") ?? currentMonth;
       const monthDays = Array.from({ length: daysInMonth(requestedMonth) }, (_, index) => {
         const date = `${requestedMonth}-${String(index + 1).padStart(2, "0")}`;
         return {
           date,
-          complete: date === today ? 1 : 0,
-          incomplete: 0,
-          unentered: date === today ? 1 : 0,
-          due: date === today ? 2 : 0,
-          rate: date === today ? 50 : null,
+          complete: date === today ? daily.summary.complete : 0,
+          incomplete: date === today ? daily.summary.incomplete : 0,
+          unentered: date === today ? daily.summary.unentered : 0,
+          due: date === today ? daily.summary.due : 0,
+          rate: date === today ? daily.summary.rate : null,
         };
       });
       await route.fulfill({
@@ -335,11 +353,11 @@ async function mockDaymarkApi(page: Page) {
           month: requestedMonth,
           days: monthDays,
           summary: {
-            complete: 1,
-            incomplete: 0,
-            unentered: 1,
-            due: 2,
-            rate: 50,
+            complete: daily.summary.complete,
+            incomplete: daily.summary.incomplete,
+            unentered: daily.summary.unentered,
+            due: daily.summary.due,
+            rate: daily.summary.rate,
             perfectDays: 0,
           },
         },
@@ -359,6 +377,78 @@ test.beforeEach(async ({ page }) => {
   });
   await page.clock.setFixedTime(new Date(`${today}T03:00:00+09:00`));
   await mockDaymarkApi(page);
+});
+
+test("Daymark confirms habit deletion and removes its daily, weekly, monthly and backup history", async ({
+  page,
+}, testInfo) => {
+  await page.goto("/daymark/");
+  await page.getByRole("button", { name: "✓ 達成" }).click();
+  await expect(page.getByRole("button", { name: "✓ 達成" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  const navigation = page.getByRole("navigation", {
+    name:
+      testInfo.project.name === "mobile-chrome-320"
+        ? "Daymark モバイルナビゲーション"
+        : "Daymark メインナビゲーション",
+  });
+  await navigation.getByRole("button", { name: "履歴", exact: true }).click();
+  await expect(
+    page
+      .getByRole("table", { name: "週ごとの習慣達成状況" })
+      .getByText("水を飲む", { exact: true }),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= document.documentElement.clientWidth,
+    ),
+  ).toBe(true);
+  await navigation.getByRole("button", { name: "習慣管理", exact: true }).click();
+  await page
+    .locator("article")
+    .filter({ hasText: "水を飲む" })
+    .getByRole("button", { name: "編集", exact: true })
+    .click();
+  await page.getByRole("button", { name: "習慣を削除", exact: true }).click();
+  const confirmation = page.getByRole("dialog", { name: "習慣を削除", exact: true });
+  await expect(confirmation).toContainText("過去の全記録・設定履歴");
+  await expect(confirmation.getByRole("button", { name: "削除をやめる" })).toBeFocused();
+  await expect(confirmation).toBeInViewport();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  );
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog", { name: "習慣を編集", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "習慣を削除", exact: true }).click();
+  await confirmation.getByRole("button", { name: "習慣と全記録を削除" }).click();
+  await expect(confirmation).not.toBeVisible();
+  await expect(page.getByRole("heading", { name: "水を飲む", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "歩く", exact: true })).toBeVisible();
+  await navigation.getByRole("button", { name: "履歴", exact: true }).click();
+  await expect(
+    page
+      .getByRole("table", { name: "週ごとの習慣達成状況" })
+      .getByText("水を飲む", { exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("table", { name: "週ごとの習慣達成状況" }).getByText("歩く", { exact: true }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "月", exact: true }).click();
+  await expect(page.getByText("0 / 1", { exact: true })).toBeVisible();
+  const exported = page.waitForResponse((response) =>
+    response.url().endsWith("/api/v1/daymark/export"),
+  );
+  await navigation.getByRole("button", { name: "設定", exact: true }).click();
+  await page.getByRole("button", { name: "JSONを書き出す" }).click();
+  const backup = (await (await exported).json()) as DaymarkBackupSnapshot;
+  expect(backup.habits.map(({ id }) => id)).toEqual(["habit-walk"]);
+  expect(backup.habitVersions.map(({ habitId }) => habitId)).toEqual(["habit-walk"]);
+  expect(backup.records).toEqual([]);
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "歩く", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "水を飲む", exact: true })).toHaveCount(0);
 });
 
 test("Daymark records habits and switches between daily, weekly, monthly, and management views", async ({
