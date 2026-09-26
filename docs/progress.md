@@ -1,6 +1,6 @@
 # Progress
 
-## Phase 47: Tokiの短時間記録のカレンダー表示（実装・検証済み、本番未反映）
+## Phase 47: Tokiの短時間記録のカレンダー表示（実装・検証・本番反映済み）
 
 2026-09-26の所有者指示により、短時間の記録でも内容が1行見えるようにタイムラインを修正した。縦方向のスクロール増加を許容する要件で、PCの日/週・スマートフォンの日表示を対象とする。
 
@@ -10,7 +10,15 @@
 - 追加のブラウザ検証ではPCの日/週と320pxのスマートフォンで、1秒・1分・隣接/重複・0時/日末/日またぎの記録を確認。タイトル1行と44pxの高さ、ページ幅、個別のクリック、編集画面の正確な開始/終了時刻、検証前後の保存データ一致を確認した。PC週表示とスマートフォン表示の画像も確認済み。実機iPhone・本番ブラウザの確認とは区別する。
 - 基盤側はこの進捗・Toki設計・フェーズ計画の文書更新のみ。format/lintと差分検査を実施し、Toki 51・基盤197のtracked text filesの資格情報パターン検査は候補0件。生成物・cache・ログ・テスト画像はGit無視対象。
 - Tokiの実装・テスト・READMEを`5ee7050`としてmainへcommit/push済み。基盤はTokiコードを取り込まず、独立した製品repositoryの更新として記録する。
-- Cloudflare本番のWorker/DB・Access・料金プランは未変更。Tokiの本番反映には別途承認が必要で、DB migrationは不要。基盤・Tech Inbox・Daymarkの再デプロイも不要。Phase 45/46に残る所有者実機確認待ちを今回のローカル検証で完了扱いにはしない。
+- 実装時点ではCloudflare本番を変更せず、所有者からToki Workerのデプロイ承認を得た後に下記の反映を行った。Phase 45/46に残る所有者実機確認待ちを今回の検証で完了扱いにはしない。
+
+### 2026-09-26の本番反映
+
+- Toki commit `5ee7050c83e425cd6a82cea2421f8a053fa33020`のGitHub CI `36241202976`成功を確認。OS保存の最新資格情報を許可された実行環境で取得し、token active・account一致・既知subdomainを検証した。資格情報の再入力・ローテーション・再起動依頼なし。
+- 本番設定のstrict dry-run、DB bindingと適用済みmigration、本人限定Access、preview URL無効、旧配信versionを確認して既存Toki Workerだけへdeploy。旧version `70cee223-6a02-4c16-859f-2078fb2ae4b0`から`482274ed-2929-4fad-989f-2e6e1205673f`への100%配信を確認した。
+- 前後のfingerprintでDB schema/migration履歴・bindings・Access application/policy・公開範囲・resource identity/count・他Workerの配信versionが不変であることを照合した。Worker 3・D1 3・Access application 2、Toki D1 65,536 bytes。未認証の画面/静的asset/API計9経路はすべてAccessへ302。
+- 認証済みの本番ブラウザで日表示と1280pxの週表示を確認し、既存の短い記録でも約44pxの枠内にタイトル1行が収まること、1日2880pxの時間軸、編集画面の表示と保存せずキャンセルを確認した。ブラウザの一時的な幅指定は解除した。所有者のiPhone実機確認とは区別する。
+- DB migration・記録の作成/編集/削除・料金プラン・Secrets/Access設定の変更は行っていない。基盤とmetadata-fetcherは再deployせず、調査/デプロイログはTokiのGit無視対象のprivate directoryに保管した。
 
 ## Phase 46: Daymarkの習慣削除（実装・検証・本番反映済み）
 
