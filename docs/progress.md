@@ -1,6 +1,6 @@
 # Progress
 
-## Phase 48: Tokiの分単位手動入力・内容の任意化（実装・検証済み、本番未反映）
+## Phase 48: Tokiの分単位手動入力・内容の任意化（実装・検証・本番反映済み）
 
 2026-09-27の所有者指示により、手動新規登録フォームの秒入力をなくして00秒とし、手動・計測後とも内容0文字で登録できるようにした。
 
@@ -10,7 +10,15 @@
 - PC/320pxのローカルブラウザで秒欄のない日時入力、空欄/空白のみの手動登録、再読込後の「無題」、後から命名→再び空欄への編集を検証。ストップウォッチ・タイマー満了後の空欄保存、内容編集後の元の計測時刻保持も検証した。単体で再送の同一性、版数競合、500文字超・不正型・不正日時の拒否を確認した。
 - 差分・生成物ignoreを確認し、Toki 52・基盤197のtext filesの資格情報パターン検査は候補0件。基盤は設計・計画・進捗の文書更新のみで、format/lint・差分検査を実施した。
 - Toki実装は`bab03ef`としてmainへcommit/push済み。基盤へTokiのsourceを取り込まず、文書のみ追従する。
-- Cloudflare本番、DB、Access、料金プラン、Tech Inbox/Daymarkは未変更。本番反映は別途Toki Workerへの承認が必要で、前回Phase 47のデプロイ承認は流用しない。
+- 実装時点ではCloudflare本番を変更せず、所有者の今回の「デプロイして」という承認を受けて下記の反映を行った。前回Phase 47の承認は流用していない。
+
+### 2026-09-27の本番反映
+
+- Toki commit `bab03ef5084b980c481b8126fd34b18604c84249`のGitHub CI `36289155285`成功を確認。許可された実行環境でOS保存の最新資格情報を取得し、token active・account一致・既知subdomainを検証した。資格情報の再入力・ローテーション・再起動依頼なし。
+- 本番設定のstrict dry-run、DB bindingと適用済みmigration、本人限定Access、preview URL無効を確認し、既存Toki Workerだけへdeploy。旧version `482274ed-2929-4fad-989f-2e6e1205673f`から`7864244a-b11f-4470-b774-5415fa45427c`への100%配信を確認した。
+- 前後のfingerprintでDB schema/migration履歴・bindings・Access application/policy・公開範囲・resource identity/count・他Workerの配信versionが不変であることを照合。Worker 3・D1 3・Access application 2。反映前のToki D1は65,536 bytes。未認証の画面/静的asset/API計10経路はすべてAccessへ302。
+- 認証済み本番ブラウザでカレンダーと手動新規登録フォームを表示し、開始/終了の分単位入力（`step=60`）、内容任意・500文字上限・空欄は「無題」の案内を確認して保存せずキャンセルした。計測画面の表示と内容欄の必須制約解除も読み取り確認。進行中の計測は終了/保存せず、そのまま維持した。
+- 本番で確認用の記録作成/編集/削除は行っていない。空欄保存・再読み込み後の保持・計測時刻の保持は上記ローカルE2Eの結果であり、本番保存や所有者の実機確認とは区別する。DB migration・料金プラン・Secrets/Access設定の変更はなく、基盤とmetadata-fetcherも再deployしていない。ログはTokiのGit無視対象のprivate directoryに保管した。
 
 ## Phase 47: Tokiの短時間記録のカレンダー表示（実装・検証・本番反映済み）
 
