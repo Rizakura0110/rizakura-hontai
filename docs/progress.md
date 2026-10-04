@@ -1,5 +1,14 @@
 # Progress
 
+## Phase 49: Tokiと今後の製品の技術スタック統一計画
+
+2026-10-04の所有者指示により、Tokiも基盤・Tech Inbox・Daymarkと同じ技術へ揃え、今後の新製品も同じ標準を使う方針とした。今回は方針・作業手順の文書化だけで、移行実装は未着手。
+
+- 基盤とTokiのAGENTSへ、React/React Router・Tailwind CSS/Vite・Hono・Drizzle ORM/D1と共通のTypeScript・認証・品質toolchainを標準にするルールを記録。独立repository/Worker/DBの方針とは分け、別技術の採用・標準層の省略には理由と比較案の説明、所有者承認を必要とする。
+- [TokiのPhase 49〜56](toki-roadmap.md#phase-49以降の技術スタック統一)に、現行動作/依存の確認→build基盤→Hono→Drizzle→React画面→統合検証→承認後deployの順序を記録。URL/API・既存記録/未完了計測・認証・PWAを保ち、物理DB schema/migration変更を前提にしない。
+- 変更対象はAGENTSと既存のREADME・設計・計画・進捗のみ。runtime、test、package/lockfile、submodule、DB、Cloudflare設定は変更しない。依存導入・本番API確認・backup・deployも今回の作業に含めない。
+- 文書フェーズの検査として両repositoryのformat/lint・`git diff --check`、全文差分review、変更文書のローカルリンク38件と追加anchor、生成物/cacheのignoreを確認。tracked text filesはToki 52・基盤197を資格情報パターン/利用可能な環境値と照合し、候補0件。実装・依存が不変のため生成型/TypeScript/test/build/auditの全runtime gateは今回は再実行せず、Phase 50で改めて現行結果を取得する。移行実装フェーズの完了とは区別する。
+
 ## Phase 48: Tokiの分単位手動入力・内容の任意化（実装・検証・本番反映済み）
 
 2026-09-27の所有者指示により、手動新規登録フォームの秒入力をなくして00秒とし、手動・計測後とも内容0文字で登録できるようにした。

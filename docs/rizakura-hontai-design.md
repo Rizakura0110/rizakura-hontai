@@ -1,6 +1,6 @@
 # rizakura-hontai: 共通基盤とDaymarkの設計
 
-最終更新: 2026-09-24
+最終更新: 2026-10-04
 
 名称移行: Phase 29〜31完了。Phase 31では所有者承認後、既存Worker・AccessのIDと本人限定認証を維持して名前を`rizakura-hontai`へ変更し、新originで保存/Queue配送を再開した。本番の認証・接続・健全性検査と所有者のPC表示・保存、新originでの2 PWA確認が成功した。D1はPhase 30の新DBのまま、旧DBも接続せず保持し、料金プランは変更していない。Phase 33でTech Inbox別repository・固定commit連携と全gateが成功し、Phase 34で既存2 Workerへ反映した。所有者のPC表示・保存、iPhone両PWA、記事metadata取得・JSON書き出しも成功した。[実行手順](foundation-migration.md)
 
@@ -11,6 +11,16 @@
 最新の所有者指示を本設計の前提とする。旧実装ガイドの「記事専用」「PWAを実装しない」という初期scopeからの変更を記録する。手順と完了条件は[フェーズ計画](rizakura-hontai-roadmap.md)、判断の要約は[ADR-0009](decisions/0009-rizakura-me-product-boundaries.md)を参照する。
 
 ## 1. 合意した構成
+
+### 今後の製品に共通する技術選定
+
+2026-10-04の所有者指示により、今後の新製品は基盤・Tech Inbox・Daymarkと同じ技術スタックを標準とする。TypeScript、React/React DOM・React Router、Tailwind CSS・Vite、Hono、Drizzle ORM/D1、Zod、jose/Cloudflare Accessを使い、開発・品質検査もNode.js/pnpm、Wrangler、Biome、Vitest/Testing Library、Playwright、GitHub Actionsへ揃える。現在の検証済み完全versionを出発点とし、導入時に[依存基準](dependency-baseline.md)と安全性・互換性を再確認する。
+
+技術の統一と配置の統合は別である。第3製品以降の独立repository・Worker・D1・Access方針は維持し、コードの相互importやDB統合、npm共通packageの公開は前提にしない。Tech Inbox/Daymarkの既存submodule構成も変更しない。Queuesなど業務固有のサービスは必要な製品にだけ採用する。小規模・独立という理由だけで別技術へ変えず、例外は実装前に理由・比較案・保守/費用への影響を説明して所有者の承認を得る。
+
+Tokiは既存機能・データを維持して標準へ移行する。[Phase 49〜56](toki-roadmap.md#phase-49以降の技術スタック統一)は作業計画であり、現時点では実装・本番反映済みを意味しない。
+
+### 既存の基盤と2製品
 
 | 対象 | 名称・役割 |
 |---|---|

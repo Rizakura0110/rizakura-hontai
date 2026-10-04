@@ -17,6 +17,14 @@
 - Preserve the pinned dependency and supply-chain rules in `pnpm-workspace.yaml` and `docs/dependency-baseline.md`.
 - Do not commit `.dev.vars`, tokens, personal email allowlists, Cloudflare credentials, or other secrets.
 
+## Product technology standard
+
+- From the owner's 2026-10-04 instruction onward, new products must use the same applicable stack as rizakura-hontai, Tech Inbox, and Daymark: TypeScript, React/React DOM, React Router, Tailwind CSS, Vite with the React/Tailwind/Cloudflare plugins, Hono, Drizzle ORM with D1, Zod, and jose with Cloudflare Access. Keep Node.js/pnpm, Wrangler, Biome, Vitest/Testing Library, Playwright, and GitHub Actions aligned as well.
+- Standardize implementation technology, not deployment ownership. Independent products keep their own repository, Worker, D1, Access application, and lockfile unless the owner approves a different architecture. Do not import foundation/product internals or merge databases just to share the stack. Existing Tech Inbox/Daymark submodule integration stays unchanged.
+- Use the foundation's reviewed exact dependency versions and `docs/dependency-baseline.md` as the starting point. Recheck security, compatibility, the seven-day gate, and integrity before installation; do not blindly copy an unsafe version or silently upgrade one product. Explain necessary version changes before adopting them.
+- Do not introduce a different framework or omit the standard framework layer merely because a product is small or independent. Explain the reason, alternatives, maintenance impact, and cost implications and obtain owner approval before any exception. Product-specific services such as Queues are added only when needed and authorized, not copied into every product.
+- Toki's existing non-React/non-Hono/non-Drizzle implementation is a migration source, not a template for future products. Follow Phase 49 onward in `docs/toki-roadmap.md`; planning alone does not authorize implementation or deployment.
+
 ## Cloudflare credential diagnosis: mandatory recurrence prevention
 
 - The 2026-09-23 Toki deployment incident was a diagnosis error, not an expired current token. Read the incident and procedure in `docs/toki-operations.md` (API認証エラーの切り分け) before investigating another Cloudflare authentication failure.
