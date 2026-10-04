@@ -4,7 +4,31 @@
 構成追記: 2026-09-23（Phase 32〜33のworkspace・固定submodule整理。下記の第三者version選定を更新するものではない）
 対象環境: macOS arm64 / Cloudflare Workers / Node.js 24 LTS / pnpm 11
 
-2026-10-05追記: [Phase 50の再確認](#phase-50のtoki移行向け再確認)で新しいadvisoryを検出した。下記の過去の「high 0」は当時の結果であり、現在の基盤lockfileはhigh 5件を含む。Tokiの移行にそのままコピーせず、下記の限定修正を用いる。基盤本体の依存修正は別対応として残っている。
+2026-10-05追記: [Phase 50の再確認](#phase-50のtoki移行向け再確認)で新しいadvisoryを検出した後、所有者指示による[基盤と両製品の依存修正](#基盤と両製品の依存修正)を実施した。修正後の基盤はhigh/critical 0、従来の開発専用moderate 1。Tech Inbox・Daymarkは各独立監査も指摘0件。本番は未反映。
+
+## 基盤と両製品の依存修正
+
+2026-10-05、変更前に脆弱性の内容と適用条件を所有者へ説明し、基盤とその必須品質gateに含まれるTech Inbox・Daymarkの開発依存を限定更新した。基盤のHonoも同時に修正したが、画面・業務処理・DB・Access/Secrets・Cloudflare設定は変更していない。通常のcommit/pushのみで、本番deployは行わない。
+
+| 対象 | 更新 | 理由 |
+|---|---|---|
+| 基盤のMiniflare配下 | Undici `7.29.0 → 7.29.1`、親version限定override | WebSocket応答によるDoS、BalancedPoolの独自TLS検証脱落など |
+| 基盤・Tech Inbox・Daymarkのjsdom配下 | Undici `8.10.0 → 8.10.2`、親version限定override | 上記に加えて、特定cache interceptorのorigin混同など |
+| 基盤app | Hono `4.13.5 → 4.13.7`、direct完全固定 | 未使用のHono JSX SSR機能にある文字列escape不足を修正 |
+
+high 5という監査値は3種類のadvisoryをUndiciの7/8系で数えたもの（2+3）で、5種類の侵害を検知した意味ではない。攻撃条件はそれぞれ[WebSocketの不正応答](https://github.com/nodejs/undici/security/advisories/GHSA-rfgv-xxqx-mfg5)、[BalancedPoolと独自TLS検証関数の併用](https://github.com/nodejs/undici/security/advisories/GHSA-w293-vg96-wgc3)、[複数origin間のcache/deduplicate状態共有](https://github.com/nodejs/undici/security/advisories/GHSA-vp8m-p9jh-q5pm)。[Honoの指摘](https://github.com/honojs/hono/security/advisories/GHSA-hxh3-vqpv-xpqv)は特定のJSX SSR位置へ未信頼文字列を直接渡す場合に適用される。
+
+Undiciの該当経路はすべて開発依存。自作コードにUndici/WebSocket/BalancedPoolの直接利用はなく、HonoはHTTP routingに使い、HTMLはassets配信、画面はReactのclient renderingである。修正後のbuild成果物にもUndiciやHono JSX SSRは検出されなかった。これらは到達性を判断する根拠であり、侵害調査や本番安全性の無条件保証ではない。
+
+公式npmで修正3版の2026-09-04公開・stable/非deprecated・Node互換とtarball SHA-512一致を再確認した。root lockfileは3版だけ、両製品の独立lockfileは各Undici 8系だけが変わった。7日gate、strict peer、integrity、既存override、install script許可は維持する。
+
+| 監査対象 | 修正前 low/moderate/high/critical | 修正後 low/moderate/high/critical |
+|---|---|---|
+| 基盤 | 6 / 12 / 5 / 0 | 0 / 1 / 0 / 0 |
+| Tech Inbox独立 | 3 / 5 / 3 / 0 | 0 / 0 / 0 / 0 |
+| Daymark独立 | 3 / 5 / 3 / 0 | 0 / 0 / 0 / 0 |
+
+全品質gateと認証/DB/PC/スマホ回帰の結果は[Progress](progress.md)を参照。残るmoderate 1は従来のDrizzle Kit → esbuild `0.18.20`で、今回新たに導入した問題ではない。該当esbuildのHTTP開発サーバー機能は起動しない。localhost限定でも悪意あるWebページから応答を読まれ得るため、loopback限定をこの脆弱性の対策とみなさない。現行の利用は`@esbuild-kit/core-utils`のtransform処理のみで、runtime bundleには含めない。上流互換版による解消を再確認し、互換範囲外の強制overrideはしない。[esbuild公式advisory](https://github.com/evanw/esbuild/security/advisories/GHSA-67mh-4wv8-2f99)
 
 ## Phase 50のToki移行向け再確認
 
@@ -31,9 +55,9 @@
 
 Git無視対象の隔離directoryで、基盤commit `b5f1e76`の解決済みgraphを使い上記3版だけ置き換えた候補lockfileを作成した。26 direct dependencyをまとめ、既存395 package entriesの供給網検証を`--lockfile-only --frozen-lockfile --ignore-scripts`で通過し、候補監査はhigh/critical/low 0、moderate 1だった。node_modulesの導入・新スタックの実buildはまだ行っていない。導入フェーズごとに必要な部分だけ解決し直し、差分・audit・全品質gateを確認する。
 
-残るmoderate 1は従来の開発専用Drizzle Kit → esbuild `0.18.20`。Drizzle Kit自体の非deprecated確認と、推移依存`@esbuild-kit/core-utils`・`@esbuild-kit/esm-loader`のdeprecated警告は区別する。新しいstable `0.31.11`でもこの経路は残るため、今回この理由だけで更新しない。開発サーバーを公開せず、runtime bundleに含めず、導入時と後続更新で上流の解消を再確認する。
+残るmoderate 1は従来の開発専用Drizzle Kit → esbuild `0.18.20`。Drizzle Kit自体の非deprecated確認と、推移依存`@esbuild-kit/core-utils`・`@esbuild-kit/esm-loader`のdeprecated警告は区別する。新しいstable `0.31.11`でもこの経路は残るため、今回この理由だけで更新しない。該当esbuildのHTTP開発サーバーを起動せず、runtime bundleに含めず、導入時と後続更新で上流の解消を再確認する。
 
-今回の基盤repositoryは文書更新のみで、上記候補を基盤のpackage/lockfileへは適用していない。現在の基盤に残るhigh指摘の修正は別対応が必要。Toki側はUndiciの限定更新後に独立lockfileから再install・全品質gateを通過し、監査は指摘0件となった。
+Phase 50のToki作業時点では基盤は文書更新のみで、上記候補を基盤のpackage/lockfileへ適用しなかった。その後、同日の所有者指示で[基盤と両製品の依存修正](#基盤と両製品の依存修正)を実施した。Toki側はUndiciの限定更新後に独立lockfileから再install・全品質gateを通過し、監査は指摘0件となった。
 
 ## 選定ルール
 
@@ -64,7 +88,7 @@ pnpm公式npm tarballは、npm metadataのintegrity
 | react | 19.2.8 | 2026-07-21 | 19.2系Stable | [npm metadata](https://registry.npmjs.org/react/19.2.8) |
 | react-dom | 19.2.8 | 2026-07-21 | Reactと同一パッチ。peer `react ^19.2.8`を満たす | [npm metadata](https://registry.npmjs.org/react-dom/19.2.8) |
 | react-router | 8.3.0 | 2026-07-22 | v8 Stable。React 19.2.8とNode 24がpeer/engineを満たす | [npm metadata](https://registry.npmjs.org/react-router/8.3.0) |
-| hono | 4.13.5 | 2026-08-26 | Workers対応Stable。既知のpath traversal、DoS、query解釈差分を修正済み | [npm metadata](https://registry.npmjs.org/hono/4.13.5) |
+| hono | 4.13.7 | 2026-09-04 | Workers対応Stable。2026-10-05にJSX SSRの指摘を解消するpatchへ更新 | [npm metadata](https://registry.npmjs.org/hono/4.13.7) |
 | zod | 4.4.3 | 2026-05-04 | v4 Stable | [npm metadata](https://registry.npmjs.org/zod/4.4.3) |
 | drizzle-orm | 0.45.2 | 2026-03-27 | D1 peerを持つStable。1.0はRCのため不採用 | [npm metadata](https://registry.npmjs.org/drizzle-orm/0.45.2) |
 | jose | 6.2.9 | 2026-08-15 | Web API/Workers互換Stable。6.2.10は7日未満 | [npm metadata](https://registry.npmjs.org/jose/6.2.9) |
@@ -149,8 +173,8 @@ Phase 1の初回installで報告されたbuild scriptを確認し、次だけを
 
 - Phase 1で`pnpm-lock.yaml`を生成し、`pnpm install --frozen-lockfile`の再現実行に成功した。
 - 2026-08-28のPhase 10最終監査でも`pnpm audit --audit-level high`は成功し、高0件・重大0件だった。direct dependencyとlockfileの変更はない。
-- 中程度が1件ある。`drizzle-kit 0.31.10`の開発時だけ使われる推移依存`@esbuild-kit/esm-loader > @esbuild-kit/core-utils > esbuild 0.18.20`が[GHSA-67mh-4wv8-2f99](https://github.com/advisories/GHSA-67mh-4wv8-2f99)に該当する。これはesbuild開発サーバーのアクセス制御に関する問題で、本アプリのruntime bundleには含まれない。修正版はesbuild 0.24.3以上だが、上流が`~0.18.20`を要求しているため、互換範囲を越える強制overrideは行わない。
-- install時に`@esbuild-kit/core-utils 3.3.2`と`@esbuild-kit/esm-loader 2.6.5`のdeprecated警告がある。どちらも最新Stableの`drizzle-kit 0.31.10`から到達する推移依存で、direct dependencyではない。Phase 2以降の依存更新時に上流解消を再確認する。
+- 中程度が1件ある。`drizzle-kit 0.31.10`の開発時だけ使われる推移依存`@esbuild-kit/esm-loader > @esbuild-kit/core-utils > esbuild 0.18.20`が[GHSA-67mh-4wv8-2f99](https://github.com/evanw/esbuild/security/advisories/GHSA-67mh-4wv8-2f99)に該当する。これはesbuild開発サーバーのアクセス制御に関する問題で、本アプリのruntime bundleには含まれない。該当HTTP開発サーバー機能を起動しない。上流が`~0.18.20`を要求しており、修正には互換範囲を越える変更が必要なため強制overrideは行わない。
+- install時に`@esbuild-kit/core-utils 3.3.2`と`@esbuild-kit/esm-loader 2.6.5`のdeprecated警告がある。どちらも採用した`drizzle-kit 0.31.10`から到達する推移依存で、direct dependencyではない。Phase 2以降の依存更新時に上流解消を再確認する。
 - StableのWranglerとCloudflare Vite pluginが内部で固定する`miniflare 5.20260815.0-alpha`、`unenv 2.0.0-rc.24`、`youch 4.1.0-beta.10`がlockfileに含まれる。直接採用やruntime API利用はせず、互換性を壊す強制overrideも行わない。例外条件と更新方針は[ADR-0003](decisions/0003-toolchain-transitive-prereleases.md)へ記録した。
 
 ## 公式ドキュメント

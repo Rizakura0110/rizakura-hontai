@@ -1,6 +1,6 @@
 # Security
 
-最終更新: 2026-09-23
+最終更新: 2026-10-05
 
 Phase 19以降の共通基盤整理を含むsourceとproductionの方針です。Phase 25で統合版を、Phase 28でTech Inbox既読活動をproductionへ反映しました。Phase 28の反映前後にもAccess所有者email 1件だけの完全一致policyと公開範囲を再検証し、認証設定とSecretsを変更していません。
 
@@ -126,7 +126,9 @@ backupと復元手順は[Operations](operations.md)を参照してください�
 - CIのNode.jsは固定URLから取得し、SHA-256一致後だけworkspace配下へ展開・実行する
 - CIのpnpmは固定URLから取得し、dependency baselineのSHA-512 integrity一致後だけ展開・実行する
 
-既知のmoderate advisory 1件はDrizzle Kit配下の開発専用推移依存で、runtime bundleには含まれません。上流解消をdependency更新時に再確認し、互換範囲外の強制overrideは行いません。詳細は[Dependency baseline](dependency-baseline.md)を参照してください。
+2026-10-05にUndiciの開発依存とHonoを限定更新し、基盤のhigh/criticalを0件、Tech Inbox・Daymarkの独立監査も指摘0件へ戻しました。画面や業務機能、DB、Access/Secretsは変更せず、本番deployも行っていません。監査による依存の検出であり、本番侵害を確認したものではありません。
+
+既知のmoderate advisory 1件はDrizzle Kit配下の開発専用推移依存で、runtime bundleには含まれません。該当する古いesbuildのHTTP開発サーバー機能は起動しません。localhost限定でも悪性Webページから応答を読まれ得るため、loopback限定だけで対策済みとは扱いません。上流解消をdependency更新時に再確認し、互換範囲外の強制overrideは行いません。詳細は[Dependency baseline](dependency-baseline.md#基盤と両製品の依存修正)を参照してください。
 
 ## 残余リスク
 

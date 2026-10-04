@@ -1,5 +1,17 @@
 # Progress
 
+## Phase 50補足 基盤と両製品の依存脆弱性修正
+
+2026-10-05、所有者の「対応前に説明してから修正」の指示を受け、UndiciのWebSocket DoS・独自TLS検証の脱落・originをまたぐcache混同について適用条件とこの構成での影響を説明した。high 5は3種類のadvisoryが2版にまたがる監査値で、本番の侵害検知ではない。詳しい根拠・残余リスクは[依存修正記録](dependency-baseline.md#基盤と両製品の依存修正)を参照。
+
+- 基盤のMiniflare配下Undiciを`7.29.1`、jsdom配下を`8.10.2`へ親version限定override。Tech Inbox・Daymarkの独立gateも同じ指摘で失敗するため、それぞれのjsdom配下も`8.10.2`へ更新した。基盤のHonoは未使用のJSX SSR機能の指摘を除くため`4.13.5 → 4.13.7`へ更新した。runtime業務source・DB schema・migration・認証/Cloudflare設定は不変。
+- 公式npmで3版の公開7日以上・非deprecated・Node互換と配布tarball SHA-512一致を再確認。基盤lockfileの変更は3版だけ、両製品の独立lockfileはUndici 8系だけ。既存のstrict peer・7日gate・integrity・install script制限を維持した。
+- 基盤の全`pnpm check`成功。Daymark 75 tests、Tech Inbox 260 tests、基盤65 files/618 tests、coverageは基盤statements 89.32%・branches 85.42%・functions 89.36%・lines 90.76%。format/lint・生成型・TypeScript・local D1制約・合成backup復元予行・API統合・両Worker build・artifact budget・PC/320px E2E 39 passed/既存のdesktop専用1 skipを確認した。ログは`.tmp/foundation-security-check.log`（Git無視対象）。
+- 基盤監査はlow 6/moderate 12/high 5/critical 0から、low 0/moderate 1/high 0/critical 0へ。両製品独立はlow 3/moderate 5/high 3/critical 0から指摘0件へ。残るesbuildのmoderateは以前からの開発専用依存で、該当HTTP開発サーバーを起動しない。localhost限定だけを対策としないことも明記した。
+- 修正後のWorker/client成果物にUndiciやHono JSX SSRは検出されず、app Worker raw 512.3 KiB、metadata-fetcher 588.2 KiB、client JS 426.6 KiB、CSS 35.7 KiBで既存budget内。これはローカルbuildの確認であり、本番のdeploy・データ操作・実機確認ではない。
+- 全文差分・生成物ignore・文書のローカルリンク43件を確認。基盤197・Daymark29・Tech Inbox87のtracked text filesを資格情報パターンと利用可能な環境値で照合し、候補0件。両製品を先にmainへcommit/pushし、Daymark `ba1be5f6d1063a8b0e734a3ebc067fb79d4720d5`、Tech Inbox `2a8d4b81e79912c3d0d2c49717165d5cfa02b285`へ基盤のgitlinkを固定する。
+- TokiのPhase 51にはまだ着手せず、Toki repository自体も今回は変更していない。Git pushは本番を自動更新しないため、Hono更新の本番反映は別途対象を明示した承認後に行う。
+
 ## Phase 50 Toki移行前の回帰テストと依存確認
 
 2026-10-05の着手指示を受け、Tokiの機能を置き換える前の比較基準を実装し、Phase 50を完了した。本番環境・既存記録・物理DB schema/migration・基盤/他製品のruntimeは変更していない。
@@ -7,7 +19,7 @@
 - 実SQLiteと架空のfixtureによるAPI/DBテスト41件を追加。HTTPの全フィールド・status/error・入力上限、ミリ秒/null/版数、再試行、タイマー満了、削除後の再作成拒否、未完了4状態のmigration前後の保持、部分index/trigger/CHECK/unique制約を固定した。fixtureに実データは含めない。D1固有の検証は既存Wrangler smoke/E2Eを引き続き使用する。
 - PC/320pxのブラウザテスト5件を追加。`/`・`/index.html`・`/calendar.html`とhistory/reloadをまたぐ計測復帰、通常/集中表示で毎秒APIを呼ばないこと、実際のHTMLが参照するassetの保護と未知pathの404を確認した。初回に新テストの破棄確認dialogの承認漏れを検出し、実装を変えずテスト手順を修正した。
 - 基盤の固定26 dependencyとpnpmの公式metadataを再確認。既存graphに新しい指摘があったため、Tokiの開発用Miniflare配下だけUndici `7.29.0 → 7.29.1`へ親限定overrideした。直接依存は不変で、lockfileの変更はこの1 packageだけ。frozen installで211 entriesの供給網policy検証に成功した。
-- [移行候補の依存](dependency-baseline.md#phase-50のtoki移行向け再確認)はHono `4.13.7`、jsdom配下Undici `8.10.2`の修正も含めて隔離graphで確認。候補high/critical 0、既知dev-only moderate 1。React/Vite/Hono/Drizzleの実際のinstall・機能移行は未実施で、各後続フェーズのbuild互換性確認は残る。基盤の実lockfileにはhigh 5が残り、別対応が必要であることも記録した。
+- [移行候補の依存](dependency-baseline.md#phase-50のtoki移行向け再確認)はHono `4.13.7`、jsdom配下Undici `8.10.2`の修正も含めて隔離graphで確認。候補high/critical 0、既知dev-only moderate 1。React/Vite/Hono/Drizzleの実際のinstall・機能移行は未実施で、各後続フェーズのbuild互換性確認は残る。この時点で基盤に残したhigh 5は、その後の上記補足作業で解消した。
 - Tokiの全`pnpm check`成功。14 files/246 tests、coverageはstatements 92.07%・branches 91.43%・functions 97.77%・lines 95.09%。format/lint・生成型・TypeScript・local D1・dry-run build・E2E 16 passed・audit（指摘0件）を確認した。Worker dry-runは615.21 KiB/gzip 96.18 KiBで、新スタック導入前の比較値として残す。ログはToki `.tmp/phase50-final-check.log`（Git無視対象）。
 - 基盤は文書差分のみでformat/lint・差分/ローカルリンク検査を実施し、runtime全gateは再実行していない。両repositoryの全文差分をreviewし、生成物/cacheのignoreを確認。基盤197・Toki57のtext filesを資格情報パターンと利用可能な環境値で検査し、候補0件。基盤の読み取り依存監査の指摘を、Tokiの修正後の監査成功と混同しない。
 - Tokiは`b96b90f7162a792beb81d04f5ceffd534680af4e`としてmainへcommit/pushし、[GitHub CI 37237861772](https://github.com/Rizakura0110/toki/actions/runs/37237861772)も成功。基盤の文書はこの検証済み状態へ追従する。

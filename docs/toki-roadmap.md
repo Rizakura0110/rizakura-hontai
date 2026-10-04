@@ -81,10 +81,10 @@ Phase 50以降は別途着手指示を受けてから1段階ずつ進める。�
 
 - Phase 51ではVite・React・React Router・Tailwindとplugins、React型/Testing Library/jsdomを導入する。ブラウザとWorkerのentrypoint/型検査を分離し、既存のHTML/DOM画面をVite経由でも動かす。Hono/Drizzleの機能置換はまだ行わない。入口URLと認証を維持し、本番設定生成を新buildへ対応させる。
 - Phase 52ではHono `4.13.7`で外側のroutingを置換し、既存データ層とZod/joseをそのまま使う。旧browserは引き続き同じHTTP契約へ接続する。
-- Phase 53ではDrizzle ORM `0.45.2`で既存schemaへのアクセスを置換する。Drizzle Kit `0.31.10`は開発専用で、既存のmoderate指摘・deprecated推移依存を記録する。公開開発サーバーには使わず、生成migrationを自動適用しない。
+- Phase 53ではDrizzle ORM `0.45.2`で既存schemaへのアクセスを置換する。Drizzle Kit `0.31.10`は開発専用で、既存のmoderate指摘・deprecated推移依存を記録する。該当する古いesbuildのHTTP開発サーバー機能はlocalhostでも起動せず、生成migrationを自動適用しない。
 - Phase 54で初めて画面をReactへ置換し、旧DOM実装を同等性確認後に除く。Phase 55で旧新の組合せとclean checkoutを検証し、Phase 56は別承認後に既存Toki Workerへ反映する。
 
-基盤自体にも開発用依存のhighが残っていることを今回の読み取り監査で確認した。Phase 50では基盤の実装・lockfile・他製品を変更しておらず、基盤の依存修正は別対応として残す。本番での悪用や侵害を確認したという意味ではない。
+Phase 50で見つかった基盤側のhigh指摘は、その後の2026-10-05の所有者指示により[基盤と両製品の依存修正](dependency-baseline.md#基盤と両製品の依存修正)で解消した。Phase 51の機能移行にはまだ進んでおらず、本番も未反映。本番での悪用や侵害を確認したという意味ではない。
 
 ### 変えないものと確認事項
 
