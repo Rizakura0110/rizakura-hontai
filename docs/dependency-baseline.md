@@ -4,6 +4,37 @@
 構成追記: 2026-09-23（Phase 32〜33のworkspace・固定submodule整理。下記の第三者version選定を更新するものではない）
 対象環境: macOS arm64 / Cloudflare Workers / Node.js 24 LTS / pnpm 11
 
+2026-10-05追記: [Phase 50の再確認](#phase-50のtoki移行向け再確認)で新しいadvisoryを検出した。下記の過去の「high 0」は当時の結果であり、現在の基盤lockfileはhigh 5件を含む。Tokiの移行にそのままコピーせず、下記の限定修正を用いる。基盤本体の依存修正は別対応として残っている。
+
+## Phase 50のToki移行向け再確認
+
+基盤のdirect dependency 26種とpnpmを公式npm metadataで再確認した。選定版はいずれも公開7日以上・非deprecatedで、Node.js `24.19.0`のengineと必須peerを満たす。26種のregistry integrityは基盤lockfileと一致した。これはtarballをインストールした新スタック全体の動作保証ではない。
+
+現行graphの再監査ではTokiがhigh 2、基盤がhigh 5（いずれも開発用Undici経由）だった。また基盤のHono `4.13.5`にJSX SSRのmoderate指摘がある。対象sourceで`hono/jsx`によるSSR利用は見つからず、この監査だけで本番の悪用可能性や侵害を断定しない。ただし新規導入時に既知の指摘を持つ版を無条件で踏襲しない。
+
+| 対象 | Phase 50で採用する修正方針 | 適用範囲 |
+|---|---|---|
+| MiniflareのUndici | `miniflare@5.20260815.0-alpha>undici: 7.29.1` | Tokiへ今回適用。親が固定する`7.29.0`から互換patchだけ更新 |
+| jsdomのUndici | `jsdom@30.0.1>undici: 8.10.2` | 後続のTesting Library/jsdom導入時。`^8.9.0`の互換範囲内 |
+| Hono | `4.13.7`を完全固定 | Phase 52導入時。基盤の`4.13.5`はコピーしない |
+
+修正3版は2026-09-04公開で、7日gate・Node互換を満たし、配布tarballのSHA-512も公式registry integrityと一致した。根拠は[UndiciのWebSocket advisory](https://github.com/nodejs/undici/security/advisories/GHSA-rfgv-xxqx-mfg5)、[UndiciのTLS advisory](https://github.com/nodejs/undici/security/advisories/GHSA-w293-vg96-wgc3)、[HonoのJSX advisory](https://github.com/honojs/hono/security/advisories/GHSA-hxh3-vqpv-xpqv)と公式npm metadata。既存のRolldown/Sharp override、7日gate、strict peer、integrity、install script許可は緩めない。
+
+### Tokiへ段階導入する固定版
+
+| 分類 | 固定版 |
+|---|---|
+| runtime | React/React DOM `19.2.8`、React Router `8.3.0`、Hono `4.13.7`、Drizzle ORM `0.45.2`、Zod `4.4.3`、jose `6.2.9` |
+| build | Vite `8.2.1`、React plugin `6.0.5`、Cloudflare Vite plugin `1.53.0`、Tailwind CSS/Tailwind Vite plugin `4.3.3`、Wrangler `4.124.0` |
+| testと開発 | TypeScript `7.0.2`、Vitest/coverage-v8 `4.1.11`、Playwright `1.62.1`、Biome `2.5.9`、Drizzle Kit `0.31.10`、Testing Library DOM `10.4.1`/React `16.3.2`/user-event `14.6.5`、jsdom `30.0.1` |
+| 型と実行環境 | React型 `19.2.18`、React DOM型 `19.2.4`、Node型 `24.13.3`、Node.js `24.19.0`、pnpm `11.22.0` |
+
+Git無視対象の隔離directoryで、基盤commit `b5f1e76`の解決済みgraphを使い上記3版だけ置き換えた候補lockfileを作成した。26 direct dependencyをまとめ、既存395 package entriesの供給網検証を`--lockfile-only --frozen-lockfile --ignore-scripts`で通過し、候補監査はhigh/critical/low 0、moderate 1だった。node_modulesの導入・新スタックの実buildはまだ行っていない。導入フェーズごとに必要な部分だけ解決し直し、差分・audit・全品質gateを確認する。
+
+残るmoderate 1は従来の開発専用Drizzle Kit → esbuild `0.18.20`。Drizzle Kit自体の非deprecated確認と、推移依存`@esbuild-kit/core-utils`・`@esbuild-kit/esm-loader`のdeprecated警告は区別する。新しいstable `0.31.11`でもこの経路は残るため、今回この理由だけで更新しない。開発サーバーを公開せず、runtime bundleに含めず、導入時と後続更新で上流の解消を再確認する。
+
+今回の基盤repositoryは文書更新のみで、上記候補を基盤のpackage/lockfileへは適用していない。現在の基盤に残るhigh指摘の修正は別対応が必要。Toki側はUndiciの限定更新後に独立lockfileから再install・全品質gateを通過し、監査は指摘0件となった。
+
 ## 選定ルール
 
 - StableまたはLTSだけを採用し、RC、Beta、Canary、Nightly、Git URL、直接tarball指定は採用しない。

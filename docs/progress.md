@@ -1,5 +1,18 @@
 # Progress
 
+## Phase 50 Toki移行前の回帰テストと依存確認
+
+2026-10-05の着手指示を受け、Tokiの機能を置き換える前の比較基準を実装し、Phase 50を完了した。本番環境・既存記録・物理DB schema/migration・基盤/他製品のruntimeは変更していない。
+
+- 実SQLiteと架空のfixtureによるAPI/DBテスト41件を追加。HTTPの全フィールド・status/error・入力上限、ミリ秒/null/版数、再試行、タイマー満了、削除後の再作成拒否、未完了4状態のmigration前後の保持、部分index/trigger/CHECK/unique制約を固定した。fixtureに実データは含めない。D1固有の検証は既存Wrangler smoke/E2Eを引き続き使用する。
+- PC/320pxのブラウザテスト5件を追加。`/`・`/index.html`・`/calendar.html`とhistory/reloadをまたぐ計測復帰、通常/集中表示で毎秒APIを呼ばないこと、実際のHTMLが参照するassetの保護と未知pathの404を確認した。初回に新テストの破棄確認dialogの承認漏れを検出し、実装を変えずテスト手順を修正した。
+- 基盤の固定26 dependencyとpnpmの公式metadataを再確認。既存graphに新しい指摘があったため、Tokiの開発用Miniflare配下だけUndici `7.29.0 → 7.29.1`へ親限定overrideした。直接依存は不変で、lockfileの変更はこの1 packageだけ。frozen installで211 entriesの供給網policy検証に成功した。
+- [移行候補の依存](dependency-baseline.md#phase-50のtoki移行向け再確認)はHono `4.13.7`、jsdom配下Undici `8.10.2`の修正も含めて隔離graphで確認。候補high/critical 0、既知dev-only moderate 1。React/Vite/Hono/Drizzleの実際のinstall・機能移行は未実施で、各後続フェーズのbuild互換性確認は残る。基盤の実lockfileにはhigh 5が残り、別対応が必要であることも記録した。
+- Tokiの全`pnpm check`成功。14 files/246 tests、coverageはstatements 92.07%・branches 91.43%・functions 97.77%・lines 95.09%。format/lint・生成型・TypeScript・local D1・dry-run build・E2E 16 passed・audit（指摘0件）を確認した。Worker dry-runは615.21 KiB/gzip 96.18 KiBで、新スタック導入前の比較値として残す。ログはToki `.tmp/phase50-final-check.log`（Git無視対象）。
+- 基盤は文書差分のみでformat/lint・差分/ローカルリンク検査を実施し、runtime全gateは再実行していない。両repositoryの全文差分をreviewし、生成物/cacheのignoreを確認。基盤197・Toki57のtext filesを資格情報パターンと利用可能な環境値で検査し、候補0件。基盤の読み取り依存監査の指摘を、Tokiの修正後の監査成功と混同しない。
+- Tokiは`b96b90f7162a792beb81d04f5ceffd534680af4e`としてmainへcommit/pushし、[GitHub CI 37237861772](https://github.com/Rizakura0110/toki/actions/runs/37237861772)も成功。基盤の文書はこの検証済み状態へ追従する。
+- 次はPhase 51のVite/React/Tailwind開発基盤。現行画面を動かしたままentrypoint・型・build・CIを整える。Cloudflare操作、DB/Access/料金設定変更、Tech Inbox/Daymarkの変更は今回も次の開発基盤フェーズにも含めない。
+
 ## Phase 49: Tokiと今後の製品の技術スタック統一計画
 
 2026-10-04の所有者指示により、Tokiも基盤・Tech Inbox・Daymarkと同じ技術へ揃え、今後の新製品も同じ標準を使う方針とした。今回は方針・作業手順の文書化だけで、移行実装は未着手。

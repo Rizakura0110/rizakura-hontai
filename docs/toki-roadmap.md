@@ -1,12 +1,12 @@
 # Toki実装フェーズ
 
-日付: 2026-10-04
+日付: 2026-10-05
 状態: Phase 35〜44を完了（2026-09-23）。Phase 45はToki専用D1のバックアップ・migrationとToki Workerへの反映、既存データの全項目照合、認証済みブラウザでの追加機能確認まで完了。所有者自身のPC/iPhone実機確認待ち。基盤と既存2製品の本番構成は変更していない。Phase 47は短時間のカレンダー記録の表示修正を実装・検証し、所有者承認後に本番反映済み（2026-09-26）。
 仕様: [Toki設計](toki-design.md)、分離理由: [ADR-0021](decisions/0021-toki-independent-product.md)、運用: [Toki本番前確認](toki-operations.md)
 
 Phase 48: 分単位の手動入力と内容の任意化を実装・検証・本番反映済み（2026-09-27）。
 
-Phase 49〜56: 所有者の2026-10-04の指示で、独立構成を維持した技術スタック統一を計画。今回の対象はPhase 49の方針・手順の文書化だけであり、Phase 50以降の実装・依存導入・Cloudflare操作は未着手。
+Phase 49〜56: 所有者の2026-10-04の指示で、独立構成を維持した技術スタック統一を計画。Phase 50は完了し、現行動作の比較テストと合成fixture、依存確認、開発用Undiciの限定修正をローカル全gateとGitHub CIで検証した。新スタックへの置換・Cloudflare操作はまだ行っていない。次はPhase 51。
 
 | Phase | 目的 | 完了条件と境界 |
 |---|---|---|
@@ -62,6 +62,29 @@ Phase 41の入口はTokiを「公開準備中」で表示し、保護されたTo
 | 56 | 承認後の本番反映と実機確認 | 所有者の明示承認後、既存Toki Workerだけを更新。直前の復元点と認証・DB/他Workerの設定を照合し、PC/iPhone PWAで表示・保存・再起動を確認。計測中の状態は勝手に終了しない。DB/Access/料金プラン/基盤Worker変更は含めず、失敗時は確認済み手順で切り戻す |
 
 Phase 50以降は別途着手指示を受けてから1段階ずつ進める。実装フェーズごとにformat・lint・生成型・TypeScript・単体/統合/関連ブラウザtest・build・auditを通し、差分・ignore・秘密情報を確認してcommit/pushする。テストは最後にまとめて追加せず、各置換と同時に保つ。通常のpushで本番を自動更新するCIには変更しない。
+
+### Phase 50で固定した比較基準
+
+実データを使わず、Toki repositoryの合成fixtureと既存テストを移行前後の比較に使う。外部契約を変えずに内部の呼び出し先を新実装へ切り替え、SQLite検証だけでD1固有の動作を保証したことにはしない。
+
+| 対象 | 比較するもの | 主なテスト |
+|---|---|---|
+| API | response全フィールド・null・ミリ秒・時刻順、method/path/query、4KiB入力上限、200/201/400/404/405/409とerror code、再試行・削除後の再送拒否 | `src/api/compatibility.test.ts`、既存router/contract test |
+| DB | stopwatch/timerの計測中・内容入力待ち、保存済み/破棄/manual、全列・部分unique/index・trigger・CHECK、既存migrationの行保持 | `tests/fixtures/`、`src/data/migration-baseline.test.ts`、既存records test、local D1 |
+| 認証と配信 | Access JWT・Origin/client header・local限定bypass、HTMLから参照するassetの保護、未知URLは404 | 既存security/worker test、新しいmigration E2E |
+| PCとスマホ | 既存URLで戻る/進む/再読込後も同じ計測を維持、通常/集中表示で毎秒通信なし、既存保存/編集/削除/無題/時刻精度/短時間表示 | `tests/e2e/migration-baseline.spec.ts`と既存2 E2E suites |
+| PWA | id/start_url/scope・icon・manifest認証、Service Workerなし | 既存pwa testとE2E |
+
+### 段階移行の依存と実行構成
+
+固定版は[Phase 50依存確認](dependency-baseline.md#phase-50のtoki移行向け再確認)を使う。基盤の既存lockfileを無変更で複製しない。新たに判明したHono/Undiciの指摘を除いた隔離候補graphを検証したが、実際のTokiへの導入・build互換性は各フェーズで改めて確認する。
+
+- Phase 51ではVite・React・React Router・Tailwindとplugins、React型/Testing Library/jsdomを導入する。ブラウザとWorkerのentrypoint/型検査を分離し、既存のHTML/DOM画面をVite経由でも動かす。Hono/Drizzleの機能置換はまだ行わない。入口URLと認証を維持し、本番設定生成を新buildへ対応させる。
+- Phase 52ではHono `4.13.7`で外側のroutingを置換し、既存データ層とZod/joseをそのまま使う。旧browserは引き続き同じHTTP契約へ接続する。
+- Phase 53ではDrizzle ORM `0.45.2`で既存schemaへのアクセスを置換する。Drizzle Kit `0.31.10`は開発専用で、既存のmoderate指摘・deprecated推移依存を記録する。公開開発サーバーには使わず、生成migrationを自動適用しない。
+- Phase 54で初めて画面をReactへ置換し、旧DOM実装を同等性確認後に除く。Phase 55で旧新の組合せとclean checkoutを検証し、Phase 56は別承認後に既存Toki Workerへ反映する。
+
+基盤自体にも開発用依存のhighが残っていることを今回の読み取り監査で確認した。Phase 50では基盤の実装・lockfile・他製品を変更しておらず、基盤の依存修正は別対応として残す。本番での悪用や侵害を確認したという意味ではない。
 
 ### 変えないものと確認事項
 
