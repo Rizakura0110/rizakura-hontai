@@ -1,5 +1,19 @@
 # Progress
 
+## Phase 51 TokiのViteとReact開発基盤
+
+2026-10-05、次フェーズの着手指示を受け、Tokiの開発基盤を統一した。今回は既存画面を新しいbuildへ接続する段階であり、画面のReact置換・Hono/Drizzle化・本番反映は行っていない。
+
+- rootの2 HTMLと`src/client/`のTypeScript entrypoint、既存JavaScript/CSSへ整理。ViteのReact/Tailwind/Cloudflare pluginsを導入し、browser/Worker/test/Nodeの型検査を分離した。既存画面の処理とスタイルはコメント・entry参照以外を変えず、TailwindのPreflightと既存class自動走査も無効にしている。React/Router/Testing Library/jsdomは接続テストで検証する。
+- 8文字hash付きJS/CSSをWorker認証後に配信。CSPは不変で、HTML直接URL・戻る/進む・再読込・計測復帰を維持し、未知path・欠落asset・source/mapを404にする。manifest/iconsはbuild前後のbytesを照合し、PWA identity・Service Workerなしを保持した。
+- 本番設定生成はVite成果物の検証後に`dist/toki/index.js`と`dist/client`を指定し、`no_bundle:true`で再bundleしない。source fallback、認証/bypass変数、別environment、remote D1の混入などを合成fixtureで拒否する。実際の本番設定生成・Cloudflareへの操作は行っていない。
+- レビューで、build済み設定から起動するとローカルDBの暗黙保存先が`dist`配下へ変わる問題を検出した。migration・検査・開発起動の`--persist-to .wrangler/state`を明示し、設定の回帰テストを追加。E2Eはこれとは別の一時D1を毎回使う。
+- [依存導入記録](dependency-baseline.md#phase-51のtokiへの導入結果)の14 direct dependencyを完全固定し、既知のUndici修正と供給網policyを維持。frozen再installが成功し、Toki監査は全severityで0件。Hono/Drizzleは未導入で、基盤と両submoduleのruntime/packageは変更していない。
+- 全`pnpm check`が成功。16 files/332 tests、coverageはstatements 92.64%・branches 91.83%・functions 97.77%・lines 95.41%。format/lint・生成型・4対象TypeScript・local D1・Vite/成果物検査/Worker dry-run・PC/320px E2E 16 passed・auditを確認。browser JSは29,575 bytes、CSSは19,840 bytes、Worker rawは186,589 bytes（dry-run gzip 39.00 KiB）。ログはToki `.tmp/phase51-check.log`。
+- 開発用起動でも2 HTML・DB probe・records読み取りAPIの200を確認。記録の変更は行っていない。全文差分・移動前後の画面処理/CSSの同等性・生成物ignoreを確認し、両repositoryとToki成果物の279 text filesの秘密情報検査、更新文書のローカルリンク15件が成功した。基盤は文書のみの変更で、format/lint・差分/リンク検査を実行し、変更していないruntime全gateは再実行していない。
+- Tokiは`44083299cd41372a029f7cefdaa17a8dc9bcf430`としてmainへcommit/pushし、[GitHub CI 37321963376](https://github.com/Rizakura0110/toki/actions/runs/37321963376)も成功。基盤の計画・依存基準・進捗はこの検証済み状態へ追従する。
+- GitHub Actionsは同じ全gateを継続し、自動deployは追加しない。既存API/DB/schema/migration・本番記録/未完了計測・Access・料金・基盤/他製品のCloudflare環境は不変。次はPhase 52のHono routing移行。
+
 ## Phase 50補足 基盤と両製品の依存脆弱性修正
 
 2026-10-05、所有者の「対応前に説明してから修正」の指示を受け、UndiciのWebSocket DoS・独自TLS検証の脱落・originをまたぐcache混同について適用条件とこの構成での影響を説明した。high 5は3種類のadvisoryが2版にまたがる監査値で、本番の侵害検知ではない。詳しい根拠・残余リスクは[依存修正記録](dependency-baseline.md#基盤と両製品の依存修正)を参照。

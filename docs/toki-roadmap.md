@@ -6,7 +6,7 @@
 
 Phase 48: 分単位の手動入力と内容の任意化を実装・検証・本番反映済み（2026-09-27）。
 
-Phase 49〜56: 所有者の2026-10-04の指示で、独立構成を維持した技術スタック統一を計画。Phase 50は完了し、現行動作の比較テストと合成fixture、依存確認、開発用Undiciの限定修正をローカル全gateとGitHub CIで検証した。新スタックへの置換・Cloudflare操作はまだ行っていない。次はPhase 51。
+Phase 49〜56: 所有者の2026-10-04の指示で、独立構成を維持した技術スタック統一を計画。Phase 50で比較基準を固定し、Phase 51でViteとReact/Tailwindの開発基盤を導入した。既存HTML/DOM画面を維持した状態でローカル全gateを通過。本番のCloudflare環境は未変更。次はPhase 52のHono routing移行。
 
 | Phase | 目的 | 完了条件と境界 |
 |---|---|---|
@@ -84,7 +84,15 @@ Phase 50以降は別途着手指示を受けてから1段階ずつ進める。�
 - Phase 53ではDrizzle ORM `0.45.2`で既存schemaへのアクセスを置換する。Drizzle Kit `0.31.10`は開発専用で、既存のmoderate指摘・deprecated推移依存を記録する。該当する古いesbuildのHTTP開発サーバー機能はlocalhostでも起動せず、生成migrationを自動適用しない。
 - Phase 54で初めて画面をReactへ置換し、旧DOM実装を同等性確認後に除く。Phase 55で旧新の組合せとclean checkoutを検証し、Phase 56は別承認後に既存Toki Workerへ反映する。
 
-Phase 50で見つかった基盤側のhigh指摘は、その後の2026-10-05の所有者指示により[基盤と両製品の依存修正](dependency-baseline.md#基盤と両製品の依存修正)で解消した。Phase 51の機能移行にはまだ進んでおらず、本番も未反映。本番での悪用や侵害を確認したという意味ではない。
+Phase 50で見つかった基盤側のhigh指摘は、その後の2026-10-05の所有者指示により[基盤と両製品の依存修正](dependency-baseline.md#基盤と両製品の依存修正)で解消した。TokiのPhase 51とは別の修正で、本番は未反映。本番での悪用や侵害を確認したという意味ではない。
+
+### Phase 51の完了範囲
+
+2026-10-05、Tokiへ固定版のReact/DOM・Router、ViteとReact/Tailwind/Cloudflare plugins、Testing Library/jsdom・型定義を導入した。既存JavaScript/CSSを`src/client/`へ移し、rootの2 HTMLとTypeScript entrypointをViteへ接続した。Reactの画面mountやHono/Drizzle置換はまだ行わない。TailwindのPreflightと既存class自動走査は無効のままで、画面の見た目を保つ。
+
+browser/Worker/test/Nodeの型検査を分離し、ハッシュ付きassetだけを認証後に配信する。成果物の参照・PWA bytes・CSP・404境界を検査し、本番設定生成は`dist/toki/index.js`と`dist/client`を指定してsource fallbackを拒否する。ローカル開発とE2Eもbuild済み成果物を使い、認証/CSPのHMR例外を設けない。開発DBは再buildで消えないrepository内`.wrangler/state`へ固定する。
+
+全品質gateは16 files/332 tests、PC/320px E2E 16件、audit指摘0件で成功した。既存API/DB/migration・計測・手動登録/編集/削除・未完了状態・HTML URL・PWA identityを保持し、本番deploy・remote DB・Access/料金操作は行っていない。詳細と公開commit/CIは[Progress](progress.md)へ記録する。
 
 ### 変えないものと確認事項
 

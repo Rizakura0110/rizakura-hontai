@@ -59,6 +59,14 @@ Git無視対象の隔離directoryで、基盤commit `b5f1e76`の解決済みgrap
 
 Phase 50のToki作業時点では基盤は文書更新のみで、上記候補を基盤のpackage/lockfileへ適用しなかった。その後、同日の所有者指示で[基盤と両製品の依存修正](#基盤と両製品の依存修正)を実施した。Toki側はUndiciの限定更新後に独立lockfileから再install・全品質gateを通過し、監査は指摘0件となった。
 
+## Phase 51のTokiへの導入結果
+
+2026-10-05、上記固定版からReact/React DOM・React Router、Viteと3 plugins、Tailwind CSS、Testing Library3種・jsdom・React型2種の14 direct dependencyを導入した。公式npm metadataでstable/非deprecated、公開48日以上、Node/必須peer互換を再確認し、14 tarballのSHA-512は公式integrityと基盤lockfileに一致した。jsdom配下Undiciは`8.10.2`へ親限定overrideし、Miniflare配下の`7.29.1`と既存Sharp/Rolldown対策を維持する。
+
+Toki独立lockfileは211→306 entries。追加113はすべて基盤の検証済みentryと一致し、既存entryのintegrity変更・基盤外の新version導入はない。従来のVitest経由Vite `8.3.0`/Rolldown `1.2.8`など18 entriesは、標準のdirect Vite `8.2.1`/既存override `1.2.4`へ統合して除去した。既存のdirect依存・7日gate・strict peer・install script許可は変更しない。
+
+installとfrozen再install、Vite/Worker build・全品質gate、依存監査が成功。Tokiは全severityで指摘0件。HonoとDrizzle/Drizzle Kitは後続フェーズで、今回まだ導入していない。基盤・Tech Inbox・Daymarkのpackage/lockfileは変更せず、本番も未反映。
+
 ## 選定ルール
 
 - StableまたはLTSだけを採用し、RC、Beta、Canary、Nightly、Git URL、直接tarball指定は採用しない。
