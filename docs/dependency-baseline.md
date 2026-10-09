@@ -6,6 +6,8 @@
 
 2026-10-05追記: [Phase 50の再確認](#phase-50のtoki移行向け再確認)で新しいadvisoryを検出した後、所有者指示による[基盤と両製品の依存修正](#基盤と両製品の依存修正)を実施した。修正後の基盤はhigh/critical 0、従来の開発専用moderate 1。Tech Inbox・Daymarkは各独立監査も指摘0件。本番は未反映。
 
+2026-10-09追記: [Phase 52](#phase-52のtokiへの導入と依存修正)の再監査でSharp/source-map-jsに新しいhigh 2件を確認し、Tokiを修正版へ更新した。現在のTokiは監査指摘0件。共通基盤の同日監査はhigh 2・既存moderate 1で、追随修正が残っている。
+
 ## 基盤と両製品の依存修正
 
 2026-10-05、変更前に脆弱性の内容と適用条件を所有者へ説明し、基盤とその必須品質gateに含まれるTech Inbox・Daymarkの開発依存を限定更新した。基盤のHonoも同時に修正したが、画面・業務処理・DB・Access/Secrets・Cloudflare設定は変更していない。通常のcommit/pushのみで、本番deployは行わない。
@@ -66,6 +68,21 @@ Phase 50のToki作業時点では基盤は文書更新のみで、上記候補�
 Toki独立lockfileは211→306 entries。追加113はすべて基盤の検証済みentryと一致し、既存entryのintegrity変更・基盤外の新version導入はない。従来のVitest経由Vite `8.3.0`/Rolldown `1.2.8`など18 entriesは、標準のdirect Vite `8.2.1`/既存override `1.2.4`へ統合して除去した。既存のdirect依存・7日gate・strict peer・install script許可は変更しない。
 
 installとfrozen再install、Vite/Worker build・全品質gate、依存監査が成功。Tokiは全severityで指摘0件。HonoとDrizzle/Drizzle Kitは後続フェーズで、今回まだ導入していない。基盤・Tech Inbox・Daymarkのpackage/lockfileは変更せず、本番も未反映。
+
+## Phase 52のTokiへの導入と依存修正
+
+2026-10-06にHono `4.13.7`を完全固定で導入。公式npmの公開7日以上・非deprecated・Node互換、tarball SHA-512と基盤lockfileの一致を確認した。追加peer/推移依存はなく、Tokiのpackage entriesは306→307。
+
+2026-10-09の全gateで、開発依存の新しいhigh 2件が検出された。Honoの指摘ではなく、[Sharpのlibrsvg](https://github.com/lovell/sharp/security/advisories/GHSA-wq5f-xc86-pv6w)と[source-map-jsの索引付きsource map](https://github.com/advisories/GHSA-68fv-2mgg-jv7q)である。Sharpは特定のglibc/Linux条件で不正SVGを処理した場合のメモリ脆弱性、source-map-jsは異常なsection offsetで長時間処理が止まる問題を修正する。
+
+| 対象 | Tokiの限定更新 | 公式npm公開日 |
+|---|---|---|
+| Miniflare `5.20260815.0-alpha`配下 | Sharp `0.35.4 → 0.35.5`、対応する`@img/sharp`とlibvips `1.3.3 → 1.3.4` | Sharpは2026-09-27 |
+| 既存source-map-js `1.2.1`のconsumer | `1.2.1 → 1.2.2` | 2026-09-30 |
+
+修正2版の7日gate・Node互換・非deprecatedとtarball SHA-512を確認し、親/version限定overrideを適用した。lockfileのresolution変更はHonoと上記patch群だけで、他packageのversion/integrityは不変。既存のRolldown/Undici override・strict peer・install script許可を維持した。frozen再install・build・全品質gateが成功し、Toki監査は指摘0件。
+
+共通基盤の読み取り監査は同日high 2・既存moderate 1だった。基盤とTech Inbox/Daymarkの依存修正はTokiのPhase 52には含めず、追随作業として残す。本番deploy・Cloudflare設定・データの変更は行わない。
 
 ## 選定ルール
 

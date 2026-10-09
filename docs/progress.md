@@ -1,5 +1,18 @@
 # Progress
 
+## Phase 52 TokiのHono routing移行
+
+2026-10-06に着手し、2026-10-09にPhase 52の全品質検証を完了した。Workerの入口とAPIをHonoへ移行し、既存の画面・Zod/jose認証・D1の記録処理を接続した。次はPhase 53のDrizzle移行。
+
+- Hono `4.13.7`を完全固定で追加し、APIのmethod別handlerと認証・DB binding・更新要求のmiddlewareを定義した。未知APIにも従来の検査を適用する。query/UUID/methodの経路別優先順、URLの大小文字・末尾slash・エンコード境界、JSON/status/error・ヘッダー・4096バイト上限を保持した。
+- HonoがHEADをGETへdispatchする場合も元のmethodで分岐し、期限切れタイマーの確定やDB probeを実行しない。HEADは元のstatus/headerを持つ空本文を返す。HTML・hash付きasset・manifest/iconsのAccess gateとCSP、欠落pathの404も維持する。
+- 移行前routerで成功した実SQLite比較52件とWorkerの追加18件を継続し、実HTTPの経路テストを追加。全`pnpm check`は17 files/402 tests・PC/320px E2E 17 passedで成功し、coverageはstatements 95%・branches 94.05%・functions 98.5%・lines 96.56%。format/lint・生成型・TypeScript・local D1・Vite/成果物検査/Worker dry-runも通過した。最終ログはToki `.tmp/phase52-final-check.log`。
+- 初回の監査で開発用Sharp/source-map-jsのhigh 2件が見つかった。内容と限定更新の理由を説明し、公式metadata・配布物・7日gateを確認してSharp `0.35.5`（libvips `1.3.4`）とsource-map-js `1.2.2`へpatch更新した。frozen再installが成功し、最終Toki監査は指摘0件。Honoとpatch群以外のpackage resolution/integrityは不変。[依存記録](dependency-baseline.md#phase-52のtokiへの導入と依存修正)に根拠を保存した。
+- browser JS 29,575 bytes・CSS 19,840 bytesはPhase 51と一致。Hono追加後のWorker rawは241,164 bytes、dry-run gzip 52.77 KiB。DB schema/migration・既存記録・未完了計測・画面/PWA・本番Access/料金/Workerは変更していない。
+- 基盤側は文書のみ更新する。共通基盤の読み取り監査でも同じhigh 2件と従来moderate 1件を確認し、基盤と両製品の追随修正を別件として残した。Tokiの監査0件と混同しない。
+- 全文差分・生成物/cacheのignoreを確認。基盤とTokiのsource/成果物280 text filesの秘密情報検査、変更文書のローカルリンク17件が成功した。基盤の文書はformat/lint・差分/リンク検査を実行し、変更していない基盤runtimeの全gateは再実行していない。
+- Tokiは`2c5da992de96185f45b4c83d910179a7699dbe49`としてmainへcommit/pushし、[GitHub CI 37876564207](https://github.com/Rizakura0110/toki/actions/runs/37876564207)も成功。基盤の文書をこの状態へ追従する。
+
 ## Phase 51 TokiのViteとReact開発基盤
 
 2026-10-05、次フェーズの着手指示を受け、Tokiの開発基盤を統一した。今回は既存画面を新しいbuildへ接続する段階であり、画面のReact置換・Hono/Drizzle化・本番反映は行っていない。

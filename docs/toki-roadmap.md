@@ -1,12 +1,12 @@
 # Toki実装フェーズ
 
-日付: 2026-10-05
+日付: 2026-10-09
 状態: Phase 35〜44を完了（2026-09-23）。Phase 45はToki専用D1のバックアップ・migrationとToki Workerへの反映、既存データの全項目照合、認証済みブラウザでの追加機能確認まで完了。所有者自身のPC/iPhone実機確認待ち。基盤と既存2製品の本番構成は変更していない。Phase 47は短時間のカレンダー記録の表示修正を実装・検証し、所有者承認後に本番反映済み（2026-09-26）。
 仕様: [Toki設計](toki-design.md)、分離理由: [ADR-0021](decisions/0021-toki-independent-product.md)、運用: [Toki本番前確認](toki-operations.md)
 
 Phase 48: 分単位の手動入力と内容の任意化を実装・検証・本番反映済み（2026-09-27）。
 
-Phase 49〜56: 所有者の2026-10-04の指示で、独立構成を維持した技術スタック統一を計画。Phase 50で比較基準を固定し、Phase 51でViteとReact/Tailwindの開発基盤を導入した。既存HTML/DOM画面を維持した状態でローカル全gateを通過。本番のCloudflare環境は未変更。次はPhase 52のHono routing移行。
+Phase 49〜56: 所有者の2026-10-04の指示で、独立構成を維持した技術スタック統一を計画。Phase 50で比較基準を固定し、Phase 51で開発基盤を導入、Phase 52でHono routingへ移行した。402 tests・PC/320px E2E 17件・audit指摘0件を含むローカル全gateが成功。本番のCloudflare環境は未変更。次はPhase 53のDrizzle移行。別件として、共通基盤の開発依存にもSharp/source-map-jsの追随修正が残る。
 
 | Phase | 目的 | 完了条件と境界 |
 |---|---|---|
@@ -93,6 +93,12 @@ Phase 50で見つかった基盤側のhigh指摘は、その後の2026-10-05の�
 browser/Worker/test/Nodeの型検査を分離し、ハッシュ付きassetだけを認証後に配信する。成果物の参照・PWA bytes・CSP・404境界を検査し、本番設定生成は`dist/toki/index.js`と`dist/client`を指定してsource fallbackを拒否する。ローカル開発とE2Eもbuild済み成果物を使い、認証/CSPのHMR例外を設けない。開発DBは再buildで消えないrepository内`.wrangler/state`へ固定する。
 
 全品質gateは16 files/332 tests、PC/320px E2E 16件、audit指摘0件で成功した。既存API/DB/migration・計測・手動登録/編集/削除・未完了状態・HTML URL・PWA identityを保持し、本番deploy・remote DB・Access/料金操作は行っていない。詳細と公開commit/CIは[Progress](progress.md)へ記録する。
+
+### Phase 52の完了範囲
+
+2026-10-06に着手し、2026-10-09に全品質検証を完了した。Worker入口とAPI routingをHono `4.13.7`へ統一し、既存のZod/joseとD1データ層をそのまま接続した。URL・method・JSON・status/error・安全な更新要求の検査・時刻/冪等性/版数競合を保持する。元のHEAD methodを確認してDB処理を呼ばず、経路の自動補正や既定のframework error本文を避ける。
+
+旧routerで成功した比較52件とWorker追加18件、実HTTPの経路テストを追加し、全gateは17 files/402 tests・PC/320px E2E 17件で成功。再監査で検出した開発依存のhigh 2件は、互換patchのSharp `0.35.5`とsource-map-js `1.2.2`へ限定更新して解消した。詳細は[依存記録](dependency-baseline.md#phase-52のtokiへの導入と依存修正)と[Progress](progress.md)を参照。DB schema/migration・画面・認証設定・本番環境は変更していない。
 
 ### 変えないものと確認事項
 
