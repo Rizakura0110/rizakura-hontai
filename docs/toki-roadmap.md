@@ -6,7 +6,7 @@
 
 Phase 48: 分単位の手動入力と内容の任意化を実装・検証・本番反映済み（2026-09-27）。
 
-Phase 49〜56: 所有者の2026-10-04の指示で、独立構成を維持した技術スタック統一を計画。Phase 50で比較基準を固定し、Phase 51で開発基盤を導入、Phase 52でHono routingへ移行した。402 tests・PC/320px E2E 17件・audit指摘0件を含むローカル全gateが成功。本番のCloudflare環境は未変更。次はPhase 53のDrizzle移行。共通基盤のSharp/source-map-js追随修正は[2026-10-17の依存記録](dependency-baseline.md#2026-10-17の基盤と両製品の依存修正)を参照。
+Phase 49〜56: 所有者の2026-10-04の指示で、独立構成を維持した技術スタック統一を計画。Phase 50で比較基準を固定し、Phase 51で開発基盤を導入、Phase 52でHono routingへ、Phase 53でDrizzleによるDB操作へ移行した。443 tests・PC/320px E2E 17件・audit high/critical 0を含むローカル全gateが成功。Kit由来の開発専用moderate 1件は制約付きで継続する。本番のCloudflare環境は未変更。次はPhase 54のReact画面移行。共通基盤のSharp/source-map-js追随修正は[2026-10-17の依存記録](dependency-baseline.md#2026-10-17の基盤と両製品の依存修正)を参照。
 
 | Phase | 目的 | 完了条件と境界 |
 |---|---|---|
@@ -99,6 +99,14 @@ browser/Worker/test/Nodeの型検査を分離し、ハッシュ付きassetだけ
 2026-10-06に着手し、2026-10-09に全品質検証を完了した。Worker入口とAPI routingをHono `4.13.7`へ統一し、既存のZod/joseとD1データ層をそのまま接続した。URL・method・JSON・status/error・安全な更新要求の検査・時刻/冪等性/版数競合を保持する。元のHEAD methodを確認してDB処理を呼ばず、経路の自動補正や既定のframework error本文を避ける。
 
 旧routerで成功した比較52件とWorker追加18件、実HTTPの経路テストを追加し、全gateは17 files/402 tests・PC/320px E2E 17件で成功。再監査で検出した開発依存のhigh 2件は、互換patchのSharp `0.35.5`とsource-map-js `1.2.2`へ限定更新して解消した。詳細は[依存記録](dependency-baseline.md#phase-52のtokiへの導入と依存修正)と[Progress](progress.md)を参照。DB schema/migration・画面・認証設定・本番環境は変更していない。
+
+### Phase 53の完了範囲
+
+2026-10-17、Drizzle ORM `0.45.2`と既存物理DBの型付きschemaを接続した。ミリ秒・null・状態・版数とHTTP契約を保ち、取得・更新・削除を移行した。開始と手動登録の`INSERT OR IGNORE`/削除済みrequest ID検査は、従来の原子性と競合時動作を保つためDrizzleのparameterized SQLで1文のまま保持する。部分index用の固定status述語と既存triggerも維持する。
+
+旧実装を固定した26操作の比較をSQLiteと隔離ローカルD1で行い、結果・全列・操作ごとのquery数の一致、未完了4状態、二重開始・版数競合・削除trigger失敗時のrollbackを確認した。実SQLのquery planと1万件の範囲検索、物理schema・migration履歴の不変も検証した。Kit生成schemaは列・default・制約/indexの意味を比較するだけで、inline UNIQUEの生成名とtriggerの差異があるDDLを既存DBへ適用しない。
+
+全gateは19 files/443 tests・PC/320px E2E 17件で成功。browser JS/CSSはPhase 52と同じbytes、Worker rawは384,298 bytes・dry-run gzip 80.66 KiB。Kitは開発専用でbundleへの混入を検査し、既知moderate 1件は該当HTTPサーバーを起動しない方針で扱う。既存のhigh/critical失敗条件を持つ監査scriptを明示的に呼び出すよう、pnpmの同名builtinとの衝突も修正した。[依存記録](dependency-baseline.md#phase-53のtokiへのdrizzle導入)と[Progress](progress.md)を参照。既存SQL migration・本番DB・画面・認証/PWA・Cloudflare設定は変更せず、React画面移行は次のPhase 54とする。
 
 ### 変えないものと確認事項
 

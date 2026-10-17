@@ -10,6 +10,8 @@
 
 2026-10-17追記: [基盤側の追随修正](#2026-10-17の基盤と両製品の依存修正)で、基盤のhigh 2件とDaymark/Tech Inbox各high 1件を解消した。現在の基盤は既存moderate 1件のみ、両製品の独立監査は指摘0件。本番は未反映。
 
+同日の[Phase 53](#phase-53のtokiへのdrizzle導入)でTokiへDrizzle ORM/Kitを導入した。Tokiのhigh/criticalは0件、Kit由来の開発専用moderate 1件を基盤と同じ制約付きで扱う。本番は未反映。
+
 ## 2026-10-17の基盤と両製品の依存修正
 
 所有者の指示により、基盤のMiniflare配下Sharpを`0.35.4 → 0.35.5`（対応する`@img/sharp`とlibvips `1.3.3 → 1.3.4`）、基盤・Daymark・Tech Inboxのsource-map-jsを`1.2.1 → 1.2.2`へ限定更新した。直接依存の完全version、7日gate、strict peer、既存Undici/Rolldown対策、install script許可は維持する。
@@ -103,6 +105,16 @@ installとfrozen再install、Vite/Worker build・全品質gate、依存監査が
 修正2版の7日gate・Node互換・非deprecatedとtarball SHA-512を確認し、親/version限定overrideを適用した。lockfileのresolution変更はHonoと上記patch群だけで、他packageのversion/integrityは不変。既存のRolldown/Undici override・strict peer・install script許可を維持した。frozen再install・build・全品質gateが成功し、Toki監査は指摘0件。
 
 共通基盤の読み取り監査は同日high 2・既存moderate 1だった。基盤とTech Inbox/Daymarkの依存修正はTokiのPhase 52には含めず、追随作業として残す。本番deploy・Cloudflare設定・データの変更は行わない。
+
+## Phase 53のTokiへのDrizzle導入
+
+2026-10-17、Drizzle ORM `0.45.2`をruntime、Drizzle Kit `0.31.10`を開発専用として完全固定で導入した。公式npmで公開日（ORM 2026-03-27、Kit 2026-03-17）・非deprecated・必須peerとNode互換を再確認し、2 tarballのSHA-512が公式integrityと基盤lockfileに一致した。新しいORM安定版へ無関係に更新せず、共通の検証済み版を使う。
+
+Kitの補助依存tsxは、基盤と同じ`4.23.12`（2026-08-10公開、tarballのSHA-512一致）へconvergence overrideした。初回に自動解決された`4.23.15`は採用せず、KitとViteの任意peerで同じ版を使用する。既存esbuild `0.28.1`は維持する。Tokiのpackage entriesは307→368、追加61 entriesのversion/integrityはすべて基盤と一致し、既存entryのresolution/integrity変更・削除は0件。既存Viteのpeer metadataだけはtsx overrideで完全版へ絞られる。その他のoverride・7日gate・strict peer・install script許可は不変で、frozen再installに成功した。
+
+監査はhigh/critical/low 0、moderate 1。Kitの最新stable `0.31.11`も`@esbuild-kit/esm-loader`を保持しており、既知のesbuild `0.18.20`の[開発サーバーadvisory](https://github.com/evanw/esbuild/security/advisories/GHSA-67mh-4wv8-2f99)は未解消だった。導入前に説明し、基盤と同様に該当HTTPサーバーを起動せず、互換範囲外の強制overrideを行わない。deprecated警告はKit自身ではなく推移依存のcore-utils/esm-loader各固定版による。Kitのschema生成APIは合成データのメモリ内比較だけに使い、本番Workerへ含めない検査とその回帰テストを追加した。
+
+Drizzle schemaは既存物理DBへの型付きmappingであり、既存migrationを置き換えない。Kitはinline UNIQUEを名前付きindexとして生成し、削除triggerも表現しないため、生成DDLを既存DBへ適用しない。`drizzle.config.ts`の出力はGit無視対象`.tmp/drizzle-review`だけで、remote driver・資格情報・自動push/migrateのscriptは持たない。D1 driverとSQL bindingの利用は[Drizzle公式D1資料](https://orm.drizzle.team/docs/sqlite/connect-cloudflare-d1)と固定版の実装で確認した。品質検証と公開commitは[Progress](progress.md)へ記録する。
 
 ## 選定ルール
 

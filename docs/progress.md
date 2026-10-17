@@ -1,5 +1,19 @@
 # Progress
 
+## Phase 53 TokiのDrizzleによるDB操作への移行
+
+2026-10-17、所有者の着手指示によりPhase 53を完了した。Tokiの独立repository/Worker/D1を維持し、既存データ構造とHTTP契約を変えずにDB操作をDrizzleへ移行した。次はPhase 54のReact画面移行。本番は未反映。
+
+- Drizzle ORM `0.45.2`と既存2 table・全列・default・CHECK・部分indexの型付きschemaを導入。取得・更新・削除を置き換えた。開始/手動登録は従来の`INSERT OR IGNORE`と削除済みrequest IDの検査を1つのparameterized SQLに保ち、triggerによる削除と再送防止も維持する。`0001`/`0002` migrationの編集・追加、DB再作成は不要だった。
+- 旧実装commit `2c5da992de96185f45b4c83d910179a7699dbe49`をテスト専用fixtureへ固定し、元のsourceとの完全一致を確認。26操作の結果・全列・操作ごとのquery数をSQLiteと隔離ローカルD1で照合した。未完了4状態、二重開始、編集/削除の競合、削除trigger失敗時のrollback、物理schemaとmigration履歴の不変を検証。1万件の検索検査も実際のDrizzle SQL/parameterへ接続した。
+- Kit生成schemaの列・default・CHECK・indexの意味を比較した。Kitはinline UNIQUEを名前付きindexとして生成し、削除triggerも表現しないため、生成DDLを既存DBへ適用しない。`drizzle.config.ts`は`.tmp/drizzle-review`へのreview用出力のみで、remote driver・資格情報・自動push/migrateを設定しない。
+- [依存記録](dependency-baseline.md#phase-53のtokiへのdrizzle導入)のとおり公式npmの公開7日以上・非deprecated・互換性と3 tarballのSHA-512を確認。追加61 package entriesのversion/integrityは基盤と一致し、既存resolution/integrityは不変。tsxを基盤の`4.23.12`へ固定し、frozen再installと供給網検査を通過した。
+- 最終`pnpm check`が成功。19 files/443 tests、coverage statements 95.02%・branches 94.09%・functions 98.52%・lines 96.58%。format/lint・生成型・4対象TypeScript・local D1・build/成果物検査/Worker dry-run・PC/320px E2E 17 passedを確認した。browser JS 29,575 bytes・CSS 19,840 bytesはPhase 52と一致、Worker raw 384,298 bytes・dry-run gzip 80.66 KiB。最終ログはToki `.tmp/phase53-final-check.log`。
+- Kitの説明コメントを実コード混入とみなしていた初回build検査を修正し、実module/開発entrypointの拒否と説明コメントの許容を回帰テストへ追加。DB errorからSQL/入力内容がHTTPへ漏れないことも検証した。監査はhigh/critical 0・既知dev-only moderate 1で、該当esbuildのHTTPサーバーは起動せずKitをWorkerへ含めない。既存の監査scriptをpnpmの同名builtinと区別して`pnpm run audit`で呼び出すよう修正し、既定の`--audit-level high`を保持した。全gateは修正後に再実行して成功した。
+- 基盤側は依存記録・計画・進捗の文書だけを更新する。基盤/両製品のruntime/package/lockfile・Tokiの画面/PWA・既存SQL migration・Cloudflare resource/本番DB・Access/料金は変更せず、資格情報の取得や本番API確認も行っていない。
+- 全文差分・旧実装fixtureの一致・生成物/cacheのignoreを確認。基盤/TokiとToki成果物の270 text filesを資格情報パターンと利用可能な環境値で照合し、候補0件。変更文書のローカルリンク/anchor 6件が解決した。基盤は文書のみでformat/lint・差分/リンク検査を行い、変更していない基盤runtimeの全gateは再実行していない。
+- Tokiは`8696c78416772d1da1422fa62d682b6538337f4d`としてmainへcommit/push済み。[GitHub CI 39003624792](https://github.com/Rizakura0110/toki/actions/runs/39003624792)で同じ全gateを確認する。基盤はこの検証済み実装の文書に追従する。
+
 ## Phase 52補足 基盤と両製品のSharpとsource-map-js修正
 
 2026-10-17、所有者の指示により基盤側の残っていた開発依存の脆弱性を修正した。基盤のhigh 2件、Daymark・Tech Inbox独立の各high 1件は解消し、基盤には従来の開発専用moderate 1件だけが残る。TokiのPhase 53にはまだ着手していない。
