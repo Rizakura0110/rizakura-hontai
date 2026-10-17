@@ -1,6 +1,6 @@
 # Tokiの本番前確認・運用手順
 
-最終更新: 2026-09-23。Phase 42では手順の準備とローカル検証だけを行った。Phase 43では所有者がToki専用のAccess application・D1・Workerの作成、初期migration、Tokiの本番deployを明示承認した。その承認には基盤Workerのdeployは含まれなかったが、後に基盤入口の更新について別途承認を得て実施した。料金プラン変更と既存DBのmigration・復元は承認範囲に含まない。
+最終更新: 2026-10-17。Phase 55では技術スタック移行後のローカル回帰と本番反映手順を整える。本番への適用はPhase 56で対象を明示して承認を得てから行う。過去のPhase 43〜48の承認は今回のdeployやDB復元を許可するものではない。
 
 ## 分離と安全な公開順序
 
@@ -30,6 +30,46 @@ Phase 44の手動登録・完全削除は、ローカルでmigrationとWorkerを
 2026-09-23に承認範囲内の更新を実施した。非追跡のmode 700ディレクトリへmode 600のSQLバックアップを保存し、実データのローカル復元・migration後の全値一致を確認した。remoteは`0002_manual_records.sql`だけを適用し、既存5行の全12列、3索引、migration履歴、削除済みrequest IDテーブルとtrigger、`PRAGMA quick_check`・`PRAGMA foreign_key_check`を検証した。続いて固定commitのToki Workerだけをdeployし、DB binding・3 secret・Access application/policy・preview無効・resource数の不変を確認した。プランは同日所有者確認のWorkers Free・Usage cost $0を根拠とし、subscription APIの取得不可を無料契約の自動確認成功とは扱っていない。課金設定の操作はない。
 
 認証済みブラウザで翌日の手動記録1件を追加し、日時と内容の編集・再読み込み後の保持・削除キャンセル・確定削除・削除後の再読み込みを確認した。この検証用記録だけを完全削除し、元の全5行（計測中1件を含む）の全項目一致を再確認した。削除済みrequest IDが1件残るのは再送による復活防止の仕様。未認証の画面・実際の静的asset・API計9経路はAccessへの302だった。通常の保存・編集を再開可能。所有者自身のPC/iPhoneでの追加機能確認は未実施で、Phase全体の完了と区別する。
+
+## Phase 55と56の技術スタック移行
+
+### ローカルで固定する比較基準
+
+最後に本番反映したPhase 48のsource commitは`bab03ef5084b980c481b8126fd34b18604c84249`。Tokiの`tests/fixtures/phase48/`に旧画面・API・DB処理・認証の14ファイルを固定し、元commitのSHA-256を検査する。既存2 migrationとmanifest・6アイコンの9ファイルも元commitと照合する。旧依存を再導入せず、現行の検証済みtoolchainで旧sourceを実行する検証であり、過去の配信binaryそのものを再現する検証ではない。
+
+`pnpm check`に旧画面＋新API、新画面＋旧API、旧画面＋旧APIの切り戻し構成を加える。各構成のPC 1280px・スマホ320pxで実際のローカルD1を使い、計測/集中表示/再読込、タイマー満了/破棄、空欄保存、分入力/秒精度、競合・削除確認・再送拒否、PWA identityを検証する。test専用Workerはloopback HTTPと明示flag以外を拒否し、production bundleに含めない。
+
+合成データのSQL exportをmode 700の一時directory・mode 600のファイルに保存し、空の隔離ローカルD1へ復元する。保存済み/破棄済みと未完了4状態それぞれについて、全12列・削除済みrequest ID・migration履歴・table/index/triggerを照合し、quick_check/foreign_key_checkを通す。新実装で編集した後も旧DB処理で計測を継続・保存・削除でき、再送で削除記録が復活しないことを確認する。予行用SQLとDBは終了時に削除し、実データをfixtureやGitへ含めない。
+
+### 成果物と処理負荷の予算
+
+以下はCloudflareの上限とは別に設けるプロジェクトの回帰予算。`pnpm release:local`でbuild済み成果物を検査し、stage/live両設定を合成D1 IDで厳密に生成して`deploy --dry-run`だけを行う。実際の本番設定ファイルは上書きしない。
+
+| 対象 | 非圧縮の合計上限 | gzipの合計上限 |
+|---|---:|---:|
+| Worker JS | 512 KiB | 128 KiB |
+| browser JS | 320 KiB | 110 KiB |
+| browser CSS | 32 KiB | 10 KiB |
+
+APIのquery数は通常取得2、開始5/同一再送3、停止/保存4、手動登録/編集2、削除成功1/競合2、一覧取得1を上限として検査する。削除済み開始requestの拒否は最大7。triggerの内部処理はAPIから発行するquery数と区別し、D1の課金対象rows read/writtenがこの件数と同じとは扱わない。
+
+1万件の合成履歴で旧/新API各300 requestを実行し、Node+SQLite・認証bypassの平均CPU時間を比較する。新版5ms未満かつ旧版の3倍+1ms未満をローカル回帰条件とする。この値はCloudflareのCPU使用量、JWT検証を含む本番性能、実データの走査行数を保証しない。本番ではPhase 56の確認範囲でCPU/error/1102・D1行数を確認し、毎秒通信や追加の有料監視を導入しない。
+
+2026-10-17確認の[Workers limits](https://developers.cloudflare.com/workers/platform/limits/)ではFreeのCPUは10ms/request、Workerサイズは非圧縮64MiBでgzip上限はない。[D1 limits](https://developers.cloudflare.com/d1/platform/limits/)はFreeで50 queries/invocation。上記の独自予算はこれらと分けて扱い、現在の契約や無料枠の残量は反映直前に確認する。
+
+### Phase 56の実行条件と順序
+
+1. 対象を既存`Toki Worker`の更新、Toki専用D1のprivate exportとローカル復元確認、関連設定/利用量の読み取り、必要時の同Worker切り戻しに限定して明示承認を得る。DB migration・本番DBの復元/削除、Access/secret/料金変更、新resource、基盤と他製品のdeployは含めない。計測を勝手に終了・破棄しない。
+2. この文書の認証切り分けに従い、最新の資格情報とaccountを値を表示せず検証する。現在のWorker不変ID・active version ID・D1 binding/ID・3 secret名・Access application/policy・workers.dev/preview/routesを私有記録に保存し、既存の保護と一致するか確認する。記録のcommitと現行versionの対応が確認できなければ停止する。プラン・使用量が確認できなければ推測で無料と判定しない。
+3. 正常な旧version IDを明示して切り戻せるか事前確認する。ローカル全gateとclean checkoutが成功したcommit、lockfile、build hashを固定する。新旧でschema/migrationとD1 bindingが同じことを照合する。相違があれば移行せず別計画にする。
+4. 所有者に一時的にTokiの保存・編集を控えてもらい、直前のToki専用D1をmode 700/600の私有領域へexportする。署名URLを含む可能性のある標準出力/エラーも私有ログへ捕捉する。定期的な画面の読取でもタイマー満了がDBに確定されるため、export前後の未完了状態の変化を区別し、比較中のアプリ操作を止める。バックアップのhashと取得時刻を記録し、空のローカルD1で全列・履歴・制約/索引/trigger・整合性を照合する。SQLや行内容は公開ログへ出さない。DB全体を本番へimportしない。
+5. 実際の検証済みD1 IDでlive設定を生成し、build済みWorker/assetsへの固定・Worker先行認証・preview無効・余計なroute/binding/変数なしをdry-runで再確認する。既存Toki Workerだけを反映する。DB migrationやsecretの再登録は不要。
+6. 未認証の画面・実際のhash付きJS/CSS・manifest/icons・APIがデータを返さないこと、D1/secret/Access/他Workerの不変を照合する。本人のPCとiPhone PWAで既存記録・未完了計測・カレンダー、通常の活動の保存/編集/再起動を確認する。不要な記録を勝手に作成/削除しない。同じURL/id/scopeなのでPWAの追加し直しは予定しない。
+7. 認証漏れ、既存記録/計測の不整合、継続的なCPU上限超過/1102や保存失敗なら反映を成功扱いにせず、承認範囲内で確認済み旧versionへ切り戻す。所有者に操作停止を伝え、`wrangler rollback <確認済み旧VERSION_ID> --config .tmp/toki-production-live.jsonc --message "Toki Phase 56 rollback"`を使う。version IDを省略して推測の直前版へ戻さない。戻した後も認証/既存記録/未完了状態・設定を再確認する。
+
+[Worker versionはcode・assets・binding・互換設定を持つ](https://developers.cloudflare.com/workers/versions-and-deployments/)が、D1内のデータを巻き戻さない。[rollbackは直近100 versionが対象](https://developers.cloudflare.com/workers/versions-and-deployments/rollbacks/)でresourceの変更にも制約があるため、使える旧version IDを反映前に確定する。Phase 48の互換sourceをローカルで動かせても、Cloudflare上の切り戻し成功まで実証したことにはならない。旧versionを利用できない場合は、旧sourceの再build/deployを独断で代用せず停止して方針を確認する。
+
+実際の本番private backupとactive version/契約/利用量の読み取りは、Phase 56の承認後に直前値を取得する。Phase 55では本番データやOSの保存資格情報を取得せず、上記の合成データによる復元と設定dry-runを用意する。
 
 ## API認証エラーの切り分け（再ローテーション前）
 

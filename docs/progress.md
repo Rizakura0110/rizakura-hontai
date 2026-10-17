@@ -1,5 +1,19 @@
 # Progress
 
+## Phase 55 Tokiの全体回帰と本番反映準備
+
+2026-10-17、所有者の着手指示によりPhase 55を完了した。通常環境とclean checkoutで全品質gateを通し、移行後の旧新互換性とバックアップ復元をローカルで確認した。次は[Phase 56の本番反映と実機確認](toki-roadmap.md#作業の順序)で、対象を明示した別承認が必要。本番は未反映。
+
+- 最後に本番反映したPhase 48のcommit `bab03ef5084b980c481b8126fd34b18604c84249`から旧画面/API/DB/認証の14ファイルを固定し、Git内の元sourceとSHA-256を照合。変更しない2 migration・manifest・6アイコンの9ファイルにも元commitのhash検査を追加した。旧依存はinstallせず、現行toolchainを使うsource互換性の比較である。固定旧fixtureだけを整形/coverageから除き、現行runtimeの検査と80%閾値は維持する。
+- 旧画面＋新API、新画面＋旧API、旧画面＋旧APIの各構成をPC 1280px/スマホ320pxで操作する18 E2Eを追加。実ローカルD1で計測・集中表示・再読込・タイマー満了/破棄、空欄保存・分入力・秒/ミリ秒保持、版数競合・確認付き削除・削除後の再送拒否、PWA manifest/icons/Service Workerなしを確認した。test専用Workerはloopback HTTPと明示flag以外を拒否し、本番bundleには含めない。
+- 合成データのprivate SQL export→空の隔離ローカルD1への復元を4種類の未完了状態で予行。mode 700 directory/600 file、全12列・削除済みrequest ID・migration履歴・table/index/trigger、quick_check/foreign_key_checkを確認し、新版で編集した後も旧DB処理で継続/保存/削除できた。元DBの状態不変と削除の再送防止も検査。一時SQL/DBは終了時に削除し、実データは使わない。
+- 成果物の独自予算はWorker raw/gzip 512/128 KiB・browser JS 320/110 KiB・CSS 32/10 KiB。raw実測384,298/258,294/23,292 bytesでPhase 54と不変。操作別の発行query上限1〜7と、1万件で旧新各300 requestのNode+SQLite CPU比較も通過した。これは認証bypassのローカル平均で、本番CPUやD1課金行数を保証する検証ではない。合成D1 IDでstage/liveの厳密な設定dry-runを通し、出力Workerとbuild済みWorkerの同一bytesを確認した。
+- 通常環境と、新規cloneで独立store/cache/browser/ローカルDBを使ったfrozen install後の`pnpm check`が成功。25 files/557 tests、coverage statements 96.34%・branches 94.47%・functions 97.75%・lines 97.72%、既存E2E 21件＋互換E2E 18件の計39件が成功した。両環境のlockfile・Worker・2 HTML・JS/CSSの6ファイルは完全一致。通常ログはToki `.tmp/phase55-final-check.log`、clean環境のログもGit無視領域へ保持する。
+- [本番反映と切り戻しの手順](toki-operations.md#phase-55と56の技術スタック移行)を整備。実際の本番private backup/空ローカルD1での復元照合、active/rollback version、本人限定Access・D1 binding・3 secret名・無料契約/使用量はPhase 56の承認後に直前取得する。今回のローカル予行を実際のCloudflare rollback成功とは扱わない。
+- Tokiのruntime/API/DB schema・既存SQL migration・依存version/lockfile/供給網policy・PWA・Cloudflare設定、基盤/両製品のruntimeとsubmoduleは不変。監査はhigh/critical 0・既知のKit由来dev-only moderate 1件を継続し、該当HTTP開発サーバーは起動しない。本番API確認・OS保存資格情報の取得・実データ取得・deploy・remote migration・料金操作は行っていない。基盤側は文書だけを変更し、format/lint・リンク/差分/秘密情報を検査する。
+- 全文差分・固定fixtureの原本一致・生成物/cacheのignoreを確認。基盤/TokiとToki成果物の305 text filesを資格情報パターンと利用可能な環境値で照合し、候補0件。変更文書のローカルリンク/anchor 4件も解決した。基盤側は文書のみで、変更していないruntimeの全gateは再実行していない。
+- Tokiは`ba5f4b3f9d4d222878611b2d282858f86bfa7fb3`としてmainへcommit/pushし、[GitHub CI 39017281283](https://github.com/Rizakura0110/toki/actions/runs/39017281283)も成功。基盤の進捗・計画・運用手順はこの検証済み実装へ追従する。
+
 ## Phase 54 TokiのReact画面への移行
 
 2026-10-17、所有者の着手指示によりPhase 54を完了した。Tokiの独立repository/Worker/D1と既存機能を維持し、計測とカレンダーの画面をReact/TypeScript・React Router・Tailwindへ移行した。次は[Phase 55の全体回帰と本番反映準備](toki-roadmap.md#作業の順序)。本番は未反映。

@@ -6,7 +6,7 @@
 
 Phase 48: 分単位の手動入力と内容の任意化を実装・検証・本番反映済み（2026-09-27）。
 
-Phase 49〜56: 所有者の2026-10-04の指示で、独立構成を維持した技術スタック統一を計画。Phase 50で比較基準を固定し、Phase 51で開発基盤、Phase 52でHono routing、Phase 53でDrizzleによるDB操作、Phase 54でReact/TypeScript・React Router・Tailwindの画面へ移行した。543 tests・PC/320px E2E 21件・audit high/critical 0を含むローカル全gateが成功。Kit由来の開発専用moderate 1件は制約付きで継続する。本番のCloudflare環境は未変更。次はPhase 55の全体回帰と本番反映準備。共通基盤のSharp/source-map-js追随修正は[2026-10-17の依存記録](dependency-baseline.md#2026-10-17の基盤と両製品の依存修正)を参照。
+Phase 49〜56: 所有者の2026-10-04の指示で、独立構成を維持した技術スタック統一を計画。Phase 50で比較基準を固定し、Phase 51で開発基盤、Phase 52でHono routing、Phase 53でDrizzleによるDB操作、Phase 54でReact/TypeScript・React Router・Tailwindの画面へ移行した。Phase 55は557 tests・PC/320px E2E計39件・audit high/critical 0を含む全gateを通常環境とclean checkoutで通過し、旧新互換・復元予行と反映手順を整えた。Kit由来の開発専用moderate 1件は制約付きで継続する。本番のCloudflare環境は未変更。次は別途承認後のPhase 56の本番反映と実機確認。共通基盤のSharp/source-map-js追随修正は[2026-10-17の依存記録](dependency-baseline.md#2026-10-17の基盤と両製品の依存修正)を参照。
 
 | Phase | 目的 | 完了条件と境界 |
 |---|---|---|
@@ -117,6 +117,18 @@ browser/Worker/test/Nodeの型検査を分離し、ハッシュ付きassetだけ
 全gateは22 files/543 tests・PC/320px E2E 21件で成功。coverageはstatements 96.34%・branches 94.47%・functions 97.75%・lines 97.72%。旧版と新版の合成データによる23画面の画像比較はpixel差0で、型除去後のカレンダー計算の構文木も一致した。同等性確認後の構成から旧`app.js`/`calendar.js`・旧CSSを除いた。固定Router内の未使用ラッパー3個だけに純粋式の注釈を付け、不要な動的loaderを除去するbuild補助と回帰テストを追加した。動的importの無条件許可・CSP例外・依存本体の書き換えは行わない。
 
 browser raw JSは258,294 bytes・CSS 23,292 bytes。React導入により増えるためPhase 55の性能予算で扱う。Worker raw 384,298 bytes・dry-run gzip 80.66 KiBはPhase 53と不変。package/lockfile・API/DB schema・SQL migration・認証/PWA・Cloudflare設定は変更せず、監査はhigh/critical 0・既知dev-only moderate 1件を継続する。本番デプロイは行っていない。次はPhase 55の全体回帰と反映準備、Phase 56の本番反映は別承認後とする。
+
+### Phase 55の完了範囲
+
+2026-10-17、最後の本番反映commit `bab03ef5084b980c481b8126fd34b18604c84249`の旧画面/API/DB/認証sourceをテスト専用fixtureへ固定した。14ファイルを元commitのSHA-256と照合し、変更しない2 migrationとmanifest/6アイコンの9ファイルも検査する。旧依存graphは再導入せず、現行の検証済みtoolchainでsource互換性を確認する。
+
+旧画面＋新API、新画面＋旧API、旧画面＋旧APIの3構成それぞれでPC 1280px/スマホ320pxを操作する18件を追加し、既存21件と合わせて39件のブラウザ検証を通した。ローカルD1への実通信で計測/集中表示/再読込・タイマー満了/破棄、無題/分入力/秒精度、競合/削除確認/再送拒否、PWAを確認した。合成SQLのprivate export→空ローカルD1への復元では、未完了4状態・全列・削除履歴・migration/index/trigger/整合性を照合し、新版で編集した後も旧実装で継続・保存・削除できた。本番DBの復元は行わない。
+
+Worker raw/gzip 512/128 KiB、browser JS 320/110 KiB、CSS 32/10 KiBを独自回帰予算として追加した。実測rawは384,298/258,294/23,292 bytesでPhase 54と同一。API query数の操作別上限1〜7、1万件で旧新各300 requestのローカルNode CPU比較を検査する。ローカルCPUは認証bypassの平均であり、Cloudflare本番CPUとは区別する。stage/liveの厳密な設定と成果物のdry-runは合成D1 IDだけで検証した。
+
+通常環境と独立した新規cloneで、frozen install・専用cache/browser/DBから同じ全gateが成功。25 files/557 tests、coverage statements 96.34%・branches 94.47%・functions 97.75%・lines 97.72%、E2E 21+18 passed。lockfileとWorker/browser成果物も両環境で完全一致した。固定旧sourceだけをformat/coverageから除き、現行runtimeの閾値は維持する。auditはhigh/critical 0・既知dev-only moderate 1件。runtime・依存version/lockfile・SQL migration・PWA・Cloudflare設定は変更していない。
+
+[Phase 56の実行条件と順序](toki-operations.md#phase-56の実行条件と順序)に、承認範囲・直前private backup/ローカル復元照合・active/rollback version ID・本人限定Access/D1/secret/料金と利用量の照合・既存Toki Workerのみの反映・切り戻しを記録した。これらの本番値は承認後に直前取得し、今回の合成検証で代用しない。本番APIの確認・OS保存資格情報の取得・実データの取得、deploy・remote migration・課金操作は行っていない。
 
 ### 変えないものと確認事項
 
