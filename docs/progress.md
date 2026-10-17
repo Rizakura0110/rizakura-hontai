@@ -1,5 +1,18 @@
 # Progress
 
+## Phase 52補足 基盤と両製品のSharpとsource-map-js修正
+
+2026-10-17、所有者の指示により基盤側の残っていた開発依存の脆弱性を修正した。基盤のhigh 2件、Daymark・Tech Inbox独立の各high 1件は解消し、基盤には従来の開発専用moderate 1件だけが残る。TokiのPhase 53にはまだ着手していない。
+
+- 基盤のMiniflare配下Sharpを`0.35.4 → 0.35.5`（対応するplatform packageとlibvips `1.3.4`）、基盤と両製品のsource-map-jsを`1.2.1 → 1.2.2`へ限定更新。対象は開発依存で、直接依存・業務source・DB/schema/migration・認証・PWAは不変。公開後7日以上・非deprecated・Node互換、2 tarballのSHA-512と先行するTokiのintegrity一致を確認した。[依存修正記録](dependency-baseline.md#2026-10-17の基盤と両製品の依存修正)
+- package entriesは基盤395・Daymark176・Tech Inbox210を維持。基盤の置換28件はSharp/そのplatform・libvipsとsource-map-jsだけで、両製品は各1件だけ。他のresolution/integrityと依存の接続を比較し、対象外の変更0件を確認した。Tech Inboxで再解決時に省略されたoptional peer群は従来の固定構成へ戻し、frozen再installを通過した。
+- 最終の基盤`pnpm check`が成功。Daymark 75 tests（対象coverage 100%）、Tech Inbox 260 tests、基盤65 files/618 tests（coverage statements 89.32%・branches 85.42%・functions 89.36%・lines 90.76%）。format/lint・生成型・TypeScript、local D1のmigration/制約、合成backup復元予行、実HTTP API検証も通過した。
+- `VITE_TOKI_URL`を維持した両Worker build/dry-runとartifact budgetが成功。app Worker raw 512.3 KiB・metadata-fetcher 586.7 KiB・client JS 426.7 KiB・CSS 35.7 KiBで、既存の上限内。PC/320px E2Eは39 passed・既存のdesktop専用1 skipped。最終ログは`.tmp/foundation-security-20261017-final-check.log`。
+- 監査結果は基盤high 2→0・critical 0、Daymark/Tech Inboxは各high 1→指摘0件。基盤に残るmoderate 1件は従来のDrizzle Kit配下esbuildで、該当HTTP開発サーバー機能を起動せず、互換範囲外の強制overrideはしない。古いesbuildとその利用方法の境界を継続する。
+- 全文差分・生成物/cacheのignoreを確認。基盤と両製品およびbuild成果物の336 text filesを資格情報パターンと利用可能な環境値で照合し、候補0件。変更文書のローカルリンク24件が解決し、Worker/client成果物にSharp・source-map-js・esbuild-kitの混入がないことも確認した。
+- 両製品を先にmainへcommit/pushし、Daymark `2b84527014da6933b280baab3b922340ffa049e0`、Tech Inbox `cc8b6104b452053a378c5f20c06aaf7d1fb77232`へ基盤のgitlinkを固定する。[Daymark CI 39002264949](https://github.com/Rizakura0110/daymark/actions/runs/39002264949)、[Tech Inbox CI 39002272689](https://github.com/Rizakura0110/tech-inbox/actions/runs/39002272689)も成功した。
+- 本番deploy・CloudflareのAPI確認/設定変更・remote DB操作・料金操作は実行していない。Toki repositoryにも変更はない。
+
 ## Phase 52 TokiのHono routing移行
 
 2026-10-06に着手し、2026-10-09にPhase 52の全品質検証を完了した。Workerの入口とAPIをHonoへ移行し、既存の画面・Zod/jose認証・D1の記録処理を接続した。次はPhase 53のDrizzle移行。

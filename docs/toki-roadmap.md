@@ -1,12 +1,12 @@
 # Toki実装フェーズ
 
-日付: 2026-10-09
+日付: 2026-10-17
 状態: Phase 35〜44を完了（2026-09-23）。Phase 45はToki専用D1のバックアップ・migrationとToki Workerへの反映、既存データの全項目照合、認証済みブラウザでの追加機能確認まで完了。所有者自身のPC/iPhone実機確認待ち。基盤と既存2製品の本番構成は変更していない。Phase 47は短時間のカレンダー記録の表示修正を実装・検証し、所有者承認後に本番反映済み（2026-09-26）。
 仕様: [Toki設計](toki-design.md)、分離理由: [ADR-0021](decisions/0021-toki-independent-product.md)、運用: [Toki本番前確認](toki-operations.md)
 
 Phase 48: 分単位の手動入力と内容の任意化を実装・検証・本番反映済み（2026-09-27）。
 
-Phase 49〜56: 所有者の2026-10-04の指示で、独立構成を維持した技術スタック統一を計画。Phase 50で比較基準を固定し、Phase 51で開発基盤を導入、Phase 52でHono routingへ移行した。402 tests・PC/320px E2E 17件・audit指摘0件を含むローカル全gateが成功。本番のCloudflare環境は未変更。次はPhase 53のDrizzle移行。別件として、共通基盤の開発依存にもSharp/source-map-jsの追随修正が残る。
+Phase 49〜56: 所有者の2026-10-04の指示で、独立構成を維持した技術スタック統一を計画。Phase 50で比較基準を固定し、Phase 51で開発基盤を導入、Phase 52でHono routingへ移行した。402 tests・PC/320px E2E 17件・audit指摘0件を含むローカル全gateが成功。本番のCloudflare環境は未変更。次はPhase 53のDrizzle移行。共通基盤のSharp/source-map-js追随修正は[2026-10-17の依存記録](dependency-baseline.md#2026-10-17の基盤と両製品の依存修正)を参照。
 
 | Phase | 目的 | 完了条件と境界 |
 |---|---|---|

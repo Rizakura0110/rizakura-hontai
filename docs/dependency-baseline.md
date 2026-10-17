@@ -8,6 +8,26 @@
 
 2026-10-09追記: [Phase 52](#phase-52のtokiへの導入と依存修正)の再監査でSharp/source-map-jsに新しいhigh 2件を確認し、Tokiを修正版へ更新した。現在のTokiは監査指摘0件。共通基盤の同日監査はhigh 2・既存moderate 1で、追随修正が残っている。
 
+2026-10-17追記: [基盤側の追随修正](#2026-10-17の基盤と両製品の依存修正)で、基盤のhigh 2件とDaymark/Tech Inbox各high 1件を解消した。現在の基盤は既存moderate 1件のみ、両製品の独立監査は指摘0件。本番は未反映。
+
+## 2026-10-17の基盤と両製品の依存修正
+
+所有者の指示により、基盤のMiniflare配下Sharpを`0.35.4 → 0.35.5`（対応する`@img/sharp`とlibvips `1.3.3 → 1.3.4`）、基盤・Daymark・Tech Inboxのsource-map-jsを`1.2.1 → 1.2.2`へ限定更新した。直接依存の完全version、7日gate、strict peer、既存Undici/Rolldown対策、install script許可は維持する。
+
+[Sharpのlibrsvg advisory](https://github.com/lovell/sharp/security/advisories/GHSA-wq5f-xc86-pv6w)は特定のglibc/Linux条件で不正SVGを扱う場合のメモリ脆弱性、[source-map-jsの修正版](https://github.com/7rulnik/source-map-js/releases/tag/v1.2.2)は細工された索引付きsource mapによる処理停止に対応する。いずれも開発依存で、今回アプリの業務処理・DB・認証・PWAは変更しない。
+
+公式npmでSharp `0.35.5`の2026-09-27公開、source-map-js `1.2.2`の2026-09-30公開、非deprecated・Node互換を再確認した。2 tarballのSHA-512は公式integrityと先行するToki lockfileに一致し、新しいplatform packageのintegrityもTokiの検証済み値と一致した。
+
+lockfileのpackage entriesは基盤395・Daymark176・Tech Inbox210のまま。基盤の置換28件はSharp本体・platform/libvipsとsource-map-jsだけ、両製品はsource-map-js各1件だけで、その他のresolution/integrity・依存の接続は不変。Tech Inboxの再解決時に除去された対象外のoptional peer群は従来の固定値へ戻し、frozen再installを通過した。
+
+| 監査対象 | 修正前 moderate / high / critical | 修正後 moderate / high / critical |
+|---|---|---|
+| 基盤 | 1 / 2 / 0 | 1 / 0 / 0 |
+| Daymark独立 | 0 / 1 / 0 | 0 / 0 / 0 |
+| Tech Inbox独立 | 0 / 1 / 0 | 0 / 0 / 0 |
+
+残るDrizzle Kit配下esbuild `0.18.20`のmoderateは従来の扱いを継続し、該当HTTP開発サーバーを起動しない。互換範囲外の強制overrideは行わず、runtime bundleに含めない。検証と公開commitは[Progress](progress.md)へ記録する。
+
 ## 基盤と両製品の依存修正
 
 2026-10-05、変更前に脆弱性の内容と適用条件を所有者へ説明し、基盤とその必須品質gateに含まれるTech Inbox・Daymarkの開発依存を限定更新した。基盤のHonoも同時に修正したが、画面・業務処理・DB・Access/Secrets・Cloudflare設定は変更していない。通常のcommit/pushのみで、本番deployは行わない。
@@ -153,7 +173,7 @@ pnpm公式npm tarballは、npm metadataのintegrity
 - `autoInstallPeers: false`と`strictPeerDependencies: true`を設定し、暗黙のpeer追加を避ける。
 - Vite 8.2.1が許可する`rolldown ~1.2.1`は、初回解決時に一部platform bindingが7日未満となる1.2.5を選択した。7日ルールを緩和せず、同じ互換範囲で2026-08-12公開の1.2.4へconvergence overrideした。
 - Wrangler 4.124.0とCloudflare Vite plugin 1.53.0が使用するworkerdは`1.20260815.1`である。`compatibility_date`は対応日である`2026-08-15`へ固定し、判断を[ADR-0002](decisions/0002-cloudflare-compatibility-date.md)へ記録した。
-- Miniflare 5.20260815.0-alphaが固定する`sharp 0.35.2`にはhigh advisoryがあるため、同一minorの修正版`0.35.4`へ親version限定でoverrideする。両版とも公開後7日以上が経過しており、判断は[ADR-0018](decisions/0018-security-patch-transitive-sharp.md)へ記録した。
+- Miniflare 5.20260815.0-alphaが固定するSharpは、同一minorの修正版`0.35.5`へ親version限定でoverrideする。2026-10-17に追加advisoryへ対応し、従来の`0.35.4`から更新した。7日gateとintegrityを維持し、判断は[ADR-0018](decisions/0018-security-patch-transitive-sharp.md)へ記録した。
 
 ## pnpm供給網設定
 

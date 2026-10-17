@@ -13,7 +13,7 @@ Phase 26の最終dependency auditで、Wrangler 4.124.0とCloudflare Vite plugin
 
 direct dependencyのCloudflare toolchainは変更せず、`miniflare 5.20260815.0-alpha`の子dependency `sharp`だけを`0.35.4`へ置換する親version限定overrideを適用する。
 
-この対応はhighまたはcritical advisoryの修正に限る。通常の推移依存更新へ一般化せず、完全version固定、公開後7日、registry integrity、install script制限、全品質gateを維持する。Cloudflare公式toolchainを将来更新して上流固定値が`0.35.4`以上になった時点でoverrideを削除する。
+この対応はhighまたはcritical advisoryの修正に限る。通常の推移依存更新へ一般化せず、完全version固定、公開後7日、registry integrity、install script制限、全品質gateを維持する。overrideを削除できる上流固定値は、下記の追加advisoryも含めて判定する。
 
 同じ監査で判明したHonoのmoderate advisoryは、公開後7日以上経過したdirect Stable修正版`4.13.5`へ通常更新して解消する。
 
@@ -23,3 +23,9 @@ direct dependencyのCloudflare toolchainは変更せず、`miniflare 5.20260815.
 - 親Miniflareのversionを限定するため、将来のCloudflare toolchain更新にoverrideを自動追従させない。
 - Cloudflare公式が固定した組み合わせとの差分が生じるため、生成型、local D1、実HTTP、build、artifact budget、desktop/mobile E2Eを含む全gateで互換性を確認する。
 - 新しいruntime resource、Cloudflare設定、本番migration、本番deployは発生しない。
+
+## 2026-10-17の追加修正
+
+新しい[GHSA-wq5f-xc86-pv6w](https://github.com/lovell/sharp/security/advisories/GHSA-wq5f-xc86-pv6w)は`0.35.4`も対象とするため、現行の親version限定overrideを`sharp 0.35.5`へ更新する。対応する`@img/sharp`も`0.35.5`、同梱libvipsは`1.3.4`へ揃える。2026-09-27公開のSharpについて7日gate・Node互換・非deprecated・tarball SHA-512を再確認し、先行したTokiの固定integrityとも一致した。
+
+上流のSharp固定値が`0.35.5`以上となり、両advisoryの非該当と全品質gateを確認できた時点で、このoverrideの削除を検討する。Cloudflare toolchainの直接依存とinstall script許可は維持する。
