@@ -1,5 +1,19 @@
 # Progress
 
+## Phase 54 TokiのReact画面への移行
+
+2026-10-17、所有者の着手指示によりPhase 54を完了した。Tokiの独立repository/Worker/D1と既存機能を維持し、計測とカレンダーの画面をReact/TypeScript・React Router・Tailwindへ移行した。次は[Phase 55の全体回帰と本番反映準備](toki-roadmap.md#作業の順序)。本番は未反映。
+
+- 共通React entrypointで`/`・`/index.html`・`/calendar.html`を維持し、ヘッダー、計測画面、カレンダー、タイムライン、native dialogをcomponent化した。内部リンクはRouterの公式hooks、基盤への戻りリンクは通常の外部リンク。Tailwindのcomponent/utilityへスタイルをまとめ、Preflightを追加せず既存reset・色/余白・responsive・1時間120px/最低44pxを保つ。React sourceだけを走査し、テストは除外する。
+- routeより上のstoreと`useSyncExternalStore`で状態を持ち、同期的なbusy判定で連打を防ぐ。Effectによる初期readは重複を抑え、cleanupで時計/端末復帰listenerを解除。開始/停止/保存/削除はユーザーのイベントからだけ実行する。StrictMode、内部遷移、通信結果不明の開始/保存/手動登録、同じrequest ID/payloadでの再試行とversion競合、削除確認を回帰検証した。
+- 合成データで旧版と新版のPC/320pxの23画面を画像比較し、計測/タイマー入力/集中表示・日/週・追加/編集/削除確認はpixel差0。カレンダー計算のTypeScript型除去後の構文木も旧版と一致した。同等性を確認した構成から旧DOM操作の`app.js`/`calendar.js`と旧CSSを除いた。分単位入力・無題・既存秒/ミリ秒・重複許可・未完了計測の復帰も維持する。
+- 固定React Router `8.3.0`内の未使用`forwardRef`ラッパーにも動的loaderが残るため、同packageの`Link`/`NavLink`/`Form`の生成とdisplayName設定だけに純粋式の注釈を付けるbuild補助を追加。使用する場合の挙動保持と、将来patternが変わった際の停止をテストした。無条件の動的import許可やCSP緩和、ライブラリ本体の編集は行わず、成果物検査を維持した。
+- 最終`pnpm check`が成功。22 files/543 tests、coverage statements 96.34%・branches 94.47%・functions 97.75%・lines 97.72%。format/lint・生成型・4対象TypeScript・local D1・build/成果物検査/Worker dry-run・PC/320px E2E 21 passedを確認した。ブラウザの画像比較はToki `.tmp/phase54-visual/`、全gateは`.tmp/phase54-final-check.log`、テスト安定化後の再検証は`.tmp/phase54-final-tests.log`に保持する。いずれもGit無視対象。
+- browser raw JS 258,294 bytes・CSS 23,292 bytes。Reactを含める分の増加はPhase 55の性能予算で再確認する。Worker raw 384,298 bytes・dry-run gzip 80.66 KiBはPhase 53と不変。package/lockfileと供給網policyは変更せず、監査はhigh/critical 0・既知のKit由来dev-only moderate 1件を継続する。該当HTTP開発サーバーは起動せずKitはWorkerに含めない。
+- API/データ層/DB schema・既存SQL migration・認証/PWA・Cloudflare設定は不変。基盤と両製品のruntime・submoduleには変更せず、基盤側は計画/進捗の文書だけを更新する。本番API確認・資格情報の取得・remote DB操作・デプロイ・料金操作は行っていない。
+- 全文差分・生成物/cacheのignoreを確認。基盤/TokiとToki成果物の280 text filesを資格情報パターンと利用可能な環境値で照合し、候補0件。変更文書のローカルリンク/anchor 2件が解決した。基盤側は文書のみの変更でformat/lint・差分/リンク検査を実施し、変更していない基盤runtimeの全gateは再実行していない。
+- Tokiは`acff787108e1d079a2849867aae38a2983732d8c`としてmainへcommit/pushし、[GitHub CI 39005675088](https://github.com/Rizakura0110/toki/actions/runs/39005675088)も成功。基盤の計画/進捗はこの検証済み実装へ追従する。
+
 ## Phase 53 TokiのDrizzleによるDB操作への移行
 
 2026-10-17、所有者の着手指示によりPhase 53を完了した。Tokiの独立repository/Worker/D1を維持し、既存データ構造とHTTP契約を変えずにDB操作をDrizzleへ移行した。次はPhase 54のReact画面移行。本番は未反映。

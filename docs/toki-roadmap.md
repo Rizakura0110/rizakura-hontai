@@ -6,7 +6,7 @@
 
 Phase 48: 分単位の手動入力と内容の任意化を実装・検証・本番反映済み（2026-09-27）。
 
-Phase 49〜56: 所有者の2026-10-04の指示で、独立構成を維持した技術スタック統一を計画。Phase 50で比較基準を固定し、Phase 51で開発基盤を導入、Phase 52でHono routingへ、Phase 53でDrizzleによるDB操作へ移行した。443 tests・PC/320px E2E 17件・audit high/critical 0を含むローカル全gateが成功。Kit由来の開発専用moderate 1件は制約付きで継続する。本番のCloudflare環境は未変更。次はPhase 54のReact画面移行。共通基盤のSharp/source-map-js追随修正は[2026-10-17の依存記録](dependency-baseline.md#2026-10-17の基盤と両製品の依存修正)を参照。
+Phase 49〜56: 所有者の2026-10-04の指示で、独立構成を維持した技術スタック統一を計画。Phase 50で比較基準を固定し、Phase 51で開発基盤、Phase 52でHono routing、Phase 53でDrizzleによるDB操作、Phase 54でReact/TypeScript・React Router・Tailwindの画面へ移行した。543 tests・PC/320px E2E 21件・audit high/critical 0を含むローカル全gateが成功。Kit由来の開発専用moderate 1件は制約付きで継続する。本番のCloudflare環境は未変更。次はPhase 55の全体回帰と本番反映準備。共通基盤のSharp/source-map-js追随修正は[2026-10-17の依存記録](dependency-baseline.md#2026-10-17の基盤と両製品の依存修正)を参照。
 
 | Phase | 目的 | 完了条件と境界 |
 |---|---|---|
@@ -107,6 +107,16 @@ browser/Worker/test/Nodeの型検査を分離し、ハッシュ付きassetだけ
 旧実装を固定した26操作の比較をSQLiteと隔離ローカルD1で行い、結果・全列・操作ごとのquery数の一致、未完了4状態、二重開始・版数競合・削除trigger失敗時のrollbackを確認した。実SQLのquery planと1万件の範囲検索、物理schema・migration履歴の不変も検証した。Kit生成schemaは列・default・制約/indexの意味を比較するだけで、inline UNIQUEの生成名とtriggerの差異があるDDLを既存DBへ適用しない。
 
 全gateは19 files/443 tests・PC/320px E2E 17件で成功。browser JS/CSSはPhase 52と同じbytes、Worker rawは384,298 bytes・dry-run gzip 80.66 KiB。Kitは開発専用でbundleへの混入を検査し、既知moderate 1件は該当HTTPサーバーを起動しない方針で扱う。既存のhigh/critical失敗条件を持つ監査scriptを明示的に呼び出すよう、pnpmの同名builtinとの衝突も修正した。[依存記録](dependency-baseline.md#phase-53のtokiへのdrizzle導入)と[Progress](progress.md)を参照。既存SQL migration・本番DB・画面・認証/PWA・Cloudflare設定は変更せず、React画面移行は次のPhase 54とする。
+
+### Phase 54の完了範囲
+
+2026-10-17、計測画面とカレンダーをReact/TypeScriptのcomponentへ置き換え、共通entrypointとReact Routerで従来の3 URLを維持した。内部リンクはRouterの公式hooks、基盤への戻りリンクは通常の外部リンクとし、修飾キー付きクリック、history/再読込、計測復帰を保つ。native dialogのfocus・キャンセル・削除確認も維持する。Tailwindのcomponent/utilityへスタイルをまとめ、既存reset・色/余白・responsive・1時間120px/最低44pxの短時間表示を保持した。
+
+計測とカレンダーのstoreをrouteより上で持ち、Reactの不変snapshotへ接続した。Effectは初期read・端末復帰の同期・表示時計だけを担当し、listener/intervalをcleanupする。開始/停止/保存/削除はイベントでのみ実行する。同期的なbusy判定とrequest ID/payload保持により、連打・StrictMode・画面遷移・通信結果不明からの再試行で二重送信しないことを検証した。分入力・空欄の無題・編集時の秒/ミリ秒・version競合・削除後の再送防止も保つ。
+
+全gateは22 files/543 tests・PC/320px E2E 21件で成功。coverageはstatements 96.34%・branches 94.47%・functions 97.75%・lines 97.72%。旧版と新版の合成データによる23画面の画像比較はpixel差0で、型除去後のカレンダー計算の構文木も一致した。同等性確認後の構成から旧`app.js`/`calendar.js`・旧CSSを除いた。固定Router内の未使用ラッパー3個だけに純粋式の注釈を付け、不要な動的loaderを除去するbuild補助と回帰テストを追加した。動的importの無条件許可・CSP例外・依存本体の書き換えは行わない。
+
+browser raw JSは258,294 bytes・CSS 23,292 bytes。React導入により増えるためPhase 55の性能予算で扱う。Worker raw 384,298 bytes・dry-run gzip 80.66 KiBはPhase 53と不変。package/lockfile・API/DB schema・SQL migration・認証/PWA・Cloudflare設定は変更せず、監査はhigh/critical 0・既知dev-only moderate 1件を継続する。本番デプロイは行っていない。次はPhase 55の全体回帰と反映準備、Phase 56の本番反映は別承認後とする。
 
 ### 変えないものと確認事項
 
