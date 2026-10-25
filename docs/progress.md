@@ -1,5 +1,16 @@
 # Progress
 
+## Phase 56 Tokiの本番反映前検証 実施中
+
+2026-10-25に着手。直前検証で見つかった依存の脆弱性とテストの日付依存を修正し、ローカル全品質gateを通過した。本番の資格情報を取得できる経路が未確定のため、Cloudflareの設定/データ確認、private backup、本番反映、PC/iPhone実機確認は未実施。Phase 56全体は完了扱いにしない。
+
+- 再監査はhigh 4・moderate 12・low 1だった。[依存記録](dependency-baseline.md#2026-10-25のtoki本番反映前の依存修正)の固定版へ対象14 packageだけを更新し、残り354 entriesの内容/integrityと供給網policyは維持した。修正後はhigh/critical/low 0、既知のDrizzle Kit由来moderate 1。基盤・Daymark・Tech Inboxの依存は変更していない。
+- 2026-10-17固定の記録fixtureと実行日由来の表示週がずれ、カレンダーの単体テスト1件が失敗していた。該当テスト群だけ`Date.now()`を既存fixtureの時刻に揃え、製品の時計・保存動作と既存assertionは変更しなかった。
+- frozen install後の全`pnpm check`成功。25 files/557 tests、coverage statements 96.34%・branches 94.47%・functions 97.75%・lines 97.72%、PC/320pxの既存E2E 21件と旧新互換E2E 18件の計39件が成功。生成型/TypeScript・local D1復元予行・query/CPU予算・stage/liveの合成設定dry-runも通過した。ログはTokiの`.tmp/phase56-final-check.log`に保持する。
+- 依存更新後のWorker raw/gzipは431,567/96,604 bytesで独自予算内。browser JS 258,294 bytes・CSS 23,292 bytesはPhase 55から不変。既存migration/PWAの固定hash検査も成功し、実データは取得していない。
+- 過去の成功時はOS保存資格情報を明示していたことを確認した。今回は許可された実行経路のOS設定・GUI/user domain・継承環境・ログインシェル・Wranglerログインから値を取得できなかった。所有者のTerminalでは設定成功との申告があるため、OS全体で設定が消えた/トークンが期限切れとは断定しない。TerminalのGUI操作とCloudflare管理画面へのブラウザアクセスは各ツールの安全/許可設定により利用できず、別手段でその制限を迂回していない。再ローテーション・アプリ再起動は依頼していない。
+- 全文差分・生成物/cacheのignore・変更文書のローカルリンク4件を確認し、基盤/Tokiと成果物の313 text filesの秘密情報パターン検査は候補0件。基盤側は文書のみでformat/lintを通し、未変更のruntime全gateは再実行していない。Tokiの事前修正は`0f84b72a8c67c229888d20a03616fc69ad4747dd`としてmainへcommit/pushし、[GitHub CI 40183667837](https://github.com/Rizakura0110/toki/actions/runs/40183667837)も新規checkout・frozen installから全gateに成功した。
+
 ## Phase 55 Tokiの全体回帰と本番反映準備
 
 2026-10-17、所有者の着手指示によりPhase 55を完了した。通常環境とclean checkoutで全品質gateを通し、移行後の旧新互換性とバックアップ復元をローカルで確認した。次は[Phase 56の本番反映と実機確認](toki-roadmap.md#作業の順序)で、対象を明示した別承認が必要。本番は未反映。

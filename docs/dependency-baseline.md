@@ -12,6 +12,29 @@
 
 同日の[Phase 53](#phase-53のtokiへのdrizzle導入)でTokiへDrizzle ORM/Kitを導入した。Tokiのhigh/criticalは0件、Kit由来の開発専用moderate 1件を基盤と同じ制約付きで扱う。本番は未反映。
 
+2026-10-25追記: [Phase 56の直前監査](#2026-10-25のtoki本番反映前の依存修正)でTokiに新たな指摘を確認し、対象依存を更新した。修正後のTokiは既知moderate 1件のみ。本番反映はまだ行っていない。過去の日付の監査結果は、その時点の結果である。
+
+## 2026-10-25のToki本番反映前の依存修正
+
+Phase 56の再監査はlow 1・moderate 12・high 4・critical 0だった。high 4件はVite、Zod、Undiciの7系と8系に対する指摘で、侵害を検知した件数ではない。新たなmoderate/lowも同じ依存の修正とHono/Vitestの更新で解消する。
+
+| 対象 | 更新 | 公式npm公開日 UTC |
+|---|---|---|
+| Hono | `4.13.7 → 4.13.11` | 2026-09-29 |
+| Vite | `8.2.1 → 8.2.4` | 2026-10-06 |
+| Zod | `4.4.3 → 4.6.6` | 2026-10-11 |
+| Vitest / coverageと内部package | `4.1.11 → 4.1.12` | 2026-10-15 |
+| Miniflare配下Undici | `7.29.1 → 7.30.1` | 2026-10-15 |
+| jsdom配下Undici | `8.10.2 → 8.12.2` | 2026-10-15 |
+
+Zodは巨大なコレクションの検証によるメモリ消費、Undiciは不正な応答によるプロセス停止など、Vite/Vitestは開発サーバーの処理が対象。[Honoの静的配信の経路検証](https://github.com/honojs/hono/security/advisories/GHSA-5r4p-p66f-jhc7)、[Undiciの不正応答処理](https://github.com/nodejs/undici/security/advisories/GHSA-xjj6-f33q-929c)、[Vitestのmock登録](https://github.com/vitest-dev/vitest/security/advisories/GHSA-qxg6-89mg-rqv8)、[Zodのadvisory](https://github.com/advisories/GHSA-mrhx-c7xc-m3w5)、[Viteのadvisory](https://github.com/advisories/GHSA-587h-7wmj-h5pm)を参照する。
+
+TokiはHonoの`serveStatic`を使わず、認証後に許可済みpathだけをASSETSへ渡す。Zodの現行API契約に配列/Map/Set等のコレクション型はなく、更新本文にも4,096 bytesの制限がある。Undici/Vite/Vitestは開発依存である。これらの到達条件とは別に、high gateを維持したまま修正版へ更新した。
+
+採用14 tarballは公式npmのSHA-512と一致し、非deprecated・公開7日・Node `24.19.0`とpeerの互換性を確認した。ZodとUndiciは同一major内のminor更新を必要とする。ViteのPostCSS下限は既存`8.5.28`で満たし、Rolldown等の既存固定は維持する。lockfileは368 entriesのまま、対象14件だけを置換し、残り354件の内容とintegrityは完全一致。snapshotの接続も対象版への参照置換だけである。
+
+frozen installと全品質gateが成功し、監査はlow/high/critical 0・moderate 1となった。残るDrizzle Kit配下esbuildの扱い、7日gate、strict peer、integrity、親限定override、install script制限は不変。基盤・Daymark・Tech Inboxの依存は今回変更していないため、このTokiの監査結果を他repositoryの現在の結果へ転用しない。検証と公開commitは[Progress](progress.md)へ記録する。
+
 ## 2026-10-17の基盤と両製品の依存修正
 
 所有者の指示により、基盤のMiniflare配下Sharpを`0.35.4 → 0.35.5`（対応する`@img/sharp`とlibvips `1.3.3 → 1.3.4`）、基盤・Daymark・Tech Inboxのsource-map-jsを`1.2.1 → 1.2.2`へ限定更新した。直接依存の完全version、7日gate、strict peer、既存Undici/Rolldown対策、install script許可は維持する。
