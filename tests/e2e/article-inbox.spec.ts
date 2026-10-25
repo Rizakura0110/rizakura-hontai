@@ -404,12 +404,15 @@ test.beforeEach(async ({ page }) => {
   await mockArticleApi(page);
 });
 
-test("portal stages Toki and keeps product documents separate", async ({ page }) => {
+test("portal stages independent products and keeps product documents separate", async ({
+  page,
+}, testInfo) => {
   let dataRequests = 0;
-  let tokiRequests = 0;
+  let externalProductRequests = 0;
   page.on("request", (request) => {
     if (new URL(request.url()).pathname.startsWith("/api/")) dataRequests += 1;
-    if (new URL(request.url()).hostname.endsWith(".sx7k2p9q.workers.dev")) tokiRequests += 1;
+    if (new URL(request.url()).hostname.endsWith(".sx7k2p9q.workers.dev"))
+      externalProductRequests += 1;
   });
   await page.goto("/");
   await expect(page).toHaveTitle("rizakura-hontai");
@@ -425,13 +428,30 @@ test("portal stages Toki and keeps product documents separate", async ({ page })
       process.env.VITE_TOKI_URL,
     );
   } else {
-    await expect(page.getByText("公開準備中")).toBeVisible();
+    await expect(page.getByRole("article", { name: "Toki" }).getByText("公開準備中")).toBeVisible();
     await expect(page.getByRole("link", { name: "Tokiを開く" })).toHaveCount(0);
+  }
+  await expect(page.getByRole("heading", { name: "Hondana" })).toBeVisible();
+  const approvedHondanaOrigin = "https://hondana.sx7k2p9q.workers.dev";
+  if (
+    process.env.VITE_HONDANA_URL === approvedHondanaOrigin ||
+    process.env.VITE_HONDANA_URL === `${approvedHondanaOrigin}/`
+  ) {
+    await expect(page.getByRole("link", { name: "Hondanaを開く" })).toHaveAttribute(
+      "href",
+      `${approvedHondanaOrigin}/`,
+    );
+  } else {
+    await expect(
+      page.getByRole("article", { name: "Hondana" }).getByText("公開準備中"),
+    ).toBeVisible();
+    await expect(page.getByRole("link", { name: "Hondanaを開く" })).toHaveCount(0);
   }
   await expect(page.locator('link[rel="manifest"]')).toHaveCount(0);
   await expect(page.locator('meta[name="apple-mobile-web-app-capable"]')).toHaveCount(0);
   expect(dataRequests).toBe(0);
-  expect(tokiRequests).toBe(0);
+  expect(externalProductRequests).toBe(0);
+  await page.screenshot({ path: testInfo.outputPath("portal.png"), fullPage: true });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
     true,
   );

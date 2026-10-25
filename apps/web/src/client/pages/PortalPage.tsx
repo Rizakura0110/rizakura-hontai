@@ -22,9 +22,21 @@ function safeTokiUrl(value: unknown): string | null {
   }
 }
 
-export function PortalPage({ tokiUrl = import.meta.env.VITE_TOKI_URL }: { tokiUrl?: string } = {}) {
-  // The product appears before launch, but a link is built only after Toki is live.
+function safeHondanaUrl(value: unknown): string | null {
+  const origin = "https://hondana.sx7k2p9q.workers.dev";
+  return value === origin || value === `${origin}/` ? `${origin}/` : null;
+}
+
+export function PortalPage({
+  tokiUrl = import.meta.env.VITE_TOKI_URL,
+  hondanaUrl = import.meta.env.VITE_HONDANA_URL,
+}: {
+  tokiUrl?: string;
+  hondanaUrl?: string;
+} = {}) {
+  // Links are enabled independently, only after each protected product is live.
   const tokiLink = safeTokiUrl(tokiUrl);
+  const hondanaLink = safeHondanaUrl(hondanaUrl);
   return (
     <div className="min-h-dvh bg-[#f7f8fa] text-slate-800">
       <header className="border-b border-slate-200 bg-white">
@@ -47,7 +59,7 @@ export function PortalPage({ tokiUrl = import.meta.env.VITE_TOKI_URL }: { tokiUr
           <br />
           ここから、使いたいツールへ。
         </p>
-        <section aria-label="ツール一覧" className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <section aria-label="ツール一覧" className="mt-10 grid gap-5 sm:grid-cols-2">
           <article className="flex flex-col rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
             <span
               aria-hidden="true"
@@ -90,7 +102,10 @@ export function PortalPage({ tokiUrl = import.meta.env.VITE_TOKI_URL }: { tokiUr
               Daymarkを開く<span aria-hidden="true">→</span>
             </a>
           </article>
-          <article className="flex flex-col rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+          <article
+            aria-labelledby="portal-toki-title"
+            className="flex flex-col rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8"
+          >
             <span
               aria-hidden="true"
               className="grid size-12 place-items-center rounded-xl bg-[#cc6843] font-semibold text-white"
@@ -98,7 +113,12 @@ export function PortalPage({ tokiUrl = import.meta.env.VITE_TOKI_URL }: { tokiUr
               T
             </span>
             <p className="mt-6 text-xs font-medium text-[#a84e30]">時間管理</p>
-            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">Toki</h2>
+            <h2
+              id="portal-toki-title"
+              className="mt-2 text-2xl font-semibold tracking-tight text-slate-950"
+            >
+              Toki
+            </h2>
             <p className="mb-8 mt-3 text-sm leading-7 text-slate-600">
               ストップウォッチやタイマーで測った時間を記録し、カレンダーで振り返れます。
             </p>
@@ -112,6 +132,39 @@ export function PortalPage({ tokiUrl = import.meta.env.VITE_TOKI_URL }: { tokiUr
                 href={tokiLink}
               >
                 Tokiを開く<span aria-hidden="true">→</span>
+              </a>
+            )}
+          </article>
+          <article
+            aria-labelledby="portal-hondana-title"
+            className="flex flex-col rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8"
+          >
+            <span
+              aria-hidden="true"
+              className="grid size-12 place-items-center rounded-xl bg-emerald-700 font-semibold text-white"
+            >
+              H
+            </span>
+            <p className="mt-6 text-xs font-medium text-emerald-800">マイツール</p>
+            <h2
+              id="portal-hondana-title"
+              className="mt-2 text-2xl font-semibold tracking-tight text-slate-950"
+            >
+              Hondana
+            </h2>
+            <p className="mb-8 mt-3 text-sm leading-7 text-slate-600">
+              使いたいときに、ここから開けます。
+            </p>
+            {hondanaLink === null ? (
+              <span className="mt-auto flex min-h-11 items-center rounded-lg bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-600">
+                公開準備中
+              </span>
+            ) : (
+              <a
+                className="mt-auto flex min-h-11 items-center justify-between gap-3 rounded-lg bg-emerald-700 px-4 py-3 text-sm font-semibold text-white hover:bg-emerald-800 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-emerald-700"
+                href={hondanaLink}
+              >
+                Hondanaを開く<span aria-hidden="true">→</span>
               </a>
             )}
           </article>
