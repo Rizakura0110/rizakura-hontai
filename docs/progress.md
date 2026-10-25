@@ -1,5 +1,17 @@
 # Progress
 
+## Phase 70 Hondanaの本番入口（完了）
+
+2026-10-25、Hondanaの本人限定稼働と所有者のPC/iPhone確認後、承認済みの基盤入口を本番反映した。公開基盤は通常の外部リンクだけを扱い、Private製品のソース・仕様・個人記録・認証値は取り込んでいない。
+
+固定コミット`3fbf9fb1328c72ba0032c9ca7b8f3313126c8651`と既存のsubmoduleを使用。HondanaとTokiの両URLを指定したbuildで、format/lint・型/生成型・640テストとcoverage・成果物予算・監査・PC/320pxの入口E2E 2件を確認した。Phase 68の統合全gateを引き継ぎ、28成果物のhashを固定したまま反映した。
+
+対象は既存`rizakura-hontai` Workerだけ。versionのアップロードと100%切り替えにより、`0730e285-54e7-48e3-a6c4-9d6736744fac`を有効化した。DB接続、secret名、runtime・静的資産の経路、Queue consumerと公開設定は前後で一致。他Worker、DB一覧、Access、料金設定は変更せず、migrationやDB書き込みも行っていない。
+
+基盤の画面・実JS/CSS・PWA・API計30経路とリンク先の匿名アクセスが、反映前後ともAccessへ302になることを確認した。所有者から「入口・既存3製品ともOK」と報告を受け、入口からHondanaへの遷移と既存3製品の表示確認も完了した。
+
+反映後の基盤差分はこの進捗文書だけ。format/lint・全差分・ローカルリンク35件・追跡済みtext 197ファイルの秘密情報パターン・Private checkoutと成果物の除外を確認し、独立レビューも通過した。
+
 ## Phase 68 Hondanaの入口準備（開発完了）
 
 2026-10-25、基盤のポータルにHondanaの名称と通常の画面リンクを追加した。ビルド時の`VITE_HONDANA_URL`が未設定または指定のHTTPS origin以外なら「公開準備中」とし、リンクを出さない。Hondanaの保護済み稼働を確認するまでは、本番リンクを有効にしない。
