@@ -1016,7 +1016,10 @@ test("editing an article URL reports a conflict without losing the original", as
   await originalCard.locator("summary").click();
   await originalCard.getByRole("button", { name: "編集", exact: true }).click();
   const dialog = page.getByRole("dialog", { name: "記事を編集" });
-  await dialog.getByLabel("記事URL").fill(conflictingUrl);
+  const urlInput = dialog.getByLabel("記事URL");
+  await expect(urlInput).toHaveValue("https://example.com/articles/one");
+  await urlInput.fill(conflictingUrl);
+  await expect(urlInput).toHaveValue(conflictingUrl);
   await dialog.getByRole("button", { name: "変更を保存" }).click();
 
   await expect(dialog.getByText("このURLは別の記事として登録されています。")).toBeVisible();

@@ -1,5 +1,25 @@
 # Progress
 
+## Phase 59〜61 Tokiの開始前内容と固定タグ
+
+2026-10-25、所有者の一括着手指示により実装・全品質検証を完了した。本番反映は別途明示承認済みのPhase 62で行い、この時点ではremote DB/Workerを変更していない。
+
+- 開始前の任意内容と終了時の追記修正、固定6タグのなし/1種類を実装。開始成功時の初期値は停止・満了・再起動後も保持し、手動登録・既存編集でタグを変更/解除できる。内容空欄の「無題」、短時間のタイトル1行、集中表示の時間だけという仕様を維持する。
+- 0003は`draft_description`・`tag`・`start_tag`を追加し、旧行はNULLとする。開始再送は初期payloadと照合し、公開しない`start_tag`で終了後のタグ変更から区別する。旧clientの省略はタグを保持、明示NULLは解除。既存列・制約・索引・削除trigger・未完了計測を維持する。
+- format/lint/生成型/TypeScript・29 files/619 tests・local D1・build・厳密dry-run・復元予行・通常E2E27件・旧新互換E2E18件・auditを通過。coverageはstatements 96.67%・branches 94.82%・functions 98.34%・lines 98.02%。runtime監査0件、既知Kit由来dev-only moderate 1件のみ。ログはToki `.tmp/phase61-check-final.log`へ保持する。
+- Worker raw/gzip 434,367/97,411 bytes、browser JS 261,378/80,131 bytes、CSS 24,500/5,621 bytesで既存予算内。query予算、追加列を含むbackup往復、旧clientのタグ保持も検査し、PC/320pxの表示画像を確認した。
+- ローカルProxyWorkerが新しい5秒タイマーE2Eで停止した。実D1の5秒満了処理は成功し、[公式リポジトリの5秒接続断報告](https://github.com/cloudflare/workers-sdk/issues/15452)との一致を確認した。ブラウザtestのみ6秒へ変更し、実DBの5秒回帰を追加して全gateを再通過した。製品runtimeや依存を変更して回避したものではない。
+- 全差分・秘密情報・ignore・文書リンクを確認し、Toki `64df8c6f5cb5d186c20f24a2c123e6dc6dbb5280`をmainへcommit/pushした。本番操作は別手順で行い、バックアップとmigrationの前にPWAを含む操作停止を案内する。開始前の未送信入力や終了後の未保存修正の永続化、タグ管理/集計/絞り込みは今回の対象外。
+
+## Phase 57 基盤・Tech Inbox・Daymarkの依存脆弱性修正
+
+2026-10-25、所有者指示により修正版の依存へ更新し、全品質gateを通過した。Toki機能追加と並行して実施し、通常のphase-end commit/pushを行う。本番反映は別承認されたPhase 58で実施する。
+
+- Hono `4.13.11`、Zod `4.6.6`、Vite `8.2.4`、Vitest/coverage `4.1.12`、親限定Undici `7.30.1`/`8.12.2`へ更新。公式14配布物のSHA-512・公開7日以上・互換性を照合し、対象外lock entriesの内容/integrityを維持した。[依存記録](dependency-baseline.md#2026-10-25-phase-57-基盤両製品への追随修正)
+- Vitestの必須peerへ既存Viteを明示し、contractsのZod公開型が参照するURLはDOM libraryで解決。strict peer・型検査・供給網ルールを緩めていない。
+- Daymark独立75 tests、Tech Inbox独立260 tests、基盤65 files/618 testsとcoverage、format/lint/生成型/TypeScript、local D1/migration/制約、backup往復/API、両Worker build/容量、E2E39 passed・既存のdesktop専用mobile skip1を確認。URL編集E2Eで初期値反映を待たず入力する競合を検出し、初期値/入力後値の条件待ちを追加。PC/スマホ計10反復と全gateが成功した。
+- 本番のToki入口を維持する`VITE_TOKI_URL`指定でもbuild/容量と全E2E39件が成功。監査は全repositoryのruntime 0件、Daymark/Tech Inboxの全依存0件、基盤は既知dev-only moderate 1件のみ。Kitの互換stable更新で解消しないesbuildは既存制約付きで継続し、該当HTTPサーバーは起動しない。
+- 製品を先にmainへcommit/pushし、Daymark `dca41988c2ad73a24f5d05c646805fe9b2c6b377`、Tech Inbox `83ccdbc095f675585450ad0ffd865f3d4ab511d9`へgitlinkを固定する。基盤の業務source・DB migration・認証/PWA・料金設定は変更していない。
 ## Phase 56 Tokiの本番反映と実機確認
 
 2026-10-25に完了。直前検証で見つかった依存の脆弱性とテストの日付依存を修正し、ローカル全品質gateとGitHub CIを通過した。実データのprivate backup・空のローカルD1への復元照合後、所有者のTerminalから既存Toki Workerだけを更新した。本人限定Accessと既存DB・URL・PWAを維持し、所有者のPC/iPhone実機確認も成功した。

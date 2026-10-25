@@ -2,6 +2,20 @@
 
 最終更新: 2026-10-25。Phase 56で技術スタック移行後の実装を既存Toki Workerへ反映し、バックアップ復元照合・認証確認と所有者のPC/iPhone確認を完了した。以後のdeployやDB復元も、対象を明示した所有者の承認範囲に限る。
 
+## Phase 62: 開始前の内容・固定タグの反映手順
+
+所有者は2026-10-25に、全gateとcommit/push完了後のToki専用D1の私有バックアップ・既存データを保持する`0003_session_details.sql`・既存Toki Worker更新を明示承認した。基盤/metadata-fetcherの依存修正反映も別対象として承認されたが、TokiのDB/Workerと混ぜて実行しない。新resource・Access/secret・料金設定変更、DB削除・本番復元は含まない。
+
+1. 全品質gateと検証済みcommit/成果物を確定する。既存の0001/0002と固定旧source/PWAのhash不変、新migrationの追加3列だけという差分を確認する。
+2. 直近成功したWrangler keyring OAuth経路を最初に確認する。現在のactive version・Toki D1接続先・適用済みmigration・本人限定Access・公開経路・secret名・料金/利用量を読み取り確認する。別XDG環境や古い継承tokenの失敗から期限切れと推測せず、この文書の認証手順を守る。
+3. 所有者へTokiの操作を控える時間を案内する。計測中の記録を勝手に停止/破棄しない。読取によるタイマー満了更新にも留意し、SQL export前後のsnapshotを照合する。ログ/SQLはmode 700 directory、600 fileのGit無視領域へ保持する。
+4. 空の隔離ローカルD1へバックアップを復元し、全行・全旧列・削除履歴・migration/index/trigger・整合性を照合してから0003を予行する。旧列の全値が不変、追加3列がNULL、既存constraint/triggerの動作が保持されることを確認する。
+5. 直前状態の不変とpendingが0003だけであることを確認してToki D1へ適用する。新Workerを先に配信しない。反映直後に旧列と既存記録・未完了状態を照合し、3列/履歴/整合性を検証する。
+6. 検証済み成果物を既存Toki Workerへdeployし、binding/secret名/preview/認証設定の不変と未認証のHTML・実asset・API拒否を確認する。新resource・DB再作成・記録の再登録は不要。
+7. 所有者がPC/iPhoneで開始前の内容とタグ→計測→終了時修正→保存、カレンダーでタグ変更/解除、再起動後の保持を確認する。元の記録を検証目的で勝手に変更せず、実際に残す活動を利用する。
+
+追加schemaで旧sourceの既存操作をローカル検証し、旧実装の編集が新列を保持することを確認する。ただし旧画面は初期内容/タグを表示・編集できないため、切り戻し後に新機能が使えるとは扱わない。新APIに旧clientが接続した場合はタグ省略で現在値を保持する。新画面で新項目を入力して旧APIへ送ったときは明示エラーとし、値を黙って落とさない。切り戻しで追加列を削除しない。DB全体の巻き戻し/復元は別承認が必要。
+
 ## 分離と安全な公開順序
 
 Tokiは独立したPublic repository、Worker、D1、Cloudflare Access applicationを使う。`rizakura-hontai`とは通常のリンクだけで行き来し、既存のTech Inbox/DaymarkのDB、Queue、Worker、Access policy、PWA identityを変更しない。TokiのGitHub CIにもCloudflare資格情報やdeploy権限は渡さない。

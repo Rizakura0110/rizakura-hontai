@@ -16,19 +16,19 @@
     "@rizakura-hontai/tech-inbox": "workspace:0.0.0",
     "@rizakura-hontai/db": "workspace:0.0.0",
     "drizzle-orm": "0.45.2",
-    "hono": "4.13.7",
+    "hono": "4.13.11",
     "jose": "6.2.9",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "react-router": "8.3.0",
-    "zod": "4.4.3"
+    "zod": "4.6.6"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "1.53.0",
     "@tailwindcss/vite": "4.3.3",
     "@vitejs/plugin-react": "6.0.5",
     "tailwindcss": "4.3.3",
-    "vite": "8.2.1",
+    "vite": "8.2.4",
     "wrangler": "4.124.0"
   }
 }

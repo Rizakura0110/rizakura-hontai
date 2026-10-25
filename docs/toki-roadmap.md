@@ -32,6 +32,21 @@ Phase 37で確定した詳細: タイマー1秒〜24時間、当初の内容1〜
 
 Phase 41の入口はTokiを「公開準備中」で表示し、保護されたToki originの稼働をPhase 43で確認してから、ビルド時の`VITE_TOKI_URL`でリンクを有効にする計画とした。基盤Workerの本番再deployはPhase 43の別承認を得て実施した。Toki画面の通常ヘッダーには現行のrizakura-hontai originへの戻りリンクを置き、時間だけ表示中はヘッダーごと非表示にする。
 
+## Phase 57以降: 依存修正と計測内容・固定タグ
+
+2026-10-25、所有者はタグを1記録につき「なし／1種類」と確定し、実装可能な工程をフェーズごとに止めずまとめて進めるよう指示した。基盤・両製品の依存修正とTokiの機能追加を並行し、全品質検証を完了した。別途、全gate・commit/push後の既存3 Worker更新とToki専用D1のprivate backup・0003適用が承認された。新resource・Access・料金設定の変更は含めない。
+
+| Phase | 作業 | 状態・完了境界 |
+|---|---|---|
+| 57 | 基盤・Tech Inbox・Daymarkの依存脆弱性修正 | 修正版の供給網/互換性、製品別・統合gateを確認して製品→基盤の順でcommit/push |
+| 58 | 基盤側の本番反映 | 対象明示の別承認済み。稼働版からの累積差分を確認し、既存app/metadata-fetcherを更新。DB migrationなし |
+| 59 | Tokiの追加仕様と画面の確定 | 任意の事前内容、終了時修正、固定6タグのなし/1種類。手動・既存編集にも適用 |
+| 60 | TokiのDB/API対応 | 追加migrationと任意field、旧client互換、冪等性・版数・削除保護を検証 |
+| 61 | Toki画面・統合検証 | 59〜60とまとめて実装・全gate完了。619 tests・通常E2E27件・互換18件。PC/320px、復帰、無題、タグ変更/解除、短時間表示、集中表示、復元/切り戻し検証 |
+| 62 | Tokiの本番反映と実機確認 | 対象明示の別承認済み。私有backupと照合→Toki D1の0003のみ→既存Toki Worker→PC/iPhone確認 |
+
+新resource、料金プラン変更、基盤とTokiのDB統合、タグ管理画面・分析・通知は追加しない。Phase 57/59〜61の実装完了とPhase 58/62の本番完了は別に記録する。
+
 ## Phase 49以降の技術スタック統一
 
 目的は保守する技術を基盤・Tech Inbox・Daymarkと揃えることであり、機能追加や画面の再デザインではない。Tokiの独立repository・Worker・D1・Access application、現在のURLと基盤へのリンクを維持する。基盤へsubmodule統合せず、Tech Inbox/DaymarkのruntimeやDBには触れない。

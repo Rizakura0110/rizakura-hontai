@@ -14,6 +14,26 @@
 
 2026-10-25追記: [Phase 56の直前監査](#2026-10-25のtoki本番反映前の依存修正)でTokiに新たな指摘を確認し、対象依存を更新した。修正後のTokiは既知moderate 1件のみ。同日、検証済み実装をToki Workerへ本番反映し、PC/iPhone確認を完了した。基盤・Daymark・Tech Inboxの本番反映を含むものではない。過去の日付の監査結果は、その時点の結果である。
 
+## 2026-10-25 Phase 57: 基盤・両製品への追随修正
+
+所有者の依頼により、Tokiで検証済みの修正版を再審査して基盤・Tech Inbox・Daymarkへ適用する。Hono `4.13.11`、Zod `4.6.6`、Vite `8.2.4`、Vitest/coverage `4.1.12`、Miniflare配下Undici `7.30.1`、jsdom配下Undici `8.12.2`を完全固定した。Hono/Miniflareは基盤だけが使用し、製品へ不要な依存を追加しない。
+
+公式npmの14配布物を再取得してSHA-512を照合し、公開後9〜26日・非deprecated・Node 24/peer互換を確認した。Vitestの必須Vite peerを満たすため、基盤root・Daymark・Tech Inboxにも既に利用しているViteの修正版をdevDependencyとして明示する。Zodの公開型が参照するWeb標準URLのため、contractsの型検査にDOM libraryを追加する。実行環境や本番配信をブラウザへ変更するものではなく、`skipLibCheck`で問題を隠さない。
+
+| 監査対象 | 修正前 low / moderate / high / critical | 修正後 low / moderate / high / critical | 修正後runtime |
+|---|---|---|---|
+| 基盤 | 1 / 12 / 4 / 0 | 0 / 1 / 0 / 0 | 0件 |
+| Daymark独立 | 1 / 8 / 3 / 0 | 0 / 0 / 0 / 0 | 0件 |
+| Tech Inbox独立 | 1 / 8 / 3 / 0 | 0 / 0 / 0 / 0 | 0件 |
+
+基盤のHonoは`serveStatic`を使わない。一方、Zodの配列検証はバックアップ/タグAPI等で使用するため、未使用と扱わない。既存の本人認証・入力サイズ・Origin等の保護を保ったうえで修正版へ更新する。実際の侵害を検出したという意味ではない。
+
+lockfileは基盤395 entries中14件、Daymark176中12件、Tech Inbox210中12件だけを置換した。その他381/164/198 entriesの内容・integrityは不変。7日gate・strict peer・親version限定override・build script許可を維持し、既存の補助依存も互換範囲を満たす固定版に留めた。
+
+Drizzle Kitの最新stable `0.31.11`も`@esbuild-kit/esm-loader 2.6.5`→`core-utils 3.3.2`→esbuild `~0.18.20`を保持しており、互換更新では既知moderateを解消できない。Kitは`0.31.10`に据え置き、該当するHTTPサーバーを起動せず本番bundleにも含めない。互換範囲外overrideやRC移行で監査値だけを消さない。
+
+本番反映はPhase 58の別承認後。基盤側の過去の未反映修正を含む累積差分と実際のWorker成果物を確認する。品質gate・commitは[Progress](progress.md)に記録する。
+
 ## 2026-10-25のToki本番反映前の依存修正
 
 Phase 56の再監査はlow 1・moderate 12・high 4・critical 0だった。high 4件はVite、Zod、Undiciの7系と8系に対する指摘で、侵害を検知した件数ではない。新たなmoderate/lowも同じ依存の修正とHono/Vitestの更新で解消する。
@@ -168,8 +188,8 @@ pnpm公式npm tarballは、npm metadataのintegrity
 | react | 19.2.8 | 2026-07-21 | 19.2系Stable | [npm metadata](https://registry.npmjs.org/react/19.2.8) |
 | react-dom | 19.2.8 | 2026-07-21 | Reactと同一パッチ。peer `react ^19.2.8`を満たす | [npm metadata](https://registry.npmjs.org/react-dom/19.2.8) |
 | react-router | 8.3.0 | 2026-07-22 | v8 Stable。React 19.2.8とNode 24がpeer/engineを満たす | [npm metadata](https://registry.npmjs.org/react-router/8.3.0) |
-| hono | 4.13.7 | 2026-09-04 | Workers対応Stable。2026-10-05にJSX SSRの指摘を解消するpatchへ更新 | [npm metadata](https://registry.npmjs.org/hono/4.13.7) |
-| zod | 4.4.3 | 2026-05-04 | v4 Stable | [npm metadata](https://registry.npmjs.org/zod/4.4.3) |
+| hono | 4.13.11 | 2026-09-29 | Workers対応Stable。Phase 57で静的配信の指摘に対応 | [npm metadata](https://registry.npmjs.org/hono/4.13.11) |
+| zod | 4.6.6 | 2026-10-11 | v4 Stable。コレクション検証の指摘に対応 | [npm metadata](https://registry.npmjs.org/zod/4.6.6) |
 | drizzle-orm | 0.45.2 | 2026-03-27 | D1 peerを持つStable。1.0はRCのため不採用 | [npm metadata](https://registry.npmjs.org/drizzle-orm/0.45.2) |
 | jose | 6.2.9 | 2026-08-15 | Web API/Workers互換Stable。6.2.10は7日未満 | [npm metadata](https://registry.npmjs.org/jose/6.2.9) |
 
@@ -178,15 +198,15 @@ pnpm公式npm tarballは、npm metadataのintegrity
 | パッケージ | 採用版 | 公開日 | 状態・選定理由 | 公式情報 |
 |---|---:|---:|---|---|
 | typescript | 7.0.2 | 2026-07-08 | npm stable tag。Nightlyを除外 | [npm metadata](https://registry.npmjs.org/typescript/7.0.2) |
-| vite | 8.2.1 | 2026-08-06 | v8 Stable。8.2.2は7日未満 | [npm metadata](https://registry.npmjs.org/vite/8.2.1) |
+| vite | 8.2.4 | 2026-10-06 | v8 Stable。開発サーバーの指摘に対応 | [npm metadata](https://registry.npmjs.org/vite/8.2.4) |
 | @vitejs/plugin-react | 6.0.5 | 2026-07-30 | Vite 8をpeerで正式サポート。6.1.0は7日未満 | [npm metadata](https://registry.npmjs.org/%40vitejs%2Fplugin-react/6.0.5) |
 | @cloudflare/vite-plugin | 1.53.0 | 2026-08-18 | Vite 8とWrangler 4.124.0をpeerで許可 | [npm metadata](https://registry.npmjs.org/%40cloudflare%2Fvite-plugin/1.53.0) |
 | wrangler | 4.124.0 | 2026-08-18 | v4 Stable。Vite plugin 1.53.0と整合 | [npm metadata](https://registry.npmjs.org/wrangler/4.124.0) |
 | drizzle-kit | 0.31.10 | 2026-03-17 | Stable。1.0はRCのため不採用 | [npm metadata](https://registry.npmjs.org/drizzle-kit/0.31.10) |
 | tailwindcss | 4.3.3 | 2026-07-16 | Stable。Vite 8互換のためガイド記載4.1系から更新 | [npm metadata](https://registry.npmjs.org/tailwindcss/4.3.3) |
 | @tailwindcss/vite | 4.3.3 | 2026-07-16 | peerでVite 8を正式サポート | [npm metadata](https://registry.npmjs.org/%40tailwindcss%2Fvite/4.3.3) |
-| vitest | 4.1.11 | 2026-08-18 | サポート対象4.1系。Vite 8とNode 24をpeer/engineで許可 | [npm metadata](https://registry.npmjs.org/vitest/4.1.11) |
-| @vitest/coverage-v8 | 4.1.11 | 2026-08-18 | Vitestと同一パッチ | [npm metadata](https://registry.npmjs.org/%40vitest%2Fcoverage-v8/4.1.11) |
+| vitest | 4.1.12 | 2026-10-15 | サポート対象4.1系。Vite必須peerを明示固定して充足 | [npm metadata](https://registry.npmjs.org/vitest/4.1.12) |
+| @vitest/coverage-v8 | 4.1.12 | 2026-10-15 | Vitestと同一パッチ | [npm metadata](https://registry.npmjs.org/%40vitest%2Fcoverage-v8/4.1.12) |
 | @testing-library/react | 16.3.2 | 2026-01-19 | React 19をpeerで許可 | [npm metadata](https://registry.npmjs.org/%40testing-library%2Freact/16.3.2) |
 | @testing-library/dom | 10.4.1 | 2025-07-27 | Testing Libraryの必須peerを明示固定 | [npm metadata](https://registry.npmjs.org/%40testing-library%2Fdom/10.4.1) |
 | @testing-library/user-event | 14.6.5 | 2026-08-18 | 14.6.6は7日未満 | [npm metadata](https://registry.npmjs.org/%40testing-library%2Fuser-event/14.6.5) |
@@ -200,9 +220,9 @@ pnpm公式npm tarballは、npm metadataのintegrity
 ## 互換性の要点
 
 - React Router 8.3.0はNode `>=22.22.0`、React/React DOM `>=19.2.7`を要求し、選定値は満たす。
-- Vite 8.2.1とReact plugin 6.0.5はNode `^20.19.0 || >=22.12.0`を要求し、Node 24.19.0は満たす。
+- Vite 8.2.4とReact plugin 6.0.5はNode `^20.19.0 || >=22.12.0`を要求し、Node 24.19.0は満たす。
 - Cloudflare Vite plugin 1.53.0はVite 8とWrangler `^4.124.0`を許可する。
-- Vitest 4.1.11はVite 8とNode 24を許可し、coverage packageも同一パッチで揃える。
+- Vitest 4.1.12はVite 8とNode 24を許可し、coverage packageも同一パッチで揃える。
 - jsdom 30.0.1はNode `^24.15.0`を許可する。
 - `@tailwindcss/vite 4.1.18`はVite 8をpeerで許可しないため不採用。判断は[ADR-0001](decisions/0001-tailwind-vite-8-compatibility.md)に記録した。
 - `autoInstallPeers: false`と`strictPeerDependencies: true`を設定し、暗黙のpeer追加を避ける。
