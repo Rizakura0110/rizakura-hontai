@@ -1,12 +1,12 @@
 # Toki実装フェーズ
 
-日付: 2026-10-17
+日付: 2026-10-25
 状態: Phase 35〜44を完了（2026-09-23）。Phase 45はToki専用D1のバックアップ・migrationとToki Workerへの反映、既存データの全項目照合、認証済みブラウザでの追加機能確認まで完了。所有者自身のPC/iPhone実機確認待ち。基盤と既存2製品の本番構成は変更していない。Phase 47は短時間のカレンダー記録の表示修正を実装・検証し、所有者承認後に本番反映済み（2026-09-26）。
 仕様: [Toki設計](toki-design.md)、分離理由: [ADR-0021](decisions/0021-toki-independent-product.md)、運用: [Toki本番前確認](toki-operations.md)
 
 Phase 48: 分単位の手動入力と内容の任意化を実装・検証・本番反映済み（2026-09-27）。
 
-Phase 49〜56: 所有者の2026-10-04の指示で、独立構成を維持した技術スタック統一を計画。Phase 50で比較基準を固定し、Phase 51で開発基盤、Phase 52でHono routing、Phase 53でDrizzleによるDB操作、Phase 54でReact/TypeScript・React Router・Tailwindの画面へ移行した。Phase 55は557 tests・PC/320px E2E計39件・audit high/critical 0を含む全gateを通常環境とclean checkoutで通過し、旧新互換・復元予行と反映手順を整えた。Phase 56は2026-10-25に着手し、直前監査の新たな脆弱性とテストの日付依存を修正して全gateを再通過した。現在は本番の資格情報取得経路を確認中で、Cloudflareは未変更。実データのbackup・本番反映・PC/iPhone確認が残る。依存修正は[2026-10-25の記録](dependency-baseline.md#2026-10-25のtoki本番反映前の依存修正)を参照。
+Phase 49〜56: 所有者の2026-10-04の指示で、独立構成を維持した技術スタック統一を計画。Phase 50で比較基準を固定し、Phase 51で開発基盤、Phase 52でHono routing、Phase 53でDrizzleによるDB操作、Phase 54でReact/TypeScript・React Router・Tailwindの画面へ移行した。Phase 55は557 tests・PC/320px E2E計39件・audit high/critical 0を含む全gateを通常環境とclean checkoutで通過し、旧新互換・復元予行と反映手順を整えた。Phase 56は2026-10-25に直前監査の脆弱性とテストの日付依存を修正して全gateを再通過し、実データのprivate backup・ローカル復元照合後、所有者のTerminalから既存Toki Workerだけを本番更新した。本人限定Accessと既存DB・URL・PWAを維持し、所有者のPC/iPhone確認まで完了した。依存修正は[2026-10-25の記録](dependency-baseline.md#2026-10-25のtoki本番反映前の依存修正)を参照。
 
 | Phase | 目的 | 完了条件と境界 |
 |---|---|---|
@@ -129,6 +129,14 @@ Worker raw/gzip 512/128 KiB、browser JS 320/110 KiB、CSS 32/10 KiBを独自回
 通常環境と独立した新規cloneで、frozen install・専用cache/browser/DBから同じ全gateが成功。25 files/557 tests、coverage statements 96.34%・branches 94.47%・functions 97.75%・lines 97.72%、E2E 21+18 passed。lockfileとWorker/browser成果物も両環境で完全一致した。固定旧sourceだけをformat/coverageから除き、現行runtimeの閾値は維持する。auditはhigh/critical 0・既知dev-only moderate 1件。runtime・依存version/lockfile・SQL migration・PWA・Cloudflare設定は変更していない。
 
 [Phase 56の実行条件と順序](toki-operations.md#phase-56の実行条件と順序)に、承認範囲・直前private backup/ローカル復元照合・active/rollback version ID・本人限定Access/D1/secret/料金と利用量の照合・既存Toki Workerのみの反映・切り戻しを記録した。これらの本番値は承認後に直前取得し、今回の合成検証で代用しない。本番APIの確認・OS保存資格情報の取得・実データの取得、deploy・remote migration・課金操作は行っていない。
+
+### Phase 56の完了範囲
+
+2026-10-25、固定commit `0f84b72a8c67c229888d20a03616fc69ad4747dd`を既存Toki Workerへ反映した。所有者がWranglerのブラウザ認証でログインし、私有ログ付きで手動deployした。新versionは100%稼働し、実際のhash付きJS/CSSを含む14経路の未認証アクセスはすべてAccessへ転送された。
+
+取得前後の本番snapshotと、空のローカルD1に復元したSQLの全行・全列、削除履歴、migration、schema/index/trigger、整合性が一致した。本番反映後もDB接続先・ASSETS・3 secret名・互換設定を維持し、データ照合で見つかった保存・追加の差分は反映前の所有者操作と確認した。所有者はPCでの表示・保存・編集・再読み込みと、iPhoneの既存PWAでの表示・再起動後の記録保持に問題がないと報告し、通常利用を再開できる。
+
+DB migration・本番復元、新resource、Access/secret/料金設定、基盤と既存2製品のdeployは行っていない。切り戻し用versionと再利用できる認証手順は[運用記録](toki-operations.md#phase-56の本番反映結果)へ記載する。
 
 ### 変えないものと確認事項
 

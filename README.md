@@ -2,9 +2,9 @@
 
 rizakura-hontaiは、本人限定のツールへの入口と共通基盤です。記事管理のTech Inboxと習慣管理のDaymarkを、別repositoryの固定commitから統合する構成です。Tech Inboxの別repository化はPhase 33、分離構成の本番反映と確認はPhase 34で完了しました。Daymarkの日次記録・設定履歴・日/週/月集計、保護API、responsive画面、独立PWA、製品別JSONバックアップを実装しました。Cloudflare Accessと既存のapp Worker・D1を共有し、Phase 25で本番反映と3年分データのFree CPU境界まで検証した構成です。
 
-第3製品の時間記録アプリ「Toki」は[設計](docs/toki-design.md)と[Phase 35〜43の計画](docs/toki-roadmap.md)を用意しました。既存の統合Worker/DBへ追加せず、独立したrepository・Worker・D1で開発し、入口からリンクする予定です。現時点では本番提供していません。
+第3製品の時間記録アプリ「Toki」は、独立したrepository・Worker・D1・AccessとPWAで本番提供しています。rizakura-hontaiとは入口のリンクだけで接続し、既存の統合Worker/DBへ業務処理を追加していません。2026-10-25のPhase 56でReact/TypeScript・React Router・Tailwind・Vite・Hono・Drizzleへの技術スタック統一を本番へ反映し、所有者のPC/iPhone確認まで完了しました。[設計](docs/toki-design.md)と[実装フェーズ](docs/toki-roadmap.md)を参照してください。
 
-Phase 36ではPublic [Rizakura0110/toki](https://github.com/Rizakura0110/toki)を作成し、独立CIとローカル専用Worker/D1接続stubを検証しました。基盤のworkspaceには取り込まず、このrepository内の`products/toki`は独立したGit作業コピーとしてignoreしています。Tokiの業務機能・Access・PWA・本番resourceは未作成です。
+TokiはPublic [Rizakura0110/toki](https://github.com/Rizakura0110/toki)で独立したlockfileと品質CIを管理します。基盤のworkspaceには取り込まず、このrepository内の`products/toki`は独立したGit作業コピーとしてignoreしています。Git pushから本番を自動更新する構成ではありません。
 
 ## 実装と本番の状態
 

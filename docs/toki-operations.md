@@ -1,6 +1,6 @@
 # Tokiの本番前確認・運用手順
 
-最終更新: 2026-10-17。Phase 55では技術スタック移行後のローカル回帰と本番反映手順を整える。本番への適用はPhase 56で対象を明示して承認を得てから行う。過去のPhase 43〜48の承認は今回のdeployやDB復元を許可するものではない。
+最終更新: 2026-10-25。Phase 56で技術スタック移行後の実装を既存Toki Workerへ反映し、バックアップ復元照合・認証確認と所有者のPC/iPhone確認を完了した。以後のdeployやDB復元も、対象を明示した所有者の承認範囲に限る。
 
 ## 分離と安全な公開順序
 
@@ -35,7 +35,7 @@ Phase 44の手動登録・完全削除は、ローカルでmigrationとWorkerを
 
 ### ローカルで固定する比較基準
 
-最後に本番反映したPhase 48のsource commitは`bab03ef5084b980c481b8126fd34b18604c84249`。Tokiの`tests/fixtures/phase48/`に旧画面・API・DB処理・認証の14ファイルを固定し、元commitのSHA-256を検査する。既存2 migrationとmanifest・6アイコンの9ファイルも元commitと照合する。旧依存を再導入せず、現行の検証済みtoolchainで旧sourceを実行する検証であり、過去の配信binaryそのものを再現する検証ではない。
+移行前の比較基準となるPhase 48のsource commitは`bab03ef5084b980c481b8126fd34b18604c84249`。Tokiの`tests/fixtures/phase48/`に旧画面・API・DB処理・認証の14ファイルを固定し、元commitのSHA-256を検査する。既存2 migrationとmanifest・6アイコンの9ファイルも元commitと照合する。旧依存を再導入せず、現行の検証済みtoolchainで旧sourceを実行する検証であり、過去の配信binaryそのものを再現する検証ではない。
 
 `pnpm check`に旧画面＋新API、新画面＋旧API、旧画面＋旧APIの切り戻し構成を加える。各構成のPC 1280px・スマホ320pxで実際のローカルD1を使い、計測/集中表示/再読込、タイマー満了/破棄、空欄保存、分入力/秒精度、競合・削除確認・再送拒否、PWA identityを検証する。test専用Workerはloopback HTTPと明示flag以外を拒否し、production bundleに含めない。
 
@@ -69,7 +69,22 @@ APIのquery数は通常取得2、開始5/同一再送3、停止/保存4、手動
 
 [Worker versionはcode・assets・binding・互換設定を持つ](https://developers.cloudflare.com/workers/versions-and-deployments/)が、D1内のデータを巻き戻さない。[rollbackは直近100 versionが対象](https://developers.cloudflare.com/workers/versions-and-deployments/rollbacks/)でresourceの変更にも制約があるため、使える旧version IDを反映前に確定する。Phase 48の互換sourceをローカルで動かせても、Cloudflare上の切り戻し成功まで実証したことにはならない。旧versionを利用できない場合は、旧sourceの再build/deployを独断で代用せず停止して方針を確認する。
 
-実際の本番private backupとactive version/契約/利用量の読み取りは、Phase 56の承認後に直前値を取得する。Phase 55では本番データやOSの保存資格情報を取得せず、上記の合成データによる復元と設定dry-runを用意する。
+Phase 55では合成データによる復元と設定dry-runを用意し、本番のprivate backupと稼働version・契約の確認はPhase 56で実施した。次回の反映でも過去の確認値を使い回さず、対象と直前状態を確認する。
+
+### Phase 56の本番反映結果
+
+2026-10-25、所有者のTerminalから固定source `0f84b72a8c67c229888d20a03616fc69ad4747dd`を既存Toki Workerへ手動deployした。配信前のbuild・本番設定・lockfileをhash固定し、`--strict --no-autoconfig`付きdry-runを通した同じ成果物を使った。
+
+- 反映前version: `7864244a-b11f-4470-b774-5415fa45427c`（Phase 48）。詳細取得によりDB接続先と互換設定を確認した切り戻し候補であり、切り戻し自体は実行していない。
+- 反映後version: `b4701d8a-3f2b-4cc4-9145-b4f504050427`。2026-10-25 11:56 UTCに100%へ切り替わり、deployログと現在の配信状態が一致した。
+- 私有SQLと前後snapshotを取得し、空の隔離ローカルD1へ復元して全行・全列、削除済みrequest ID、migration履歴、table/index/trigger、`quick_check`・`foreign_key_check`を照合した。バックアップ・復元DB・詳細ログはmode 700/600のGit無視領域へ保持し、公開fixtureやrepositoryへ含めない。
+- 更新前後のD1 binding・ASSETS・3 secret名・互換設定は一致した。本番データの差分は、バックアップ後かつdeploy前の所有者による保存・追加と確認した。既存記録の削除やschema変更はなく、データを古いバックアップで上書きしていない。
+- 所有者がWorkers Free・現在のUsage cost $0・本人限定Accessを確認した。Domains画面でproduction URLのAccess保護、preview無効、custom domain/routeなしを確認した。反映後の画面・実hash付きJS/CSS・manifest・6 icons・API計14経路はすべて未認証ではAccessへ302となった。
+- 所有者はPCでの表示・保存・編集・再読み込みと、iPhoneの既存PWAでの表示・再起動後の記録保持に問題がないと報告した。PWAの追加し直しは不要で、通常利用を再開できる。
+- 同じOAuth経路のGraphQL読み取りで、2026-10-25 11:56:24〜12:07:16 UTCのToki集計は8 requests、errors 0、statusはすべて`success`だった。CPUはP50 1.765ms・P99 35.087ms（APIスキーマのmicrosecondsを換算）。短期間・少数の集計であり、将来の上限内動作の保証ではない。P99はFreeの10msより高いが、`exceededCpu`/`exceededMemory`や1102相当の実行失敗は観測されていない。[公式のCPU制限](https://developers.cloudflare.com/workers/platform/limits/#cpu-time)は散発的な超過に余裕を持たせ、継続的な超過時に実行を停止する。今回の値を「すべて10ms以内」と扱わず、継続的な超過・保存失敗なら上記の切り戻し条件に従う。原因をcold start等と断定しない。
+- D1情報取得時の当該DBは102,400 bytes、直前24時間のrows read 463・rows written 108だった。反映後だけの利用量やアカウント全体の合計とは区別する。契約変更や有料監視の追加は行っていない。
+
+DB migration・本番DB復元/削除、新resource作成、Access/secret/料金設定、基盤と既存2製品のdeployは行っていない。
 
 ## API認証エラーの切り分け（再ローテーション前）
 
@@ -79,6 +94,14 @@ APIのquery数は通常取得2、開始5/同一再送3、停止/保存4、手動
 - sandbox内の`launchctl`が空でも、OS上の未設定とは断定しない。必要な権限のある実行環境で取得し、値を表示せずに存在・形式・一致だけを検査する。Account IDは32桁の16進数として厳密に検査し、不正な値を推測で補正しない。
 - 検証済みの値をWrangler子プロセスの環境へ明示的に渡す。tokenや本人emailを引数、Git、チャット、標準出力へ出さない。SQL exportの出力には署名付きdownload URLが含まれ得るため、標準出力とエラーも私有ログへ捕捉する。
 - 最新の取得元でAPI検証が失敗したときだけ、失効・期限・権限・対象アカウントを調べて必要な対応を案内する。値が見えないこととtokenが無効であることを区別する。
+
+### 手動デプロイで成功したブラウザ認証経路
+
+2026-10-25は、所有者がCloudflare画面でAPIトークン一覧が0件と確認した。消失原因や期限切れとは断定せず、独自APIトークンの再発行・受け渡しではなく、固定Wranglerの`login --use-keyring --scopes account:read user:read workers_scripts:write d1:write`によるブラウザ認証へ切り替えた。所有者のTerminalでログイン・`whoami`・本番情報取得・backup・deployが成功した。
+
+この経路ではToki repositoryを作業directoryとし、`XDG_CONFIG_HOME=$PWD/.config`、`XDG_CACHE_HOME=$PWD/.cache`、`XDG_DATA_HOME=$PWD/.local/share`を明示した。古いAPI token/key/email/account IDと`CF_*`の対応する認証変数は、その実行環境から解除してOAuthより優先されないようにした。APIトークンの値をチャットやアプリへ渡したり、Codexを再起動したりする必要はなかった。
+
+反映後のagentによる読み取りも、同じworkspace設定とWranglerの認証処理を使い、許可された実行環境から成功した。次回はこの直近成功経路を先に確認する。keyringの秘密値を直接表示・コピーせず、固定CLIに認証を任せる。今回のGraphQL読み取りでは公式CLIの認証出力をメモリ内だけでCloudflareへ渡し、資格情報を出力するCLIログは破棄先へ向け、値を表示・ファイル保存しなかった。`pnpm exec`の供給網検査がJSONの前に案内を出す場合は、資格情報を含まない取得結果を私有保存したまま実際のJSON部分を検証する。JSON解析エラーを認証失敗と混同しない。OAuthの権限にないAccess policyや請求情報は、所有者の管理画面確認と区別する。
 
 ## Free枠と監視
 

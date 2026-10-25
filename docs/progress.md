@@ -1,15 +1,20 @@
 # Progress
 
-## Phase 56 Tokiの本番反映前検証 実施中
+## Phase 56 Tokiの本番反映と実機確認
 
-2026-10-25に着手。直前検証で見つかった依存の脆弱性とテストの日付依存を修正し、ローカル全品質gateを通過した。本番の資格情報を取得できる経路が未確定のため、Cloudflareの設定/データ確認、private backup、本番反映、PC/iPhone実機確認は未実施。Phase 56全体は完了扱いにしない。
+2026-10-25に完了。直前検証で見つかった依存の脆弱性とテストの日付依存を修正し、ローカル全品質gateとGitHub CIを通過した。実データのprivate backup・空のローカルD1への復元照合後、所有者のTerminalから既存Toki Workerだけを更新した。本人限定Accessと既存DB・URL・PWAを維持し、所有者のPC/iPhone実機確認も成功した。
 
 - 再監査はhigh 4・moderate 12・low 1だった。[依存記録](dependency-baseline.md#2026-10-25のtoki本番反映前の依存修正)の固定版へ対象14 packageだけを更新し、残り354 entriesの内容/integrityと供給網policyは維持した。修正後はhigh/critical/low 0、既知のDrizzle Kit由来moderate 1。基盤・Daymark・Tech Inboxの依存は変更していない。
 - 2026-10-17固定の記録fixtureと実行日由来の表示週がずれ、カレンダーの単体テスト1件が失敗していた。該当テスト群だけ`Date.now()`を既存fixtureの時刻に揃え、製品の時計・保存動作と既存assertionは変更しなかった。
 - frozen install後の全`pnpm check`成功。25 files/557 tests、coverage statements 96.34%・branches 94.47%・functions 97.75%・lines 97.72%、PC/320pxの既存E2E 21件と旧新互換E2E 18件の計39件が成功。生成型/TypeScript・local D1復元予行・query/CPU予算・stage/liveの合成設定dry-runも通過した。ログはTokiの`.tmp/phase56-final-check.log`に保持する。
-- 依存更新後のWorker raw/gzipは431,567/96,604 bytesで独自予算内。browser JS 258,294 bytes・CSS 23,292 bytesはPhase 55から不変。既存migration/PWAの固定hash検査も成功し、実データは取得していない。
-- 過去の成功時はOS保存資格情報を明示していたことを確認した。今回は許可された実行経路のOS設定・GUI/user domain・継承環境・ログインシェル・Wranglerログインから値を取得できなかった。所有者のTerminalでは設定成功との申告があるため、OS全体で設定が消えた/トークンが期限切れとは断定しない。TerminalのGUI操作とCloudflare管理画面へのブラウザアクセスは各ツールの安全/許可設定により利用できず、別手段でその制限を迂回していない。再ローテーション・アプリ再起動は依頼していない。
-- 全文差分・生成物/cacheのignore・変更文書のローカルリンク4件を確認し、基盤/Tokiと成果物の313 text filesの秘密情報パターン検査は候補0件。基盤側は文書のみでformat/lintを通し、未変更のruntime全gateは再実行していない。Tokiの事前修正は`0f84b72a8c67c229888d20a03616fc69ad4747dd`としてmainへcommit/pushし、[GitHub CI 40183667837](https://github.com/Rizakura0110/toki/actions/runs/40183667837)も新規checkout・frozen installから全gateに成功した。
+- 依存更新後のWorker raw/gzipは431,567/96,604 bytesで独自予算内。browser JS 258,294 bytes・CSS 23,292 bytesはPhase 55から不変。既存migration/PWAの固定hash検査も成功した。反映直前にもbuild・厳密なlive設定dry-runを通し、配信したsource・lockfile・設定・成果物を照合した。
+- 資格情報の既存経路を切り分けた後、所有者がAPIトークン一覧0件と確認した。消失原因や期限切れとは断定せず、Wranglerのブラウザ認証とkeyringを使う手動デプロイへ切り替えた。workspaceのXDG設定と認証環境を揃えた読み取りも成功した。[認証手順](toki-operations.md#手動デプロイで成功したブラウザ認証経路)を再利用し、GUI操作やブラウザの安全制限は迂回していない。
+- 事前修正時に全文差分・生成物/cacheのignore・変更文書のローカルリンク4件を確認し、基盤/Tokiと成果物の313 text filesの秘密情報パターン検査は候補0件だった。基盤側は文書のみでformat/lintを通し、未変更のruntime全gateは再実行していない。Tokiの事前修正は`0f84b72a8c67c229888d20a03616fc69ad4747dd`としてmainへcommit/pushし、[GitHub CI 40183667837](https://github.com/Rizakura0110/toki/actions/runs/40183667837)も新規checkout・frozen installから全gateに成功した。
+- 本番SQLの取得前後snapshotと、空の隔離ローカルD1への復元結果で、全行・全列、削除履歴、migration/schema/index/trigger、整合性を照合した。実データとログは私有のGit無視領域に保持する。反映後の保存・追加差分は、deploy前に所有者が行った操作と確認し、既存記録の削除やmigrationの変化はなかった。
+- 所有者がWorkers Free・現在のUsage cost $0・本人限定Accessを確認し、Domains画面でAccess保護付きproduction URL・preview無効・追加経路なしを確認した。反映後versionは`b4701d8a-3f2b-4cc4-9145-b4f504050427`が100%。旧版とDB/ASSETS/3 secret名・互換設定が一致し、未認証14経路がAccessへ302となった。詳細と切り戻し候補は[運用記録](toki-operations.md#phase-56の本番反映結果)へ記載した。
+- 反映後約11分のWorker集計は8 requests・errors 0で全statusが`success`。CPU P50 1.765ms・P99 35.087msで、P99は10msを超えるが継続的な上限超過/1102は確認されなかった。短期間の集計を常時上限内の保証とは扱わない。D1の直前24時間利用量と数値の解釈も[運用記録](toki-operations.md#phase-56の本番反映結果)へ残し、有料監視は追加していない。
+- 所有者のPCで表示・保存・編集・再読み込み、iPhoneの既存PWAで表示・再起動後の記録保持に問題なしとの報告を受領した。DB migration・本番復元、新resource、Access/secret/料金設定、基盤と既存2製品のdeployは行っていない。完了時の更新は進捗・運用・README等の文書のみで、実装や依存は反映済みsourceから変更しない。
+- 完了記録の6文書をレビューし、基盤/Toki両方のformat・lint、差分の空白検査、追加したローカルリンク8件、生成物/私有データのignoreを確認した。両repositoryの追跡済みtext 310 filesの秘密情報パターン検査は候補0件。未変更の実装全gateは再実行せず、上記の検証済みsourceとCI結果を引き継ぐ。
 
 ## Phase 55 Tokiの全体回帰と本番反映準備
 
