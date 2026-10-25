@@ -2,13 +2,16 @@
 
 ## Phase 63 Tokiのタグ別カレンダー配色
 
-2026-10-25、Phase 62の所有者確認後、カレンダーの記録枠全体を6種類のタグ＋タグなしの7色にする追加依頼を受領した。所有者は配色を任せ、表示変更だけのToki本番反映を明示承認した。実装・全品質gateは完了し、本番反映はこの後に行う。
+2026-10-25、Phase 62の所有者確認後、カレンダーの記録枠全体を6種類のタグ＋タグなしの7色にする追加依頼を受領した。所有者は配色を任せ、表示変更だけのToki本番反映を明示承認した。実装・全品質gate・CI・commit/pushと本番反映・自動確認を完了した。今回の色分け版についての所有者による本番表示確認は未報告で、Phase 62の確認と区別する。
 
 - 仕事=青、家事=緑、自己研鑽=紫、雑務=黄、趣味の時間=ピンク、だらけた時間=水色、タグなし=グレー。淡い背景・濃い文字/左境界線と同系色のhover/focusに統一し、バッジの文字ラベルを残す。日/週/320pxの記録位置・時間幅・最低44px・タイトル1行を維持する。
 - runtime差分はclientのclass/CSSのみ。DB/API/auth/計測/依存/migrationは不変。Worker本体434,367 bytesのhashも前回本番と一致し、browser JSは261,417 bytes、CSSは25,229 bytesで既存予算内。
 - 全`pnpm check`成功。29 files/620 tests、coverage statements 96.67%・branches 94.83%・functions 98.34%・lines 98.02%、通常E2E30件・互換18件、型/生成型/整形/lint・復元予行・build・設定dry-run・auditを通過した。既知dev-only moderate 1件は継続、runtime依存は変更なし。
 - 新E2E3件でPC日/週・320px日の7色・文字contrast 4.5以上・hover/focus、タグ変更/解除の保存/再読込と正確な時刻・他記録保持を検証。専用local日付の合成IDだけを後片付けし、画像を目視確認した。全差分・秘密情報・生成物ignore・文書リンクを確認済み。ログはToki `.tmp/phase63-check-final.log`へ保持する。
 - Toki `20224c34c86c763ef9d31a49b0b6158604ca6106`をmainへcommit/pushした。基盤は設計・計画・進捗の文書変更のみで、format/lint・差分検査を実施し、未変更の基盤runtime全gateは再実行していない。
+- [Toki CI 40194858014](https://github.com/Rizakura0110/toki/actions/runs/40194858014)成功後、143ファイルの集合/hash、push済みsource、稼働版からの表示/test/docsだけの差分、旧Worker本体hash完全一致とstrict dry-runを確認。既存Tokiを`00243292-232c-474c-aeda-f4641b04d3cf`から`ffe8c4b2-2378-48fb-9bc0-32a98e6f488d`へ100%反映した。
+- 最終自動確認は12:54:39 UTC。全settings/runtime/bindings/handlersの値、workers.dev有効・preview無効・custom domains 0と14経路のAccess issuer/audienceを維持。DB操作は0件で、DB全値の再取得・backup・migration・復元・記録変更は行わない。他Worker・Access policy・料金も変更なし。私有証跡はToki `.tmp/phase63-toki-release-TtzsJ5/`へ保持する。
+- 反映後文書をreviewし、両repoのformat/lint・差分検査を通過。追跡text319ファイルの秘密情報形式/利用可能な環境秘密値の検査は0件、生成物/私有証跡はGit無視対象。機能sourceと成果物は反映済み版から変更していない。
 
 ## Phase 62 Tokiの開始前内容・固定タグの本番反映
 

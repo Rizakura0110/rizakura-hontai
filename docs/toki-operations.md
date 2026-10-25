@@ -1,6 +1,14 @@
 # Tokiの本番前確認・運用手順
 
-最終更新: 2026-10-25。Phase 56の技術統一と所有者PC/iPhone確認後、Phase 62で開始前内容・固定タグの0003 migrationと本番反映・データ/設定の自動照合を完了した。追加機能の所有者PC/iPhone確認も完了。以後のdeployやDB復元も、対象を明示した所有者の承認範囲に限る。
+最終更新: 2026-10-25。Phase 62の開始前内容・固定タグと所有者PC/iPhone確認後、Phase 63で記録枠の7色化を本番反映・自動確認した。新配色の所有者本番表示確認は未報告。以後のdeployやDB復元も、対象を明示した所有者の承認範囲に限る。
+
+## Phase 63: タグ別の記録枠配色
+
+所有者は6タグ＋タグなしの7色を記録枠全体に付ける変更と、既存Tokiだけの本番反映を明示承認した。全gateと[CI 40194858014](https://github.com/Rizakura0110/toki/actions/runs/40194858014)・commit/push後、source `20224c34c86c763ef9d31a49b0b6158604ca6106`を新version `ffe8c4b2-2378-48fb-9bc0-32a98e6f488d`へ100%反映した。直前version `00243292-232c-474c-aeda-f4641b04d3cf`を保持する。
+
+差分はclient表示・test・READMEだけで、API/DB/auth/package/migration sourceとWorker本体hashは直前本番から完全一致。143ファイルの集合/内容とstrict dry-runを固定し、provision/auto-createを明示無効にした。通常deployの既存設定再同期はあるため「設定API書込ゼロ」ではなく、全settings/runtime/bindings/handlersの**設定値不変**を前後照合したと記録する。
+
+2026-10-25 12:54:39 UTCの最終確認で、workers.dev有効・preview無効・custom domains 0、14経路の同じAccess issuer/audienceへのredirectを維持した。DB操作は0件で、今回の表示変更ではDB全値の取得やbackup/migration/復元を再実施していない。他Worker・Access policy/secret・料金設定は変更しない。証跡はToki `.tmp/phase63-toki-release-TtzsJ5/`へ私有保存。新配色の所有者確認は未報告で、確認済みのPhase 62の機能とは区別する。
 
 ## Phase 62: 開始前の内容・固定タグの反映手順
 
