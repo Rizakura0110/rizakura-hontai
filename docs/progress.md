@@ -1,5 +1,24 @@
 # Progress
 
+## Phase 62 Tokiの開始前内容・固定タグの本番反映
+
+2026-10-25、所有者の対象明示承認後、ローカル全gateと[Toki CI 40193748795](https://github.com/Rizakura0110/toki/actions/runs/40193748795)・commit/pushを確認し、本番反映と自動照合を完了した。その後、所有者から依頼したPC/iPhone追加機能・既存製品の表示確認について「確認できた」との報告を受領し、Phase 62を完了した。続く記録枠全体の7色分けは別の追加変更として扱う。
+
+- PWAを含む操作/再読み込み停止を案内し、既存keyring OAuthでToki専用D1のprivate SQL backupを取得。前後snapshotと空の隔離ローカルD1への復元で、全179行（保存175・破棄4・未完了0）・削除履歴2件・schema/索引/trigger/旧migration履歴・整合性が完全一致した。
+- ローカル0003予行後、固定commit `64df8c6f5cb5d186c20f24a2c123e6dc6dbb5280`と24ファイルの内容/集合、生成設定、strict dry-runを照合。直前の本番状態不変を確認して`0003_session_details.sql`だけを適用し、旧12列の全値・削除履歴が保持され、追加3列が全NULL、schemaが予行結果と一致することを検証した。
+- 既存Toki Workerを`b4701d8a-3f2b-4cc4-9145-b4f504050427`から`00243292-232c-474c-aeda-f4641b04d3cf`へ100%反映。反映前後の全DB値が一致し、DB/ASSETS/3 secret名・互換/runtime設定、workers.dev有効・preview無効・custom domains 0を維持した。最終確認は12:41:12 UTC。
+- 画面・実際のbuild assets・APIの匿名14経路すべてがAccessへredirectした。本人限定policy・料金は同日のPhase 56の所有者確認を引き継ぎ、今回OAuthの範囲外の設定を最新取得できたとは扱わない。新resource、Access/secret/料金変更、既存記録の新規追加/編集/削除、本番DB復元は行っていない。
+- private backup/照合・migration/deploy/verify receiptはToki `.tmp/phase62-toki-release-YDTtY8/`へ700 directory/600 fileで保持する。反映後に操作再開を案内し、PC/iPhoneの初期内容・タグ→計測→終了時修正→保存→再読込とタグ変更/解除を所有者へ依頼し、確認済みの返答を受領した。
+
+## Phase 58 基盤の依存修正の本番反映
+
+2026-10-25、所有者の対象明示承認に基づき、基盤commit `8a15603774381d45decf59f4fce2019a9657fd68`を既存metadata-fetcher→rizakura-hontaiの順に反映した。[基盤CI 40193771782](https://github.com/Rizakura0110/rizakura-hontai/actions/runs/40193771782)と両製品CIは成功済み。既存DB・Queue consumer・Access・料金設定は変更していない。
+
+- metadata-fetcherは`0e36a07b-f5d1-40f6-b847-39a1ff4b4ef2`から`f20ff737-fbaa-4cb6-824c-149bb2911b95`、appは`5c6f6360-6937-4c27-9cf2-28d2b0889289`から`5ccdd913-42bd-4bed-87fd-d5b2b36d1c51`へ、各100%で反映した。稼働版以来の累積差分も確認し、製品の業務source・認証・PWA・migrationは不変、依存修正を反映する範囲と確認した。
+- Tokiの直近成功と同じ公式Wrangler keyring OAuthを利用した。Queues write scopeを追加せず、公式`versions upload`→`versions deploy`で既存Workerのcode/assetsだけを更新する。provision/auto-createは無効、Queue consumerやtriggerを同期する通常deployは使わない。生成された空の既定値を検査し、非version設定の更新も発生しないことを固定Wrangler実装と独立reviewで確認した。
+- source/input・成果物の全hash/集合、push済みHEAD・両gitlink・旧active=latest、strict dry-runの出力bytesを照合した。本番前後で全binding/vars/compatibility、非version設定、Queue consumer、公開経路、Accessへの9経路のredirect issuer/audienceが同一だった。新resource・DB migration・secret変更・Access policy変更・料金操作はない。
+- 本人限定policyの最新値をOAuthで読み取れたという意味ではない。前回の所有者確認、Worker本人確認コード/secret維持、同じAccess保護の前後照合と区別する。私有証跡は`.tmp/phase57-foundation-release-BlnKdO/result.json`へ保持。反映後、基盤から既存製品が通常どおり開けるかを含む確認依頼に、所有者から確認済みの返答を受領した。
+
 ## Phase 59〜61 Tokiの開始前内容と固定タグ
 
 2026-10-25、所有者の一括着手指示により実装・全品質検証を完了した。本番反映は別途明示承認済みのPhase 62で行い、この時点ではremote DB/Workerを変更していない。
@@ -9,11 +28,11 @@
 - format/lint/生成型/TypeScript・29 files/619 tests・local D1・build・厳密dry-run・復元予行・通常E2E27件・旧新互換E2E18件・auditを通過。coverageはstatements 96.67%・branches 94.82%・functions 98.34%・lines 98.02%。runtime監査0件、既知Kit由来dev-only moderate 1件のみ。ログはToki `.tmp/phase61-check-final.log`へ保持する。
 - Worker raw/gzip 434,367/97,411 bytes、browser JS 261,378/80,131 bytes、CSS 24,500/5,621 bytesで既存予算内。query予算、追加列を含むbackup往復、旧clientのタグ保持も検査し、PC/320pxの表示画像を確認した。
 - ローカルProxyWorkerが新しい5秒タイマーE2Eで停止した。実D1の5秒満了処理は成功し、[公式リポジトリの5秒接続断報告](https://github.com/cloudflare/workers-sdk/issues/15452)との一致を確認した。ブラウザtestのみ6秒へ変更し、実DBの5秒回帰を追加して全gateを再通過した。製品runtimeや依存を変更して回避したものではない。
-- 全差分・秘密情報・ignore・文書リンクを確認し、Toki `64df8c6f5cb5d186c20f24a2c123e6dc6dbb5280`をmainへcommit/pushした。本番操作は別手順で行い、バックアップとmigrationの前にPWAを含む操作停止を案内する。開始前の未送信入力や終了後の未保存修正の永続化、タグ管理/集計/絞り込みは今回の対象外。
+- 全差分・秘密情報・ignore・文書リンクを確認し、Toki `64df8c6f5cb5d186c20f24a2c123e6dc6dbb5280`をmainへcommit/pushした。[Toki CI 40193748795](https://github.com/Rizakura0110/toki/actions/runs/40193748795)も成功。本番操作は別手順で行い、バックアップとmigrationの前にPWAを含む操作停止を案内する。開始前の未送信入力や終了後の未保存修正の永続化、タグ管理/集計/絞り込みは今回の対象外。
 
 ## Phase 57 基盤・Tech Inbox・Daymarkの依存脆弱性修正
 
-2026-10-25、所有者指示により修正版の依存へ更新し、全品質gateを通過した。Toki機能追加と並行して実施し、通常のphase-end commit/pushを行う。本番反映は別承認されたPhase 58で実施する。
+2026-10-25、所有者指示により修正版の依存へ更新し、全品質gateを通過した。Toki機能追加と並行して実施し、通常のphase-end commit/pushを完了した。本番反映は別承認された上記Phase 58で実施した。
 
 - Hono `4.13.11`、Zod `4.6.6`、Vite `8.2.4`、Vitest/coverage `4.1.12`、親限定Undici `7.30.1`/`8.12.2`へ更新。公式14配布物のSHA-512・公開7日以上・互換性を照合し、対象外lock entriesの内容/integrityを維持した。[依存記録](dependency-baseline.md#2026-10-25-phase-57-基盤両製品への追随修正)
 - Vitestの必須peerへ既存Viteを明示し、contractsのZod公開型が参照するURLはDOM libraryで解決。strict peer・型検査・供給網ルールを緩めていない。

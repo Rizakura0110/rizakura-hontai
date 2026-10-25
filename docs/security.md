@@ -132,7 +132,7 @@ backupと復元手順は[Operations](operations.md)を参照してください�
 
 既知のmoderate advisory 1件はDrizzle Kit配下の開発専用推移依存で、runtime bundleには含まれません。該当する古いesbuildのHTTP開発サーバー機能は起動しません。localhost限定でも悪性Webページから応答を読まれ得るため、loopback限定だけで対策済みとは扱いません。上流解消をdependency更新時に再確認し、互換範囲外の強制overrideは行いません。詳細は[Dependency baseline](dependency-baseline.md#基盤と両製品の依存修正)を参照してください。
 
-2026-10-25のPhase 57ではHono/Zod/Vite/Vitestと2系統のUndiciを更新し、基盤のruntime監査0件・全依存は既知moderate 1件、Daymark/Tech Inboxはruntime・全依存とも0件へ修正しました。本人認証や入力上限があっても、配列検証を利用するZodの問題を未使用とは扱いません。公開7日・公式integrity・strict peerと既存依存の固定を維持します。本番反映はPhase 58の別承認後で、ソースの修正と本番の修正を区別します。[修正と監査の記録](dependency-baseline.md#2026-10-25-phase-57-基盤両製品への追随修正)
+2026-10-25のPhase 57ではHono/Zod/Vite/Vitestと2系統のUndiciを更新し、基盤のruntime監査0件・全依存は既知moderate 1件、Daymark/Tech Inboxはruntime・全依存とも0件へ修正しました。本人認証や入力上限があっても、配列検証を利用するZodの問題を未使用とは扱いません。公開7日・公式integrity・strict peerと既存依存の固定を維持します。同日のPhase 58で別承認後に既存app/metadata-fetcher Workerへ本番反映し、binding・Queue・公開設定とAccessへのredirectの不変を確認しました。本人限定policyの最新値のAPI再取得は権限外で、過去の所有者確認とWorker本人検証の維持とは区別します。[修正と監査の記録](dependency-baseline.md#2026-10-25-phase-57-基盤両製品への追随修正)
 
 ## 残余リスク
 

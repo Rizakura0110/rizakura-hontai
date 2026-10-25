@@ -32,7 +32,7 @@ lockfileは基盤395 entries中14件、Daymark176中12件、Tech Inbox210中12�
 
 Drizzle Kitの最新stable `0.31.11`も`@esbuild-kit/esm-loader 2.6.5`→`core-utils 3.3.2`→esbuild `~0.18.20`を保持しており、互換更新では既知moderateを解消できない。Kitは`0.31.10`に据え置き、該当するHTTPサーバーを起動せず本番bundleにも含めない。互換範囲外overrideやRC移行で監査値だけを消さない。
 
-本番反映はPhase 58の別承認後。基盤側の過去の未反映修正を含む累積差分と実際のWorker成果物を確認する。品質gate・commitは[Progress](progress.md)に記録する。
+2026-10-25にPhase 58の別承認を受け、基盤側の過去の未反映修正を含む累積差分と実際のWorker成果物を照合し、既存metadata-fetcherとrizakura-hontaiへ本番反映した。品質gate・commit・反映版は[Progress](progress.md)に記録する。DB・Queue・Access・料金設定は変更していない。
 
 ## 2026-10-25のToki本番反映前の依存修正
 
